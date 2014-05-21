@@ -1,0 +1,47 @@
+set(BENCHMARK_NAME smvp)
+
+set(SEQUENTIAL_SRCS orig_${BENCHMARK_NAME}.c )
+
+add_executable(orig_${BENCHMARK_NAME} ${SEQUENTIAL_SRCS})
+
+set(CMAKE_CXX_COMPILER ${MPICXX})
+set(CMAKE_C_COMPILER ${MPICC})
+
+add_custom_command(OUTPUT rose_${BENCHMARK_NAME}_patoh.c
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/${BENCHMARK_NAME}.c ${CMAKE_CURRENT_BINARY_DIR}			  
+   COMMAND ${IE_COMPILER} ARGS ${BENCHMARK_NAME}.c -I${IE_INCLUDE_DIR} -I${MPI_INCLUDE_DIR} -I${ARMCI_INCLUDE_DIR}
+   COMMAND ${CMAKE_COMMAND} -E rename rose_${BENCHMARK_NAME}.c rose_${BENCHMARK_NAME}_patoh.c 
+   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${BENCHMARK_NAME}.c
+) 		      		      
+
+add_custom_command(OUTPUT rose_${BENCHMARK_NAME}_metis.c
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/${BENCHMARK_NAME}.c ${CMAKE_CURRENT_BINARY_DIR}			  
+   COMMAND ${IE_COMPILER} ARGS ${BENCHMARK_NAME}.c --use-metis -I${IE_INCLUDE_DIR} -I${MPI_INCLUDE_DIR} -I${ARMCI_INCLUDE_DIR} 
+   COMMAND ${CMAKE_COMMAND} -E rename rose_${BENCHMARK_NAME}.c rose_${BENCHMARK_NAME}_metis.c 
+   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${BENCHMARK_NAME}.c
+) 		      		      
+
+add_custom_command(OUTPUT rose_${BENCHMARK_NAME}_block.c
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/${BENCHMARK_NAME}.c ${CMAKE_CURRENT_BINARY_DIR}			  
+   COMMAND ${IE_COMPILER} ARGS ${BENCHMARK_NAME}.c --use-block -I${IE_INCLUDE_DIR} -I${MPI_INCLUDE_DIR} -I${ARMCI_INCLUDE_DIR}
+   COMMAND ${CMAKE_COMMAND} -E rename rose_${BENCHMARK_NAME}.c rose_${BENCHMARK_NAME}_block.c 
+   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${BENCHMARK_NAME}.c
+) 		      		      
+
+include_directories(${ARMCI_INCLUDE_DIR})
+include_directories(${PARMETIS_INCLUDE_DIR})
+include_directories(${PATOH_INCLUDE_DIR})
+
+add_executable(iec_${BENCHMARK_NAME}_patoh rose_${BENCHMARK_NAME}_patoh.c)
+target_link_libraries(iec_${BENCHMARK_NAME}_patoh ${IE_LIBS} ${ARMCI_LIBS} ${PATOH_LIBS} ${PARMETIS_LIBS} ${METIS_LIBS})
+
+add_executable(iec_${BENCHMARK_NAME}_metis rose_${BENCHMARK_NAME}_metis.c)
+target_link_libraries(iec_${BENCHMARK_NAME}_metis ${IE_LIBS} ${ARMCI_LIBS} ${PATOH_LIBS} ${PARMETIS_LIBS} ${METIS_LIBS} )
+
+add_executable(iec_${BENCHMARK_NAME}_block rose_${BENCHMARK_NAME}_block.c)
+target_link_libraries(iec_${BENCHMARK_NAME}_block ${IE_LIBS} ${ARMCI_LIBS} ${PATOH_LIBS} ${PARMETIS_LIBS} ${METIS_LIBS})
+
+install(TARGETS iec_${BENCHMARK_NAME}_patoh orig_${BENCHMARK_NAME} DESTINATION bin/${BENCHMARK_NAME})
+install(TARGETS iec_${BENCHMARK_NAME}_metis orig_${BENCHMARK_NAME} DESTINATION bin/${BENCHMARK_NAME})
+install(TARGETS iec_${BENCHMARK_NAME}_block orig_${BENCHMARK_NAME} DESTINATION bin/${BENCHMARK_NAME})
+

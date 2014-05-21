@@ -1,0 +1,7 @@
+set(SCOPEXTRACTOR_SRCS
+	${CMAKE_CURRENT_SOURCE_DIR}/SageNodeAnnotation.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/SageTools.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ScopExtractor.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ScopExtractorVisitor.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ScopParser.cpp
+	PARENT_SCOPE)

@@ -1,0 +1,11 @@
+set(COMPILETIME_INCLUDES
+	${CMAKE_CURRENT_SOURCE_DIR}/access_details.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/array_details.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/codegen.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/conditional.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/data_scalars.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/driver.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/indarray_details.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/loops.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/safe_scalars.hpp
+	PARENT_SCOPE)

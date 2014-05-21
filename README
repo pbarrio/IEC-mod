@@ -1,0 +1,193 @@
+/*
+ * README: This file is part of the IEC project.
+ *
+ * IEC : Inspector/Executor Compiler
+ *
+ * Copyright (C) 2011 the Ohio State University
+ *
+ * This program can be redistributed and/or modified under the terms
+ * of the license specified in the LICENSE.txt file at the root of the
+ * project.
+ *
+ * Contact: P. Sadayappan <saday@cse.ohio-state.edu>
+ *
+ */
+/**
+ * @file: README
+ * @author: Mahesh Ravishankar <ravishan@cse.ohio-state.edu>
+ */
+
+This software implements the schemes discussed in "Code generation for
+parallel execution of a class of irregular loops on distributed memory
+systems" published at SC'2012 Salt Lake City, Utah, USA
+(http://dl.acm.org/citation.cfm?id=2389094)
+
+Refer to the file LICENSE.txt for copyright information
+
+
+A) PRE-REQUISITES
+
+1) ROSE: The Compiler is built within ROSE. The ROSE project can be
+installed from 
+
+	  http://rosecompiler.org/ 
+
+ROSE has a prerequisit of BOOST 1.45. This version of Boost can be
+obtained from
+	 
+	 http://sourceforge.net/projects/boost/files/boost/1.45.0/
+
+Install ROSE and BOOST into a directory. Set the environment variable
+ROSE_HOME and BOOST_HOME to the top level of the installation
+directory 
+
+2) PARMETIS : Parmetis is used for one version of the partitioning the
+algorithm. Currently this is a required dependency. It can be
+downloaded and installed from
+
+	   http://glaros.dtc.umn.edu/gkhome/metis/parmetis/download
+
+Set the environment variable PARMETIS_HOME to the top level of the
+installation directory
+
+3) MPI : This is a required prerequisite. The reference code was
+tested over Infiniband cluster. Any MPI installation would work, but
+MVAPICH2 is the recommended installation. It can be found at
+
+	 http://mvapich.cse.ohio-state.edu/	  
+
+Set MPI_HOME to the top level of the MPI Installation folder
+
+4) Global Arrays : The Communication is handled through one-sided calls supported
+by ARMCI. This is part of the global arrays toolkit that can be
+downloaded from
+
+	   http://hpc.pnl.gov/globalarrays/
+
+A version greater thatn 5.2.0 is needed. Set ARMCI_HOME to the top
+level of the GA installation folder
+
+5) PaToH : This is a sequential hypergraph partitioner that is
+packaged within IEC. It can also be downloaded from 
+
+   http://bmi.osu.edu/~umit/software.html
+
+Copy the libraries and header files to the IEC installation folder. If
+the packaged version is used, this is done automatically.
+
+
+B) INSTALLATION
+
+a) Environment variables to build the Compiler
+
+IEC uses ROSE for the source-to-source transformation . Set the
+following environment variables
+
+ROSE_HOME : Installation folder of ROSE
+BOOST_HOME : Installation folder of Boost that is used by ROSE
+
+b) Environment variables to build the Run-time
+
+THe run-time layer IEC uses ARMCI for one-sided communications and
+ParMETIS for graph partitioning. Set the following environment variables 
+
+MPI_HOME : Installation folder for MPI
+ARMCI_HOME : Installation folder for ARMCI
+PARMETIS_HOME : Installation folder for ParMETIS
+
+c) Building the compiler and run_time library
+
+Let IE_HOME be the installation folder IE_SOURCE is the top level of
+the source tree.
+
+$> cmake -DCMAKE_INSTALL_PREFIX=$IE_HOME $IE_SOURCE
+$> make install
+
+This will create the compiler at ${IE_HOME}/bin/iec and the library at
+${IE_HOME}/lib/libie.a. The header file is added to
+${IE_HOME}/include/ie.h
+
+KNOWN ISSUES
+
+If there are errors while building the compiler this might be due to
+ROSE errors. ROSE is stable only with GCC-4.4. To fix this try one of
+these 
+1) Set variable GPP44_DIR to the location of g++-4.4 
+2) Add -DCMAKE_CXX_COMPILER=g++-4.4 to the compile line
+
+B) BUILDING THE DEMOS
+
+There are three demos that can be built
+
+1) cg
+2) quake
+3) p3
+
+
+Let DEMO_HOME be the directory where the demos will be installed. To install all of them
+
+$> cmake -DCMAKE_INSTALL_PREFIX=$DEMO_HOME -DIE_HOME=$IE_HOME $IE_SOURCE/demos
+$> make install
+
+For each demo the executable is installed in the folder
+$DEMO_HOME/bin/${DEMO_NAME}. For each demo, there are three
+executables. One using each of the three partitioning schemes a)
+Hypergraph (suffix _patoh), b) Graph (suffix _metis) and c) Block
+(suffix _block). 
+
+
+C) RUNNING THE DEMOS
+
+Set the environment variable OMP_NUM_THREADS to the number of threads
+you want to use per MPI process
+
+1) To run cg
+
+The installation adds two sample inputs to $DEMO_HOME/bin/cg/ ,
+"mat100.txt" and "bcsstk14.rb". 
+
+The three versions of the distributed memory code can be run as follows
+
+$> mpirun -np <N> ./iec_cg_patoh <input_file>
+$> mpirun -np <N> ./iec_cg_metis <input_file>
+$> mpirun -np <N> ./iec_cg_block <input_file>
+
+The original sequential code can be run by 
+
+$> ./orig_cg.x <input_file>
+
+2) To run quake
+
+The installation adds two sample inputs to $DEMO_HOME/bin/quake/ ,
+"testinp.in" and "refinp.in". These are the test and ref size from
+SPEC2000
+(http://www.spec.org/cpu2000/CFP2000/183.equake/docs/183.equake.html)
+
+The three versions of the distributed memory code can be run as follows
+
+$> mpirun -np <N> ./iec_quake_patoh <input_file>
+$> mpirun -np <N> ./iec_quake_metis <input_file>
+$> mpirun -np <N> ./iec_quake_block <input_file>
+
+The original sequential code can be run by 
+
+$> ./orig_quake.x <input_file>
+
+
+3) p3
+
+The installation adds two sample grids to $DEMO_HOME/bin/p3/,
+"triangles_610" and "triangles_22902". 
+
+The three versions of the distributed memory code can be run as follows
+
+$> cp -r <input_dir> gridfolder
+$> mpirun -np 2 ./iec_p3_patoh 
+$> mpirun -np 2 ./iec_p3_metis
+$> mpirun -np 2 ./iec_p3_block 
+
+The original sequential code can be run by 
+
+$> ./orig_p3.x
+
+
