@@ -11,9 +11,9 @@ include_directories(${IE_INCLUDE_DIR})
 message("IE : "${IE_LIBS},${IE_INCLUDE_DIR})
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 
 add_subdirectory(smvp)
 add_subdirectory(quake)
 add_subdirectory(cg)
 add_subdirectory(p3)
-

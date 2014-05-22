@@ -9,4 +9,4 @@ export PARMETIS_HOME=/home/pbarrio/apps/parmetis-4.0.3/installDir/
 export LD_LIBRARY_PATH=/usr/lib/jvm/java-6-openjdk-amd64/jre/lib/amd64/server:$LD_LIBRARY_PATH
 
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local $PWD
-make install
+sudo make install
