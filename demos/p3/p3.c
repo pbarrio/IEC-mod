@@ -40,14 +40,14 @@ double **ba,**bb,**bc;
 
 
 
-enum bdy_type{
+typedef enum bdy_type{
   BOTTOM,
   LEFT,
   TOP,
   RIGHT
-};
+}Bdy_type;
 
-enum bdy_type* bcname;
+Bdy_type* bcname;
 
 void inverse_multiply(double y[4], double A[4][4])
 {
@@ -427,10 +427,10 @@ void readgrid()
   fclose(facedata3_file);
   printf("facedata3.out: %d %d\n",bface[nfaces-1],f_to_bf[nfaces-1]);
 
-  bcname = (enum bdy_type*) malloc(sizeof(enum bdy_type)*nbcfaces);
+  bcname = (Bdy_type*) malloc(sizeof(Bdy_type)*nbcfaces);
   bctype = (int*) malloc(sizeof(int)*nbcfaces);
   bf_to_f = (int*) malloc(sizeof(int)*nbcfaces);
-  memcount += sizeof(int)*2*nbcfaces + sizeof(enum bdy_type)*nbcfaces;
+  memcount += sizeof(int)*2*nbcfaces + sizeof(Bdy_type)*nbcfaces;
 
   FILE* boundarydata_file = fopen("gridfolder/boundarydata.out","r");
   char btype_names[][7] = {"bottom","left","top","right"};
