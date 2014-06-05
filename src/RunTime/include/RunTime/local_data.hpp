@@ -29,181 +29,179 @@ int binary_search(int * const, const int , const int );
 
 class local_data{
 
- protected:
+protected:
   
-  const int nparts;
+	const int nparts;
   
-  const int myid;
+	const int myid;
 
-  const int proc_id;
+	const int proc_id;
 
-  const int nthreads;
+	// const int nthreads;
 
-  const int stride;
+	const int stride;
 
-  const int my_num;
+	const int my_num;
 
-  const net** const data_net_info;
+	const net** const data_net_info;
 
-  const int orig_array_size;
+	const int orig_array_size;
 
-  const bool is_read_only;
+	const bool is_read_only;
 
-  const bool is_constrained;
+	const bool is_constrained;
   
-  int local_array_size;
+	int local_array_size;
 
-  std::set<int> direct_access;
+	std::set<int> direct_access;
 
-  std::set<int> indirect_access;
+	std::set<int> indirect_access;
 
-  int direct_access_size;
+	long /*int*/ direct_access_size;
  
-  int* direct_access_array;
+	int* direct_access_array;
 
-  int indirect_access_size; 
+	int indirect_access_size; 
  
-  int* indirect_access_array;
+	int* indirect_access_array;
 
-  int* const ghosts_offset;
+	int* const ghosts_offset;
   
-  int* ghosts;
+	int* ghosts;
 
-  int* const owned_offset;
+	int* const owned_offset;
   
-  int* owned;
+	int* owned;
 
-  int* l_to_g;
+	int* l_to_g;
   
-  int GetLocalIndex(int global_index) const;
+	int GetLocalIndex(int global_index) const;
 
-  int block_owned_offset;
+	int block_owned_offset;
 
- public:
+public:
 
-  local_data(int,int,int,int,int,int,const net**,int,bool,bool);
+	local_data(int,int,int,int/*,int*/,int,const net**,int,bool,bool);
 
-  virtual ~local_data();
+	virtual ~local_data();
 
-  virtual int GetGhostsCount(int) const=0;
+	virtual int GetGhostsCount(int) const=0;
 
-  virtual int GetOwnedCount(int) const=0;
+	virtual int GetOwnedCount(int) const=0;
 
-  virtual void PopulateLocalArray(double*,double*,int)=0;
+	virtual void PopulateLocalArray(double*,double*,int)=0;
 
-  virtual void PopulateGlobalArray()=0; 
+	virtual void PopulateGlobalArray()=0; 
 
-  inline int GetLocalSize() const{ return direct_access_size + indirect_access_size; }
+	inline int GetLocalSize() const{ return direct_access_size + indirect_access_size; }
 
-  void AddIndexAccessed(int, int);
+	void AddIndexAccessed(int, int);
 
-  void InsertDirectAccess(const int*,const int);
+	void InsertDirectAccess(const int*,const int);
 
-  void InsertIndirectAccess(const int*,const int);
+	void InsertIndirectAccess(const int*,const int);
   
-  void RenumberAccessArray(int,int*);
+	void RenumberAccessArray(int,int*);
 
-  void RenumberOffsetArray(int,int*,int*);
+	void RenumberOffsetArray(int,int*,int*);
 
-  void GenerateGhosts();
+	void GenerateGhosts();
 
-  void GenerateOwned();
+	void GenerateOwned();
 
-  void SetupLocalArray();
+	void SetupLocalArray();
 
-  std::set<int> * global_ghosts;
+	std::set<int> * global_ghosts;
   
-  std::set<int> * global_owned;
+	std::set<int> * global_owned;
 
-  virtual void SendOwnedData(char*,int*)=0;
+	virtual void SendOwnedData(char*,int*)=0;
 
-  virtual void RecvGhostData(char*,int*)=0;
+	virtual void RecvGhostData(char*,int*)=0;
 
-  virtual void SendGhostData(char*,int*)=0;
+	virtual void SendGhostData(char*,int*)=0;
 
-  virtual void RecvOwnedData(char*,int*)=0;
+	virtual void RecvOwnedData(char*,int*)=0;
 
-  virtual void PopulateLocalGhosts(local_data*,int)=0;
+	virtual void PopulateLocalGhosts(local_data*,int)=0;
 
-  virtual void UpdateLocalOwned(local_data*,int)=0;
+	virtual void UpdateLocalOwned(local_data*,int)=0;
 
-  virtual void InitWriteGhosts()=0;
+	virtual void InitWriteGhosts()=0;
 
-  virtual void print_data(FILE*);
+	virtual void print_data(FILE*);
 
-  virtual int get_size() const=0;
+	virtual int get_size() const=0;
 
-  virtual int get_stride_size() const=0;
+	virtual int get_stride_size() const=0;
 
-  inline int GetMyNum() const{return my_num;}
+	inline int GetMyNum() const{return my_num;}
 
-  inline int GetLocalBlockOffset() const { assert(is_constrained) ; return block_owned_offset; }
+	inline int GetLocalBlockOffset() const { assert(is_constrained) ; return block_owned_offset; }
 
-  virtual void SetLocalArray(void*)=0;
+	virtual void SetLocalArray(void*)=0;
 
-  friend class inspector;
+	friend class inspector;
 
 };
 
 
 class local_data_double: public local_data{
 
- private:
+private:
 
-  double* orig_array;
+	double* orig_array;
 
-  double* local_array;
+	double* local_array;
 
- public:
+public:
 
-  local_data_double(int,int, int,int,int,int, const net** const, int, bool, bool);
+	local_data_double(int,int, int,int/*,int*/,int, const net** const, int, bool, bool);
   
-  ~local_data_double();
+	~local_data_double();
   
-  void PopulateLocalArray(double*,double*,int);
+	void PopulateLocalArray(double*,double*,int);
 
-  inline int get_size() const{return sizeof(double);}
+	inline int get_size() const{return sizeof(double);}
 
-  inline int get_stride_size() const{return sizeof(double)*stride;}
+	inline int get_stride_size() const{return sizeof(double)*stride;}
 
-  void print_data();
+	void print_data();
 
-  int GetGhostsCount(int source) const{
-    return (ghosts_offset[source+1]-ghosts_offset[source])*stride*sizeof(double);
-  }
+	int GetGhostsCount(int source) const{
+		return (ghosts_offset[source+1]-ghosts_offset[source])*stride*sizeof(double);
+	}
 
-  int GetOwnedCount (int dest) const{
-    return (owned_offset[dest+1]-owned_offset[dest])*stride*sizeof(double);
-  }
+	int GetOwnedCount (int dest) const{
+		return (owned_offset[dest+1]-owned_offset[dest])*stride*sizeof(double);
+	}
 
-  void SendOwnedData(char*,int*);
+	void SendOwnedData(char*,int*);
 
-  void RecvGhostData(char*,int*);
+	void RecvGhostData(char*,int*);
 
-  void SendGhostData(char*,int*);
+	void SendGhostData(char*,int*);
 
-  void RecvOwnedData(char*,int*);
+	void RecvOwnedData(char*,int*);
   
-  void InitWriteGhosts();
+	void InitWriteGhosts();
 
-  void PopulateLocalGhosts(local_data*,int);
+	void PopulateLocalGhosts(local_data*,int);
 
-  void UpdateLocalOwned(local_data*,int);
+	void UpdateLocalOwned(local_data*,int);
 
-  void PopulateGlobalArray(); 
+	void PopulateGlobalArray(); 
 
-  inline void SetLocalArray(void* la){
-    assert( is_constrained && local_array == NULL );
-    local_array = static_cast<double*>(la);
-  }
+	inline void SetLocalArray(void* la){
+		assert( is_constrained && local_array == NULL );
+		local_array = static_cast<double*>(la);
+	}
 
-  void print_data(FILE*);
+	void print_data(FILE*);
   
-  friend class inspector;
+	friend class inspector;
 
 };
-
-
 
 
 #endif

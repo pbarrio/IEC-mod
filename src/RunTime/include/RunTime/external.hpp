@@ -37,7 +37,7 @@ private:
 
   const int nprocs;
 
-  const int nthreads;
+//   const int nthreads;
 
   const int proc_id;
 
@@ -45,11 +45,13 @@ private:
 
 public:
 
-  petsc_solve(int,int,int,int);
+//   petsc_solve(int,int,int,int);
+  petsc_solve(int,int,int);
 
   ~petsc_solve();  
 
-  inline int GetNLocalRows( int tid) const { return nlocal[tid]; }
+//   inline int GetNLocalRows( int tid) const { return nlocal[tid]; }
+  inline int GetNLocalRows() const { return nlocal[0]; }
 
   void FindNewRowNumbers();
 
@@ -57,7 +59,8 @@ public:
 
   void print(FILE*) const;
 
-  inline int GetLocalRows(int tid) const { return nlocal[tid]; }
+//   inline int GetLocalRows(int tid) const { return nlocal[tid]; }
+  inline int GetLocalRows() const { return nlocal[0]; }
   
   friend class inspector;
 };

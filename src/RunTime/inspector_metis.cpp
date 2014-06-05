@@ -125,162 +125,160 @@ int remove_duplicates(int* const array, const int size, int* const mirror_array)
 
 void inspector::MetisReplicateHypergraph()
 {
-  if ( nprocs > 1 ){
+	if (nprocs < 2)
+		return;
 
-    const int num_nets = data_num_offset[all_data.size()];
+	const int num_nets = data_num_offset[all_data.size()];
 
-    //First Step , broadcast the number of pins a process has for each net
+	//First Step , broadcast the number of pins a process has for each net
   
-    int sendcount[nprocs],senddispl[nprocs+1],recvcount[nprocs],recvdispl[nprocs+1];
+	int sendcount[nprocs],senddispl[nprocs+1],recvcount[nprocs],recvdispl[nprocs+1];
 
-    int num_local_nets = 0;
-    for( int i = 0 ; i < nprocs ; i++) {
-      sendcount[i] = 0;
-      recvcount[i] = 0;
-    }
+	int num_local_nets = 0;
+	for( int i = 0 ; i < nprocs ; i++) {
+		sendcount[i] = 0;
+		recvcount[i] = 0;
+	}
     
-    for( int i = 0 ; i < all_data.size() ; i++ ){
-      int curr_size = data_num_offset[i+1] - data_num_offset[i];
-      int split = curr_size / nprocs;
-      num_local_nets += ( proc_id == nprocs - 1 ? curr_size - split * proc_id : split );
-      for( int j = 0 ; j < nprocs ; j++ ){
-	sendcount[j] += (j == proc_id ? 0 : ( j == nprocs - 1 ? curr_size - split * j : split ) );
-      }
-    }
+	for( int i = 0 ; i < all_data.size() ; i++ ){
+		int curr_size = data_num_offset[i+1] - data_num_offset[i];
+		int split = curr_size / nprocs;
+		num_local_nets += ( proc_id == nprocs - 1 ? curr_size - split * proc_id : split );
+		for( int j = 0 ; j < nprocs ; j++ ){
+			sendcount[j] += (j == proc_id ? 0 : ( j == nprocs - 1 ? curr_size - split * j : split ) );
+		}
+	}
     
-    senddispl[0] = 0; recvdispl[0] = 0;
-    for( int i =0 ; i < nprocs ; i++ ){
-      senddispl[i+1] = senddispl[i] + sendcount[i];
-      recvcount[i] = ( i == proc_id ? 0 : num_local_nets ) ;
-      recvdispl[i+1] = recvdispl[i] + recvcount[i];
-    }
+	senddispl[0] = 0; recvdispl[0] = 0;
+	for( int i =0 ; i < nprocs ; i++ ){
+		senddispl[i+1] = senddispl[i] + sendcount[i];
+		recvcount[i] = ( i == proc_id ? 0 : num_local_nets ) ;
+		recvdispl[i+1] = recvdispl[i] + recvcount[i];
+	}
 
-    int* const net_send_npins = new int[senddispl[nprocs]];
-    int* const net_recv_npins = new int[recvdispl[nprocs]];
-    net** const local_nets = new net*[num_local_nets];
+	int* const net_send_npins = new int[senddispl[nprocs]];
+	int* const net_recv_npins = new int[recvdispl[nprocs]];
+	net** const local_nets = new net*[num_local_nets];
   
+	int curr_displ[nprocs];
+	for( int i= 0; i < nprocs ; i++ )
+		curr_displ[i] = senddispl[i];
 
-    int curr_displ[nprocs];
-    for( int i= 0; i < nprocs ; i++ )
-      curr_displ[i] = senddispl[i];
-
-    int local_count = 0;
-    for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ ){
-      // if( !(*it)->is_read_only ){
-      int curr_array_size = (*it)->orig_array_size ;
-      int curr_split = curr_array_size / nprocs;
-      int my_start = curr_split * proc_id;
-      int my_end = ( proc_id == nprocs - 1 ? curr_array_size : my_start + curr_split );
-      for( int j = 0,curr_proc = 0 ; j < curr_array_size ; j++){
-	if( j < my_start || j >= my_end )
-	  net_send_npins[curr_displ[curr_proc]++] = (*it)->data_net_info[j]->pins.size()*2+1;
-	else
-	  local_nets[local_count++] = (*it)->data_net_info[j];
-	if( (j+1)%curr_split == 0 )
-	  curr_proc = ( curr_proc >= nprocs - 1 ? nprocs - 1 : curr_proc+1 );
-      }
-    }
+	int local_count = 0;
+	for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ ){
+		// if( !(*it)->is_read_only ){
+		int curr_array_size = (*it)->orig_array_size ;
+		int curr_split = curr_array_size / nprocs;
+		int my_start = curr_split * proc_id;
+		int my_end = ( proc_id == nprocs - 1 ? curr_array_size : my_start + curr_split );
+		for( int j = 0,curr_proc = 0 ; j < curr_array_size ; j++){
+			if( j < my_start || j >= my_end )
+				net_send_npins[curr_displ[curr_proc]++] = (*it)->data_net_info[j]->pins.size()*2+1;
+			else
+				local_nets[local_count++] = (*it)->data_net_info[j];
+			if( (j+1)%curr_split == 0 )
+				curr_proc = ( curr_proc >= nprocs - 1 ? nprocs - 1 : curr_proc+1 );
+		}
+	}
 #ifndef NDEBUG
-    for( int i = 0; i < nprocs ; i++ )
-      assert(curr_displ[i] == senddispl[i+1]);
-    assert(local_count == num_local_nets);
+	for( int i = 0; i < nprocs ; i++ )
+		assert(curr_displ[i] == senddispl[i+1]);
+	assert(local_count == num_local_nets);
 #endif
   
-    MPI_Alltoallv(net_send_npins,sendcount,senddispl,MPI_INT,net_recv_npins,recvcount,recvdispl,MPI_INT,MPI_COMM_WORLD);
-
-    int send_pins_count[nprocs],send_pins_displ[nprocs+1],recv_pins_count[nprocs],recv_pins_displ[nprocs+1];
+	MPI_Alltoallv(net_send_npins,sendcount,senddispl,MPI_INT,net_recv_npins,recvcount,recvdispl,MPI_INT,global_comm::global_iec_communicator);
+	int send_pins_count[nprocs],send_pins_displ[nprocs+1],recv_pins_count[nprocs],recv_pins_displ[nprocs+1];
   
-    recv_pins_displ[0] = 0; send_pins_displ[0] = 0;
-    for( int i =0 ; i < nprocs ; i++ ){
-      send_pins_count[i] = 0;
-      for( int j = senddispl[i] ; j < senddispl[i+1] ; j++ )
-	send_pins_count[i] += net_send_npins[j];
-      send_pins_displ[i+1] = send_pins_displ[i] + send_pins_count[i] ;
-      recv_pins_count[i] = 0;
-      for( int j = recvdispl[i] ; j < recvdispl[i+1] ; j++ )
-	recv_pins_count[i] += net_recv_npins[j];
-      recv_pins_displ[i+1] = recv_pins_displ[i] + recv_pins_count[i] ;
-    }
-
-    //Second Step : Send the pins of net to the respective process.
-
-    int* const send_pins = new int[send_pins_displ[nprocs]];
-    int* const recv_pins = new int[recv_pins_displ[nprocs]];
-
-    for( int i = 0 ; i < nprocs ; i++ )
-      curr_displ[i] = send_pins_displ[i];
-
-    for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ ){
-      int curr_array_size = (*it)->orig_array_size ;
-      int curr_split = curr_array_size / nprocs;
-      int my_start = curr_split * proc_id;
-      int my_end = ( proc_id == nprocs - 1 ? curr_array_size : my_start + curr_split );
-      for( int j = 0 , curr_proc = 0 ; j < curr_array_size ; j++ ){
-	if( j < my_start || j >= my_end ){
-	  net* curr_net = (*it)->data_net_info[j];
-	  for( set<pin_info,pin_comparator>::iterator jt = curr_net->pins.begin() ; jt != curr_net->pins.end() ; jt++ ){
-	    send_pins[curr_displ[curr_proc]++] = (*jt).pin->my_num;
-	    send_pins[curr_displ[curr_proc]++] = ( (*jt).is_direct ? 1 : 0 );
-	  }
-	  if( curr_net->direct_vertex ){
-	    send_pins[curr_displ[curr_proc]++] = curr_net->direct_vertex->my_num;
-	  }
-	  else{
-	    send_pins[curr_displ[curr_proc]++]  = -1;
-	  }
+	recv_pins_displ[0] = 0; send_pins_displ[0] = 0;
+	for( int i =0 ; i < nprocs ; i++ ){
+		send_pins_count[i] = 0;
+		for( int j = senddispl[i] ; j < senddispl[i+1] ; j++ )
+			send_pins_count[i] += net_send_npins[j];
+		send_pins_displ[i+1] = send_pins_displ[i] + send_pins_count[i] ;
+		recv_pins_count[i] = 0;
+		for( int j = recvdispl[i] ; j < recvdispl[i+1] ; j++ )
+			recv_pins_count[i] += net_recv_npins[j];
+		recv_pins_displ[i+1] = recv_pins_displ[i] + recv_pins_count[i] ;
 	}
-	if( (j+1)%curr_split == 0 )
-	  curr_proc = ( curr_proc >= nprocs - 1 ? nprocs - 1 : curr_proc + 1);
-      }
-    }
+
+	//Second Step : Send the pins of net to the respective process.
+
+	int* const send_pins = new int[send_pins_displ[nprocs]];
+	int* const recv_pins = new int[recv_pins_displ[nprocs]];
+
+	for( int i = 0 ; i < nprocs ; i++ )
+		curr_displ[i] = send_pins_displ[i];
+
+	for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ ){
+		int curr_array_size = (*it)->orig_array_size ;
+		int curr_split = curr_array_size / nprocs;
+		int my_start = curr_split * proc_id;
+		int my_end = ( proc_id == nprocs - 1 ? curr_array_size : my_start + curr_split );
+		for( int j = 0 , curr_proc = 0 ; j < curr_array_size ; j++ ){
+			if( j < my_start || j >= my_end ){
+				net* curr_net = (*it)->data_net_info[j];
+				for( set<pin_info,pin_comparator>::iterator jt = curr_net->pins.begin() ; jt != curr_net->pins.end() ; jt++ ){
+					send_pins[curr_displ[curr_proc]++] = (*jt).pin->my_num;
+					send_pins[curr_displ[curr_proc]++] = ( (*jt).is_direct ? 1 : 0 );
+				}
+				if( curr_net->direct_vertex ){
+					send_pins[curr_displ[curr_proc]++] = curr_net->direct_vertex->my_num;
+				}
+				else{
+					send_pins[curr_displ[curr_proc]++]  = -1;
+				}
+			}
+			if( (j+1)%curr_split == 0 )
+				curr_proc = ( curr_proc >= nprocs - 1 ? nprocs - 1 : curr_proc + 1);
+		}
+	}
 #ifndef NDEBUG
-    for( int i = 0; i < nprocs ; i++ )
-      assert(curr_displ[i] == send_pins_displ[i+1]);
+	for( int i = 0; i < nprocs ; i++ )
+		assert(curr_displ[i] == send_pins_displ[i+1]);
 #endif
 
-    MPI_Alltoallv(send_pins,send_pins_count,send_pins_displ,MPI_INT,recv_pins,recv_pins_count,recv_pins_displ,MPI_INT,MPI_COMM_WORLD);
+	MPI_Alltoallv(send_pins,send_pins_count,send_pins_displ,MPI_INT,recv_pins,recv_pins_count,recv_pins_displ,MPI_INT,global_comm::global_iec_communicator);
     
-    int vcount[nprocs];
-    for( int i =0 ; i < nprocs ; i++ )
-      vcount[i] = recv_pins_displ[i];
-    for( int i = 0 ; i < num_local_nets ; i++ ){
-      net* curr_net = local_nets[i];
-      for( int j = 0 ; j < nprocs ; j++ )
-	if( j != proc_id ){
-	  int num_pins = net_recv_npins[recvdispl[j]+i]-1;
-	  for( int l = 0 ; l < num_pins ; l+=2 ){
-	    int vertex_num = recv_pins[vcount[j]++];
-	    int k = 0 ;
-	    for( k = 0 ; k < all_loops.size() ; k++ )
-	      if( iter_num_offset[k+1] > vertex_num )
-		break;
-	    assert(k != all_loops.size());
-	    assert( vertex_num - iter_num_offset[k] >= 0 && vertex_num - iter_num_offset[k] < all_loops[k]->num_iters);
-	    pin_info new_pin(all_loops[k]->iter_vertex[vertex_num - iter_num_offset[k]],(recv_pins[vcount[j]++] != 0 ? true : false));
-	    curr_net->pins.insert(new_pin);
-	  }
-	  int direct_vertex_num = recv_pins[vcount[j]++];
-	  if(direct_vertex_num != -1 ){
-	    int k = 0 ;
-	    for( k = 0 ; k < all_loops.size() ; k++ )
-	      if( iter_num_offset[k+1] > direct_vertex_num )
-	  	break;
-	    assert(k != all_loops.size());
-	    assert( direct_vertex_num - iter_num_offset[k] >= 0 && direct_vertex_num - iter_num_offset[k] < all_loops[k]->num_iters);
-	    if( curr_net->direct_vertex == NULL )
-	      curr_net->direct_vertex = all_loops[k]->iter_vertex[direct_vertex_num-iter_num_offset[k]];
-	    else
-	      assert(curr_net->direct_vertex == all_loops[k]->iter_vertex[direct_vertex_num-iter_num_offset[k]]);
-	  }
+	int vcount[nprocs];
+	for( int i =0 ; i < nprocs ; i++ )
+		vcount[i] = recv_pins_displ[i];
+	for( int i = 0 ; i < num_local_nets ; i++ ){
+		net* curr_net = local_nets[i];
+		for( int j = 0 ; j < nprocs ; j++ )
+			if( j != proc_id ){
+				int num_pins = net_recv_npins[recvdispl[j]+i]-1;
+				for( int l = 0 ; l < num_pins ; l+=2 ){
+					int vertex_num = recv_pins[vcount[j]++];
+					int k = 0 ;
+					for( k = 0 ; k < all_loops.size() ; k++ )
+						if( iter_num_offset[k+1] > vertex_num )
+							break;
+					assert(k != all_loops.size());
+					assert( vertex_num - iter_num_offset[k] >= 0 && vertex_num - iter_num_offset[k] < all_loops[k]->num_iters);
+					pin_info new_pin(all_loops[k]->iter_vertex[vertex_num - iter_num_offset[k]],(recv_pins[vcount[j]++] != 0 ? true : false));
+					curr_net->pins.insert(new_pin);
+				}
+				int direct_vertex_num = recv_pins[vcount[j]++];
+				if(direct_vertex_num != -1 ){
+					int k = 0 ;
+					for( k = 0 ; k < all_loops.size() ; k++ )
+						if( iter_num_offset[k+1] > direct_vertex_num )
+							break;
+					assert(k != all_loops.size());
+					assert( direct_vertex_num - iter_num_offset[k] >= 0 && direct_vertex_num - iter_num_offset[k] < all_loops[k]->num_iters);
+					if( curr_net->direct_vertex == NULL )
+						curr_net->direct_vertex = all_loops[k]->iter_vertex[direct_vertex_num-iter_num_offset[k]];
+					else
+						assert(curr_net->direct_vertex == all_loops[k]->iter_vertex[direct_vertex_num-iter_num_offset[k]]);
+				}
+			}
 	}
-    }
 
-    delete[] send_pins;
-    delete[] recv_pins;
-    delete[] local_nets;
-    delete[] net_recv_npins;
-    delete[] net_send_npins;
-  }
+	delete[] send_pins;
+	delete[] recv_pins;
+	delete[] local_nets;
+	delete[] net_recv_npins;
+	delete[] net_send_npins;
 }
 
 
@@ -335,8 +333,8 @@ void inspector::MetisPrePartition()
 void inspector::BlockPartition()
 {
   MetisReplicateHypergraph();
-  
-  int nparts = nprocs * nthreads;
+
+  int nparts = nprocs /** nthreads*/;
   
   for( deque<global_loop*>::iterator it = all_loops.begin() ; it!= all_loops.end() ; it++ ){
     int numiters = (*it)->num_iters;
@@ -347,7 +345,7 @@ void inspector::BlockPartition()
       if( home != (nparts -1) && j == (home+1)*split )
 	home++;
       curr_vertex->home = home;
-      if( home / nthreads == proc_id )
+      if( home/* / nthreads*/ == proc_id )
 	(*it)->nproc_local++;
     }
   }
@@ -482,7 +480,7 @@ void inspector::MetisPartition()
   int *vwgt = new int[num_local_vertex*all_loops.size()];
   int *vtxdist = new int[nprocs+1];
   int ncon = all_loops.size();
-  int nparts = nprocs*nthreads;
+  int nparts = nprocs/**nthreads*/;
   int wgtflag = 3;
   int numflag = 0;
 
@@ -569,7 +567,7 @@ void inspector::MetisPartition()
     counter = 0;
     for( deque<global_loop*>::iterator it = all_loops.begin() ; it != all_loops.end() ; it++ )
       for( int j = 0; j < (*it)->num_iters ; j++ ){
-	if( recvbuffer[counter] / nthreads == proc_id )
+	      if( recvbuffer[counter] /*/ nthreads*/ == proc_id )
 	  (*it)->nproc_local++;
 	(*it)->iter_vertex[j]->home = recvbuffer[counter++];
       }
@@ -633,116 +631,123 @@ void inspector::MetisPartition()
 
 void inspector::MetisAfterPartition()
 {
-  int num_local_nets = 0;
-  int* const recvcount= new int[nprocs];
-  for( int i = 0 ; i < nprocs ; i++ ){
-    recvcount[i] = 0;
-  }
+	int num_local_nets = 0;
+	int* const recvcount= new int[nprocs];
+	for( int i = 0 ; i < nprocs ; i++ ){
+		recvcount[i] = 0;
+	}
   
-  for( int i = 0 ; i < all_data.size() ; i++ )
-    if( !all_data[i]->is_read_only ){
-      int curr_array_size = all_data[i]->orig_array_size;
-      int curr_split = curr_array_size / nprocs;
-      num_local_nets += ( proc_id == nprocs - 1 ? curr_array_size - curr_split * proc_id : curr_split );
-      for( int j = 0 ; j < nprocs -1 ; j++ )
-	recvcount[j] += curr_split;
-      recvcount[nprocs-1] += curr_array_size - curr_split * (nprocs - 1) ;
-    }
-  int* const send_home = new int[num_local_nets];
+	for( int i = 0 ; i < all_data.size() ; i++ )
+		if( !all_data[i]->is_read_only ){
+			int curr_array_size = all_data[i]->orig_array_size;
+			int curr_split = curr_array_size / nprocs;
+			num_local_nets += ( proc_id == nprocs - 1 ? curr_array_size - curr_split * proc_id : curr_split );
+			for( int j = 0 ; j < nprocs -1 ; j++ )
+				recvcount[j] += curr_split;
+			recvcount[nprocs-1] += curr_array_size - curr_split * (nprocs - 1) ;
+		}
+	int* const send_home = new int[num_local_nets];
   
-  int* const recvdispl = new int[nprocs+1];
-  recvdispl[0]=0;
-  for( int i = 0 ; i < nprocs ; i++ )
-    recvdispl[i+1] = recvdispl[i] + recvcount[i];
+	int* const recvdispl = new int[nprocs+1];
+	recvdispl[0]=0;
+	for( int i = 0 ; i < nprocs ; i++ )
+		recvdispl[i+1] = recvdispl[i] + recvcount[i];
   
-  int* const recv_home = new int[recvdispl[nprocs]];
-  for( int i =0 ; i < recvdispl[nprocs] ; i++ )
-    recv_home[i] = -1;
+	int* const recv_home = new int[recvdispl[nprocs]];
+	for( int i =0 ; i < recvdispl[nprocs] ; i++ )
+		recv_home[i] = -1;
   
-  int* const possible = new int[nprocs*nthreads];
-  int countv = 0;
-  for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ )
-    if( !(*it)->is_read_only ){
-      int curr_array_size = (*it)->orig_array_size;
-      int curr_split = curr_array_size / nprocs ; 
-      int curr_start = curr_split * proc_id ; 
-      int curr_end = ( proc_id == nprocs - 1 ? curr_array_size : curr_start + curr_split );
-      if( (*it)->is_constrained ){
-	int thread_split = curr_array_size / (nprocs * nthreads);
-	for( int j = curr_start ; j < curr_end ; j++ ){
-	  net* curr_net = (*it)->data_net_info[j];
-	  int home = (j / thread_split > nprocs*nthreads - 1 ? nprocs*nthreads - 1 : j / thread_split ) ;
-	  curr_net->home = home;
-	  send_home[countv++] = curr_net->home;
-	}	
-      }
-      else{
-	for( int j = curr_start ; j < curr_end ; j++ ){
-	  net* curr_net = (*it)->data_net_info[j];
-	  int home = -1;
-	  if( curr_net->direct_vertex ){
-	    home = curr_net->direct_vertex->home;
-	  }
-	  else{
-	    for( int i = 0 ; i < nprocs*nthreads ; i++ )
-	      possible[i] = 0;
-	    for( set<pin_info,pin_comparator>::iterator jt = curr_net->pins.begin() ; jt != curr_net->pins.end() ; jt++ ){
-	      assert((*jt).pin->home >= 0 && (*jt).pin->home < (nprocs*nthreads));
-	      possible[(*jt).pin->home]++;
-	    }
-	    int maxval = -1;
-	    int counter = 0 , i = 0 ; //rand()%(nprocs*nthreads);
-	    while( counter < nprocs * nthreads ){
-	      if( possible[i] > maxval ) {
-		maxval = possible[i];
-		home = i;
-	      }
-	      counter++;
-	      i = (i+1)%(nprocs*nthreads);
-	    }
-	  }
-	  assert( curr_net->home == -1 && home >= 0 && home <= (nprocs * nthreads));
-	  curr_net->home = home; 
+	int* const possible = new int[nprocs/**nthreads*/];
+	int countv = 0;
+	for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ )
+
+		if( !(*it)->is_read_only ){
+
+			int curr_array_size = (*it)->orig_array_size;
+			int curr_split = curr_array_size / nprocs ; 
+			int curr_start = curr_split * proc_id ; 
+			int curr_end = ( proc_id == nprocs - 1 ? curr_array_size : curr_start + curr_split );
+			if( (*it)->is_constrained ){
+				int thread_split = curr_array_size / (nprocs/* * nthreads*/);
+				for( int j = curr_start ; j < curr_end ; j++ ){
+					net* curr_net = (*it)->data_net_info[j];
+					int home = (j / thread_split > nprocs/**nthreads*/ - 1 ? nprocs/**nthreads*/ - 1 : j / thread_split ) ;
+					curr_net->home = home;
+					send_home[countv++] = curr_net->home;
+				}	
+			}
+
+			else{
+
+				for( int j = curr_start ; j < curr_end ; j++ ){
+
+					net* curr_net = (*it)->data_net_info[j];
+					int home = -1;
+					if( curr_net->direct_vertex ){
+						home = curr_net->direct_vertex->home;
+					}
+
+					else{
+
+						for( int i = 0 ; i < nprocs/**nthreads*/ ; i++ )
+							possible[i] = 0;
+						for( set<pin_info,pin_comparator>::iterator jt = curr_net->pins.begin() ; jt != curr_net->pins.end() ; jt++ ){
+							assert((*jt).pin->home >= 0 && (*jt).pin->home < (nprocs/**nthreads*/));
+							possible[(*jt).pin->home]++;
+						}
+
+						int maxval = -1;
+						int counter = 0 , i = 0 ;
+						while( counter < nprocs/* * nthreads */){
+							if( possible[i] > maxval ) {
+								maxval = possible[i];
+								home = i;
+							}
+							counter++;
+							i = (i+1)%(nprocs/**nthreads*/);
+						}
+					}
+					assert( curr_net->home == -1 && home >= 0 && home <= (nprocs/* * nthreads*/));
+					curr_net->home = home; 
 	
-	  assert(curr_net->home >= 0 && curr_net->home < (nprocs * nthreads) );
-	  assert(countv < num_local_nets);
-	  send_home[countv++] = curr_net->home;
-	}
-      }
-    }
-  assert(countv == num_local_nets);
+					assert(curr_net->home >= 0 && curr_net->home < (nprocs/* * nthreads*/) );
+					assert(countv < num_local_nets);
+					send_home[countv++] = curr_net->home;
+				}
+			}
+		}
+	assert(countv == num_local_nets);
 
+	MPI_Allgatherv(send_home,num_local_nets,MPI_INT,recv_home,recvcount,recvdispl,MPI_INT,global_comm::global_iec_communicator);
 
-  MPI_Allgatherv(send_home,num_local_nets,MPI_INT,recv_home,recvcount,recvdispl,MPI_INT,MPI_COMM_WORLD);
+	int curr_displ[nprocs];
+	for( int i = 0; i < nprocs ; i++ )
+		curr_displ[i] = recvdispl[i];
 
-  int curr_displ[nprocs];
-  for( int i = 0; i < nprocs ; i++ )
-    curr_displ[i] = recvdispl[i];
+	for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ )
+		if( !(*it)->is_read_only ){
+			int curr_array_size = (*it)->orig_array_size;
+			int curr_split = curr_array_size / nprocs;
+			int my_start = curr_split*proc_id;
+			int my_end = ( proc_id == nprocs - 1 ? curr_array_size : my_start + curr_split );
+			for( int j = 0, curr_proc = 0 ; j < curr_array_size ; j++ ){
+				if( j < my_start || j >= my_end ){
+					net* curr_net = (*it)->data_net_info[j];
+					assert(curr_net->home == -1 );
+					assert(recv_home[curr_displ[curr_proc]] >= 0 && recv_home[curr_displ[curr_proc]] < nprocs/**nthreads*/ );
+					curr_net->home = recv_home[curr_displ[curr_proc]++];
+				}
+				if( (j+1)%curr_split == 0 )
+					curr_proc = ( curr_proc >= nprocs - 1 ? nprocs - 1 : curr_proc + 1 ) ;
+			}
+		}
 
-  for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ )
-    if( !(*it)->is_read_only ){
-      int curr_array_size = (*it)->orig_array_size;
-      int curr_split = curr_array_size / nprocs;
-      int my_start = curr_split*proc_id;
-      int my_end = ( proc_id == nprocs - 1 ? curr_array_size : my_start + curr_split );
-      for( int j = 0, curr_proc = 0 ; j < curr_array_size ; j++ ){
-	if( j < my_start || j >= my_end ){
-	  net* curr_net = (*it)->data_net_info[j];
-	  assert(curr_net->home == -1 );
-	  assert(recv_home[curr_displ[curr_proc]] >= 0 && recv_home[curr_displ[curr_proc]] < nprocs*nthreads );
-	  curr_net->home = recv_home[curr_displ[curr_proc]++];
-	}
-	if( (j+1)%curr_split == 0 )
-	  curr_proc = ( curr_proc >= nprocs - 1 ? nprocs - 1 : curr_proc + 1 ) ;
-      }
-    }
+	delete[] possible;
+	delete[] recvcount;
+	delete[] recvdispl;
+	delete[] send_home;
+	delete[] recv_home;
 
-  delete[] possible;
-  delete[] recvcount;
-  delete[] recvdispl;
-  delete[] send_home;
-  delete[] recv_home;
-
-  AfterPartition();
+	AfterPartition();
 }
 

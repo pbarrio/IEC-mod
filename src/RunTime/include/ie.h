@@ -26,10 +26,12 @@
 #include "stdlib.h"
 
 static int __nprocs__ = 1;
-static int __nthreads__ = 1;
+/* static int __nthreads__ = 1; */
+static int __nprocs_y__ = 1;
 static int __myid__ = 0;
 static int __proc_id__ = 0;
-static int __thread_id__ = 0;
+/* static int __thread_id__ = 0; */
+static int __proc_coordy__ = 1;
 
 enum partition_type{
   PARTITION_PATOH,
@@ -37,7 +39,7 @@ enum partition_type{
   PARTITION_BLOCK
 };
 
-extern void create_inspector(int,int,int,int,int,int,int,int*,int*,int*);
+extern void create_inspector(int,int/*,int*/,int,int,int,int,int*,int*,int*);
 extern void set_access_array_param(int,int,int,int*);
 extern int done_graph_gen();
 extern int is_known(int,int);
@@ -48,27 +50,27 @@ extern int add_vertex(int,int);
 extern void add_pin_to_net(int,int,int,int);
 extern void add_index_from_proc(int,int,int,int);
 extern int get_vertex_home(int,int);
-extern int get_local_size(int,int);
-extern int populate_local_array(int,int,double*,double*,int);
-extern int renumber_access_array(int,int,int,int*);
-extern int renumber_offset_array(int,int,int,int*,int*);
+extern int get_local_size(/*int,*/int);
+extern int populate_local_array(/*int,*/int,double*,double*,int);
+extern int renumber_access_array(/*int,*/int,int,int*);
+extern int renumber_offset_array(/*int,*/int,int,int*,int*);
 extern int renumber_const_offset_array(int,int,int,int*,int);
 extern int get_proc_iter_size(int);
-extern void setup_executor(int);
-extern void communicate_reads_for(int,int,int);
+extern void setup_executor(/*int*/);
+extern void communicate_reads_for(/*int,*/int,int);
 extern void communicate_writes_for(int,int,int);
-extern void communicate_reads(int,int);
+extern void communicate_reads(/*int,*/int);
 extern void communicate_reads_start(int,int);
 extern void communicate_reads_end(int,int);
 extern void communicate_writes(int,int);
 extern void init_write_ghosts(int,int);
-extern void reduce_scalar(int,double*);
+extern void reduce_scalar(/*int,*/double*);
 extern void print_hypergraph();
 extern void print_data(int);
 extern void print_access();
-extern void populate_global_arrays(int);
+extern void populate_global_arrays(/*int*/);
 extern double rtclock();
-extern void delete_inspector(int);
+extern void delete_inspector(/*int*/);
 extern double** malloc_2d_double(int,int);
 extern void free_2d_double(double**);
 extern float** malloc_2d_float(int,int);

@@ -28,76 +28,76 @@ class local_data;
 
 class local_comm{
   
- private:
-  std::vector<local_data*> read_arrays;
+private:
+	std::vector<local_data*> read_arrays;
   
-  std::vector<local_data*> write_arrays;
+	std::vector<local_data*> write_arrays;
   
-  const int thread_id;
+// 	const int thread_id;
   
-  const int proc_id;
+	const int proc_id;
 
-  const int nthreads;
+// 	const int nthreads;
   
-  const int nprocs;
+	const int nprocs;
 
-  const int myid;
+	const int myid;
 
-  const int my_num;
+	const int my_num;
   
-  int* const read_send_offset;
+	int* const read_send_offset;
   
-  int* const read_recv_offset;
+	int* const read_recv_offset;
   
-  int* const write_send_offset;
+	int* const write_send_offset;
   
-  int* const write_recv_offset;
+	int* const write_recv_offset;
 
-  int* const read_send_count;
+	int* const read_send_count;
   
-  int* const read_recv_count;
+	int* const read_recv_count;
   
-  int* const write_send_count;
+	int* const write_send_count;
   
-  int* const write_recv_count;
+	int* const write_recv_count;
 
-  int* const offset_array;
+	int* const offset_array;
   
- public:
+public:
   
-  local_comm(int,int,int,int,int);
+	local_comm(int,int/*,int*/,int/*,int*/);
   
-  ~local_comm();
+	~local_comm();
 
-  int GetReadSendCount(const int, const int);
+	int GetReadSendCount(const int, const int);
 
-  int GetReadRecvCount(const int, const int);
+	int GetReadRecvCount(const int, const int);
 
-  int GetWriteSendCount(const int, const int);
+	int GetWriteSendCount(const int, const int);
 
-  int GetWriteRecvCount(const int, const int);
+	int GetWriteRecvCount(const int, const int);
   
-  void PopulateReadSendBuffer(char*,int);
+	void PopulateReadSendBuffer(char*,int);
   
-  void ExtractReadRecvBuffer(char*,int);
+	void ExtractReadRecvBuffer(char*,int);
 
-  void PopulateWriteSendBuffer(char*);
+	void PopulateWriteSendBuffer(char*);
   
-  void ExtractWriteRecvBuffer(char*);
+	void ExtractWriteRecvBuffer(char*);
 
-  void InitWriteGhosts();
+	void InitWriteGhosts();
 
-  void print_comm(FILE*);
+	void print_comm(FILE*);
 
 #ifdef COMM_TIME
-  double read_comm_time;
-  double write_comm_time;
-  double read_time1,write_time1,read_time2,write_time2,read_time3,write_time3;
+	double read_comm_time;
+	double write_comm_time;
+	double read_time1,write_time1,read_time2,write_time2,read_time3,write_time3;
 #endif
   
-  friend class local_inspector;
+	friend class local_inspector;
 
-  friend class inspector;
+	friend class inspector;
 };
 
 

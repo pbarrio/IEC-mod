@@ -22,47 +22,47 @@ using namespace std;
 
 local_inspector** local_inspector::all_local_inspectors = NULL;
 
-local_inspector::local_inspector(int np, int nt, int pid, int tid, int nc):
-  nprocs(np),
-  nthreads(nt),
-  proc_id(pid),
-  thread_id(tid),
-  myid(pid*nt+tid)
+local_inspector::local_inspector(int np, /*int nt,*/ int pid/*, int tid*/, int nc):
+	nprocs(np),
+	//   nthreads(nt),
+	proc_id(pid),
+	//   thread_id(tid),
+	myid(pid/**nt+tid*/)
 { 
 #ifndef NDEBUG
-  printf("GID:%d,Local_Inspector:%p\n",myid,this);
-  fflush(stdout);
+	printf("GID:%d,Local_Inspector:%p\n",myid,this);
+	fflush(stdout);
 #endif
-  for( int i = 0 ; i < nc ; i++ ){
-    local_comm* new_comm = new local_comm(i,np,nt,pid,tid);
-    all_comm.push_back(new_comm);
-  }
+	for( int i = 0 ; i < nc ; i++ ){
+		local_comm* new_comm = new local_comm(i,np/*,nt*/,pid/*,tid*/);
+		all_comm.push_back(new_comm);
+	}
 #ifndef NDEBUG
-  char df_name[18];
-  sprintf(df_name,"local_data_%d.dat",myid);
-  data_file = fopen(df_name,"w");
-  char cf_name[18];
-  sprintf(cf_name,"local_comm_%d.dat",myid);
-  comm_file = fopen(cf_name,"w");
+	char df_name[18];
+	sprintf(df_name,"local_data_%d.dat",myid);
+	data_file = fopen(df_name,"w");
+	char cf_name[18];
+	sprintf(cf_name,"local_comm_%d.dat",myid);
+	comm_file = fopen(cf_name,"w");
 #endif  
 }
 
 local_inspector::~local_inspector()
 {
-  for( deque<local_data*>::iterator it = all_data.begin() ; it!= all_data.end() ; it++ )
-    delete (*it);
-  for( deque<local_comm*>::iterator it = all_comm.begin() ; it!=all_comm.end() ; it++ )
-    delete(*it);
+	for( deque<local_data*>::iterator it = all_data.begin() ; it!= all_data.end() ; it++ )
+		delete (*it);
+	for( deque<local_comm*>::iterator it = all_comm.begin() ; it!=all_comm.end() ; it++ )
+		delete(*it);
 #ifndef NDEBUG
-  fclose(data_file);
-  fclose(comm_file);
+	fclose(data_file);
+	fclose(comm_file);
 #endif
 }
 
 void local_inspector::PopulateGlobalArrays()
 {
-  for( deque<local_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ )
-    (*it)->PopulateGlobalArray();
+	for( deque<local_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ )
+		(*it)->PopulateGlobalArray();
 }
 
 

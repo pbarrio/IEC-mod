@@ -21,7 +21,8 @@
 
 using namespace std;
 
-petsc_solve::petsc_solve(int pid, int np, int nt, int s) : proc_id(pid), nprocs(np), nthreads(nt), size(s), orig_net(new net*[s]), new_index(new int[s]), nlocal(new int[nt])
+//petsc_solve::petsc_solve(int pid, int np, int nt, int s) : proc_id(pid), nprocs(np), nthreads(nt), size(s), orig_net(new net*[s]), new_index(new int[s]), nlocal(new int[nt])
+petsc_solve::petsc_solve(int pid, int np, int s) : proc_id(pid), nprocs(np), size(s), orig_net(new net*[s]), new_index(new int[s]), nlocal(new int[1])
 { 
   for( int i = 0 ; i < s ; i++ )
     orig_net[i] = NULL;
@@ -38,10 +39,13 @@ petsc_solve::~petsc_solve()
 
 void petsc_solve::FindNewRowNumbers()
 {
-  int *nlocal_rows = new int[nprocs*nthreads];
-  int *nproc_offset = new int[nprocs*nthreads];
+//   int *nlocal_rows = new int[nprocs*nthreads];
+//   int *nproc_offset = new int[nprocs*nthreads];
+  int *nlocal_rows = new int[nprocs];
+  int *nproc_offset = new int[nprocs];
   
-  for( int i = 0; i < nprocs*nthreads ; i++ )
+//   for( int i = 0; i < nprocs*nthreads ; i++ )
+  for( int i = 0; i < nprocs ; i++ )
     nlocal_rows[i] = 0;
 
   for( int i = 0 ; i < size ; i++ ){
@@ -50,9 +54,12 @@ void petsc_solve::FindNewRowNumbers()
   }
   
   int total = 0;
-  for( int i = 0 ; i < nprocs*nthreads ; i++ ){
-    if( i / nthreads == proc_id )
-      nlocal[i%nthreads] = nlocal_rows[i];
+//   for( int i = 0 ; i < nprocs*nthreads ; i++ ){
+  for( int i = 0 ; i < nprocs ; i++ ){
+//     if( i / nthreads == proc_id )
+//       nlocal[i%nthreads] = nlocal_rows[i];
+    if( i == proc_id )
+      nlocal[i] = nlocal_rows[i];
     nproc_offset[i] = total;
     total = total + nlocal_rows[i];
     nlocal_rows[i] = 0;
@@ -80,8 +87,8 @@ void petsc_solve::RenumberGlobalRows(int* orig_nums, int array_size) const
 void petsc_solve::print(FILE* outfile) const
 {
   fprintf(outfile,"Matrix Size = %d, Nlocal = ",size);
-  for( int i =0 ; i < nthreads ; i++ )
-    fprintf(outfile," %d",nlocal[i]);
+//   for( int i =0 ; i < nthreads ; i++ )
+//     fprintf(outfile," %d",nlocal[i]);
   fprintf(outfile,"\n");
 #ifdef HIGH_DETAILS
   fprintf(outfile,"Old -> New :\n");

@@ -34,6 +34,7 @@ int global_comm::max_nprocs_read_send = 0;
 int global_comm::max_nprocs_read_recv = 0;
 int global_comm::max_nprocs_write_send = 0;
 int global_comm::max_nprocs_write_recv = 0;
+MPI_Comm global_comm::global_iec_communicator = NULL;
 MPI_Status* global_comm::read_send_start_status = NULL;
 MPI_Status* global_comm::read_recv_start_status = NULL;
 MPI_Request* global_comm::read_recv_start_request = NULL;
@@ -51,15 +52,31 @@ char* global_comm::read_recv_signal = NULL;
 char* global_comm::write_send_signal = NULL;
 char* global_comm::write_recv_signal = NULL;
 
-inspector::inspector(int pid, int np, int nt, int nl, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
+
+inspector::inspector(int pid, int np/*, int nt*/, int nl, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
 	proc_id(pid),
 	nprocs(np),
-	nthreads(nt),
+	// 	nthreads(nt),
 	pins_size(-1),
 	iter_num_offset(new int[nl+1]),
 	data_num_offset(new int[nd+1])
 {
-	printf("Nprocs:%d,Nthreads:%d\n",nprocs,nthreads);
+
+	// Create new communicator associated to the inspector. This avoids having to use MPI_COMM_WORLD.
+	//--- Pablo{
+	MPI_Group worldGroup;
+	MPI_Group iecGroup;
+	int ranges[1][3] = {{0, np-1, 1}};
+	MPI_Comm_group(MPI_COMM_WORLD, &worldGroup);
+	MPI_Group_range_incl(worldGroup, 1, ranges, &iecGroup);
+	MPI_Comm_create(MPI_COMM_WORLD, iecGroup, &global_comm::global_iec_communicator);
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	if (pid >= np)
+		return;
+	//--- }
+
+	printf("Nprocs:%d\n",nprocs);
 	fflush(stdout);
 	iter_num_offset[0] = 0;
 	for( int i = 0 ; i < nl ; i++ ){
@@ -90,8 +107,10 @@ inspector::inspector(int pid, int np, int nt, int nl, int nd, int nc, int nad, i
 		all_access_data.push_back(new_access_data);
 	}
 
-	send_info = new set<int>*[nprocs*nthreads*2];
-	for( int i = 0; i < nprocs*nthreads*2 ; i++ )
+	// 	send_info = new set<int>*[nprocs*nthreads*2];
+	// 	for( int i = 0; i < nprocs*nthreads*2 ; i++ )
+	send_info = new set<int>*[nprocs*2];
+	for( int i = 0; i < nprocs*2 ; i++ )
 		send_info[i] = new set<int>;
 
 #ifndef NDEBUG
@@ -122,11 +141,12 @@ inspector::~inspector()
 	all_access_data.clear();
   
 	delete[] local_inspector::all_local_inspectors;
-
 	if( global_comm::max_send_size > 0 )
 		ARMCI_Free_local(global_comm::send_buffer);
-	ARMCI_Free(global_comm::put_buffer[proc_id]);
-	delete[] global_comm::put_buffer;
+	if (global_comm::put_buffer){
+		ARMCI_Free(global_comm::put_buffer[proc_id]);
+		delete[] global_comm::put_buffer;
+	}
 	if( global_comm::max_nprocs_read_send > 0 ){
 		delete[] global_comm::read_send_start_status;
 		delete[] global_comm::read_send_end_status;
@@ -152,12 +172,19 @@ inspector::~inspector()
 		delete[] global_comm::write_recv_signal;
 	}
 
-	for( int i = 0 ; i < nprocs * nthreads * 2 ; i++ ){
-		send_info[i]->clear();
-		delete send_info[i];
+	// 	for( int i = 0 ; i < nprocs * nthreads * 2 ; i++ ){
+	if (send_info){
+		for( int i = 0 ; i < nprocs * 2 ; i++ ){
+			send_info[i]->clear();
+					delete send_info[i];
+		}
+		delete[] send_info;
 	}
-	delete[] send_info;
-}  
+
+	// Deallocate MPI communicator common to all participating processes in the inspector/executor.
+	if (global_comm::global_iec_communicator != MPI_COMM_NULL)
+		MPI_Comm_free(&global_comm::global_iec_communicator);
+}
 
 
 void inspector::GetDontHave()
@@ -172,7 +199,7 @@ void inspector::GetDontHave()
 		(*it)->GetSendCounts(get_n_elems,stride);
 
 	///Initial communication to setup the buffer
-	MPI_Alltoall(get_n_elems,stride,MPI_INT,send_n_elems,stride,MPI_INT,MPI_COMM_WORLD);
+	MPI_Alltoall(get_n_elems,stride,MPI_INT,send_n_elems,stride,MPI_INT,global_comm::global_iec_communicator);
 
 	int send_count[nprocs];
 	int recv_count[nprocs];
@@ -214,7 +241,7 @@ void inspector::GetDontHave()
 	for( deque<access_data*>::iterator it = all_access_data.begin() ; it != all_access_data.end() ; it++ )
 		(*it)->PopulateBuffer(sendbuf,send_offset[nprocs],curr_offset);
 
-	MPI_Alltoallv(sendbuf,send_count,send_offset,MPI_INT,recvbuf,recv_count,recv_offset,MPI_INT,MPI_COMM_WORLD);
+	MPI_Alltoallv(sendbuf,send_count,send_offset,MPI_INT,recvbuf,recv_count,recv_offset,MPI_INT,global_comm::global_iec_communicator);
   
 	///Populate the buffer with the values of all requested indices
 	for( int i = 0; i < nprocs ; i++ )
@@ -222,7 +249,7 @@ void inspector::GetDontHave()
 	for( deque<access_data*>::iterator it = all_access_data.begin() ; it != all_access_data.end() ; it++ )
 		(*it)->GetRequestedValue(recvbuf,recv_offset[nprocs],curr_offset,send_n_elems,stride);
   
-	MPI_Alltoallv(recvbuf,recv_count,recv_offset,MPI_INT,sendbuf,send_count,send_offset,MPI_INT,MPI_COMM_WORLD);
+	MPI_Alltoallv(recvbuf,recv_count,recv_offset,MPI_INT,sendbuf,send_count,send_offset,MPI_INT,global_comm::global_iec_communicator);
   
 	///Add to set of elements that are known on each process
 	for( int i =0 ; i < nprocs ; i++ )
@@ -244,7 +271,7 @@ bool inspector::DoneGraphGeneration(){
 	int n_dont = 0;
 	for( int i =0 ; i < all_access_data.size() ; i++ )
 		n_dont += all_access_data[i]->dont_have_set.size();
-	MPI_Allreduce(MPI_IN_PLACE,&n_dont,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+	MPI_Allreduce(MPI_IN_PLACE,&n_dont,1,MPI_INT,MPI_SUM,global_comm::global_iec_communicator);
 #ifndef NDEBUG
 	printf("MXD:ID:%d,n_dont=%d\n",proc_id,n_dont);
 	fflush(stdout);
@@ -314,7 +341,7 @@ void inspector::PatohPrePartition()
 {
 	if( nprocs > 1 ) {
 		const int ia_size = data_num_offset[all_data.size()];
-    
+
 		int** armci_net_ia = new int*[nprocs];
 		ARMCI_Malloc((void**)armci_net_ia,(ia_size+1)*sizeof(int));
 		int* const net_ia = (int*)armci_net_ia[proc_id];
@@ -332,7 +359,7 @@ void inspector::PatohPrePartition()
 		int net_ja_size[nprocs];
     
 		///Total number of pins on each process
-		MPI_Allgather(&(net_ia[ia_size]),1,MPI_INT,net_ja_size,1,MPI_INT,MPI_COMM_WORLD);
+		MPI_Allgather(&(net_ia[ia_size]),1,MPI_INT,net_ja_size,1,MPI_INT,global_comm::global_iec_communicator);
     
 		int max_net_ja_size = 0;
 		///Maximum size needed for the pin information from each process
@@ -363,7 +390,7 @@ void inspector::PatohPrePartition()
 		int* const recv_ia = (int*)ARMCI_Malloc_local((ia_size+1)*sizeof(int));
 		int* const recv_ja = (int*)ARMCI_Malloc_local(max_net_ja_size*sizeof(int));
 
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Barrier(global_comm::global_iec_communicator);
     
 		for( int i = 1 ; i < nprocs ; i++ ){
 			///Get the pin information from each process
@@ -414,7 +441,7 @@ void inspector::PatohPrePartition()
 #ifndef NDEBUG
 		printf("PID:%d,ReplicationDone\n",proc_id);
 		fflush(stdout);
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Barrier(global_comm::global_iec_communicator);
 #endif
 	}
 }
@@ -443,11 +470,12 @@ void inspector::PatohPartition()
 		//Number of constraints 
 		patoh_nc = all_loops.size();
 		//Number of partitions
-		patoh._k = nprocs*nthreads;
+		// 		patoh._k = nprocs*nthreads;
+		patoh._k = nprocs;
 #ifndef NDEBUG
 		printf("PID:%d,Nvertices:%d,NNets:%d,Nconstraints:%d,Npartitions:%d\n",proc_id,patoh_c,patoh_n,patoh_nc,patoh._k);
 		fflush(stdout);
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Barrier(global_comm::global_iec_communicator);
 #endif
 
 		//Weight for cells
@@ -498,7 +526,8 @@ void inspector::PatohPartition()
 		counter = 0;
 		for( i = 0 ; i < all_loops.size() ; i++ )
 			for( j = 0 ; j < all_loops[i]->num_iters ; j++ ){
-				if( patoh_partvec[counter]/nthreads == proc_id )
+				// 				if( patoh_partvec[counter]/nthreads == proc_id )
+				if( patoh_partvec[counter] == proc_id )
 					all_loops[i]->nproc_local++;
 				all_loops[i]->iter_vertex[j]->home = patoh_partvec[counter++];
 			}
@@ -526,7 +555,8 @@ void inspector::PatohPartition()
 void inspector::PatohAfterPartition()
 {
 	//Decide homes for the nets
-	int possible[nprocs*nthreads];
+	// 	int possible[nprocs*nthreads];
+	int possible[nprocs];
 
 	for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ )
 		if( !(*it)->is_read_only ){
@@ -540,34 +570,40 @@ void inspector::PatohAfterPartition()
 					}
 					else{
 						///Add it to the same process as the one that accesses it the most (really doesnt matter)
-						for( int i = 0 ; i < nprocs*nthreads ; i++ )
+						// 						for( int i = 0 ; i < nprocs*nthreads ; i++ )
+						for( int i = 0 ; i < nprocs ; i++ )
 							possible[i] = 0;
 						for( set<pin_info,pin_comparator>::iterator jt = curr_net->pins.begin() ; jt != curr_net->pins.end() ; jt++ )
 							possible[(*jt).pin->home]++;
 						int maxval = -1;
-						int counter = 0 , i = 0 ; //rand()%(nprocs*nthreads);
-						while( counter < nprocs * nthreads ){
+						int counter = 0 , i = 0 ;
+						// 						while( counter < nprocs * nthreads ){
+						while( counter < nprocs ){
 							if( possible[i] > maxval ) {
 								maxval = possible[i];
 								home = i;
 							}
 							counter++;
-							i = (i+1)%(nprocs*nthreads);
+							// 							i = (i+1)%(nprocs*nthreads);
+							i = (i+1)%(nprocs);
 						}
 					}
-					assert( curr_net->home == -1 && home >= 0 && home <= (nprocs * nthreads));
+					// 					assert( curr_net->home == -1 && home >= 0 && home <= (nprocs * nthreads));
+					assert( curr_net->home == -1 && home >= 0 && home <= (nprocs));
 					curr_net->home = home;      
 				}
 			}
 			else{
 				///If constrained, then the array is assumed to be block partitioned (ghosts added later)
 				int curr_proc = 0;
-				const int array_split = (*it)->orig_array_size / (nprocs*nthreads);
+				// 				const int array_split = (*it)->orig_array_size / (nprocs*nthreads);
+				const int array_split = (*it)->orig_array_size / (nprocs);
 				for( int j = 0 ; j < (*it)->orig_array_size ; j++ ){
 					net* curr_net = (*it)->data_net_info[j];
 					curr_net->home = curr_proc;
 					if( (j+1)%array_split == 0 )
-						curr_proc = ( curr_proc + 1 > nprocs*nthreads -1 ? curr_proc : curr_proc + 1);
+						// 						curr_proc = ( curr_proc + 1 > nprocs*nthreads -1 ? curr_proc : curr_proc + 1);
+						curr_proc = ( curr_proc + 1 > nprocs -1 ? curr_proc : curr_proc + 1);
 				}
 			}
 		}
@@ -598,8 +634,8 @@ void inspector::AfterPartition()
 				else
 					send_buf[j] = -1;
 
-			MPI_Isend(send_buf,curr_size,MPI_INT,dest_proc,0,MPI_COMM_WORLD,&i_send_request);
-			MPI_Recv(recv_buf,curr_size,MPI_INT,source_proc,0,MPI_COMM_WORLD,&i_recv_status);
+			MPI_Isend(send_buf,curr_size,MPI_INT,dest_proc,0,global_comm::global_iec_communicator,&i_send_request);
+			MPI_Recv(recv_buf,curr_size,MPI_INT,source_proc,0,global_comm::global_iec_communicator,&i_recv_status);
     
 			for( int j = 0 ; j < curr_size ; j++ ){
 				int net_num = recv_buf[j];
@@ -625,9 +661,12 @@ void inspector::AfterPartition()
 
 
 	///Setup the local inspectors (as many as number of threads)
-	local_inspector::all_local_inspectors = new local_inspector*[nthreads];
-	for( int i = 0 ; i < nthreads ; i++ )
-		local_inspector::all_local_inspectors[i] = new local_inspector(nprocs,nthreads,proc_id,i,all_comm.size());
+	// TODO: Change into one local inspector per "loop" process in the chain of pipelined loops
+	// 	local_inspector::all_local_inspectors = new local_inspector*[nthreads];
+	// 	for( int i = 0 ; i < nthreads ; i++ )
+	// 		local_inspector::all_local_inspectors[i] = new local_inspector(nprocs,nthreads,proc_id,i,all_comm.size());
+	local_inspector::all_local_inspectors = new local_inspector*[1];
+	local_inspector::all_local_inspectors[0] = new local_inspector(nprocs,proc_id,all_comm.size());
   
 	for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ ){
 		int data_num = (*it)->my_num;
@@ -637,11 +676,13 @@ void inspector::AfterPartition()
 		bool is_constrained = (*it)->is_constrained;
 		assert( (*it)->data_net_info != NULL );
 		const net** data_net_info = const_cast<const net**>((*it)->data_net_info);
-		for( int i = 0 ; i < nthreads ; i++ ){
-			local_inspector::all_local_inspectors[i]->AddLocalData(data_num,stride_size,data_net_info,orig_array_size,read_only_flag,is_constrained);
-		}
+		// 		for( int i = 0 ; i < nthreads ; i++ ){
+		// 			local_inspector::all_local_inspectors[i]->AddLocalData(data_num,stride_size,data_net_info,orig_array_size,read_only_flag,is_constrained);
+		// 		}
+		local_inspector::all_local_inspectors[0]->AddLocalData(data_num,stride_size,data_net_info,orig_array_size,read_only_flag,is_constrained);
 	}
 }
+
 
 ret_data_access inspector::GetLocalAccesses(int array_num)
 {
@@ -652,23 +693,34 @@ ret_data_access inspector::GetLocalAccesses(int array_num)
 	const int curr_start = curr_split * proc_id;
 	const int curr_end = ( proc_id == nprocs - 1 ? curr_array_size : curr_split * ( proc_id + 1 ) );
 
-	for( int i =0 ; i < nprocs * nthreads * 2 ;i++  )
+	// 	for( int i =0 ; i < nprocs * nthreads * 2 ;i++  )
+	for( int i = 0 ; i < nprocs * 2 ;i++  )
 		send_info[i]->clear();
-	//set<int> send_info[nprocs*nthreads*2];
 	int* const sendcount_mpi = new int[nprocs];
-	bool* is_direct = new bool[nprocs*nthreads];
-	bool* flags = new bool[nprocs*nthreads];
+	// 	bool* is_direct = new bool[nprocs*nthreads];
+	// 	bool* flags = new bool[nprocs*nthreads];
+	bool* is_direct = new bool[nprocs];
+	bool* flags = new bool[nprocs];
 
 	///Find all the processes that access the blocked part of array owned by the process
 	for( int i = curr_start ; i < curr_end ; i++ ){
 		const net* curr_net = curr_nets[i];
-		for( int j = 0 ; j < nprocs*nthreads ; j++ ){
+		// 		for( int j = 0 ; j < nprocs*nthreads ; j++ ){
+		for( int j = 0 ; j < nprocs ; j++ ){
 			is_direct[j] = false;
 			flags[j] = false;
 		}
-		for( set<pin_info,pin_comparator>::const_iterator it = curr_net->pins.begin() ; it != curr_net->pins.end() ; it++ )
+
+		for( set<pin_info,pin_comparator>::const_iterator it = curr_net->pins.begin() ;
+		     it != curr_net->pins.end();
+		     it++ )
+
 			is_direct[(*it).pin->home] = is_direct[(*it).pin->home] || (*it).is_direct;
-		for( set<pin_info,pin_comparator>::const_iterator it = curr_net->pins.begin() ; it != curr_net->pins.end() ; it++ ){
+
+		for( set<pin_info,pin_comparator>::const_iterator it = curr_net->pins.begin();
+		     it != curr_net->pins.end();
+		     it++ ){
+
 			const int access_proc = (*it).pin->home;
 			assert(access_proc != -1 && access_proc < nprocs );
 			if( !flags[access_proc] ){
@@ -683,61 +735,67 @@ ret_data_access inspector::GetLocalAccesses(int array_num)
 	delete[] is_direct;
 	delete[] flags;
 
-	int* const sendcount = new int[nprocs*nthreads*2];
+	// 	int* const sendcount = new int[nprocs*nthreads*2];
+	// 	int* const curr_displ = new int[nprocs*nthreads*2+1];
+	int* const sendcount = new int[nprocs*2];
+	int* const curr_displ = new int[nprocs*2+1];
 	int* const senddispl = new int[nprocs+1];
-	int* const curr_displ = new int[nprocs*nthreads*2+1];
-	senddispl[0] = 0;curr_displ[0]=0;
-	for( int i =0 ; i < nprocs ; i++ ){
+	senddispl[0] = 0;
+	curr_displ[0]=0;
+	for( int i = 0 ; i < nprocs ; i++ ){
 		sendcount_mpi[i] = 0;
-		for( int j = 0 ; j < nthreads ; j++ )
-			for( int k = 0 ; k < 2 ; k++ ){
-				sendcount[i*nthreads*2+j*2+k] = send_info[(i*nthreads+j)*2+k]->size();
-				curr_displ[i*nthreads*2+j*2+k+1] = curr_displ[(i*nthreads+j)*2+k] + sendcount[i*nthreads*2+j*2+k];
-				sendcount_mpi[i] += sendcount[i*nthreads*2+j*2+k];
-			}
+		// 		for( int j = 0 ; j < nthreads ; j++ )
+		for( int k = 0 ; k < 2 ; k++ ){
+			// 				sendcount[i*nthreads*2+j*2+k] = send_info[(i*nthreads+j)*2+k]->size();
+			// 				curr_displ[i*nthreads*2+j*2+k+1] = curr_displ[(i*nthreads+j)*2+k] + sendcount[i*nthreads*2+j*2+k];
+			// 				sendcount_mpi[i] += sendcount[i*nthreads*2+j*2+k];
+			sendcount[i*2+k] = send_info[i*2+k]->size();
+			curr_displ[i*2+k+1] = curr_displ[i*2+k] + sendcount[i*2+k];
+			sendcount_mpi[i] += sendcount[i*2+k];
+		}
 		senddispl[i+1] = senddispl[i] + sendcount_mpi[i];
 	}
 
-	int* const recvcount = new int[nprocs*nthreads*2];
+	// 	int* const recvcount = new int[nprocs*nthreads*2];
+	int* const recvcount = new int[nprocs*2];
 	int* const recvcount_mpi = new int[nprocs];
 
 	///Send the number of elements sent from each process
-	MPI_Alltoall(sendcount,nthreads*2,MPI_INT,recvcount,nthreads*2,MPI_INT,MPI_COMM_WORLD);
+	MPI_Alltoall(sendcount,/*nthreads**/2,MPI_INT,recvcount,/*nthreads**/2,MPI_INT,global_comm::global_iec_communicator);
 
 	int* const sendbuffer = new int[senddispl[nprocs]];
-  
+
 	///Send the actual elements 
 	int counter = 0;
-	for( int i = 0 ; i < nprocs*nthreads ; i++ )
+	for( int i = 0 ; i < nprocs/**nthreads*/ ; i++ )
 		for( int k = 0 ; k < 2 ; k++ )
 			for( set<int>::iterator it = send_info[i*2+k]->begin() ; it != send_info[i*2+k]->end() ; it++ )
 				sendbuffer[counter++] = (*it);
 	assert(counter == senddispl[nprocs]);
       
-
 	int* const recvdispl = new int[nprocs+1];
-	int* const recv_thread_displ = new int[nprocs*nthreads*2];
-	int* const recv_thread_count = new int[nprocs*nthreads*2];
+	int* const recv_thread_displ = new int[nprocs/**nthreads*/*2];
+	int* const recv_thread_count = new int[nprocs/**nthreads*/*2];
 	recvdispl[0] = 0; 
 	int curr_recv_displ = 0;
-	for( int i = 0 ;i < nprocs ; i++ ){
+	for( int i = 0; i < nprocs; i++ ){
 		recvcount_mpi[i] = 0;
-		for( int j = 0 ; j < nthreads ; j++ )
-			for( int k = 0 ; k < 2 ; k++ ){
-				recv_thread_count[j*nprocs*2+i*2+k] = recvcount[i*nthreads*2+2*j+k];
-				recvcount_mpi[i] += recvcount[i*nthreads*2+2*j+k];
-				recv_thread_displ[j*nprocs*2+i*2+k] = curr_recv_displ;
-				curr_recv_displ += recvcount[i*nthreads*2 + 2*j + k ];
-			}
+// 		for( int j = 0 ; j < nthreads ; j++ )
+		for( int k = 0 ; k < 2 ; k++ ){
+			recv_thread_count[/*j*nprocs*2+*/i*2+k] = recvcount[i/* * nthreads*/ *2 + /*2*j +*/ k];
+			recvcount_mpi[i] += recvcount[i/* * nthreads*/ * 2 + /*2 * j +*/ k];
+			recv_thread_displ[/*j*nprocs*2+*/i*2+k] = curr_recv_displ;
+			curr_recv_displ += recvcount[i/* * nthreads*/ * 2 + /*2*j +*/ k ];
+		}
 		recvdispl[i+1] = recvdispl[i] + recvcount_mpi[i];
 	}
 
-	int* const recvbuffer = new int[recvdispl[nprocs]];
+ 	int* const recvbuffer = new int[recvdispl[nprocs]];
 
-  
-	MPI_Alltoallv(sendbuffer,sendcount_mpi,senddispl,MPI_INT,recvbuffer,recvcount_mpi,recvdispl,MPI_INT,MPI_COMM_WORLD);
+	MPI_Alltoallv(sendbuffer,sendcount_mpi,senddispl,MPI_INT,
+	              recvbuffer,recvcount_mpi,recvdispl,MPI_INT,
+	              global_comm::global_iec_communicator);
 
-	//delete[] send_info;
 	delete[] sendcount;
 	delete[] sendcount_mpi;
 	delete[] senddispl;
@@ -761,7 +819,7 @@ void inspector::GetBufferSize()
 	global_comm::max_nprocs_read_recv = 0;
 	global_comm::max_nprocs_write_send = 0;
 	global_comm::max_nprocs_read_send = 0;
-        
+
 	for( int iter_num = 0 ; iter_num < all_comm.size(); iter_num++ ){
 		global_comm* curr_global_comm = all_comm[iter_num];
 		int send_read_count = 0, recv_read_count = 0;
@@ -771,16 +829,16 @@ void inspector::GetBufferSize()
 		curr_global_comm->write_send_offset[0] = 0, curr_global_comm->write_recv_offset[0] = 0;
 		for( int i = 0 ; i < nprocs ; i++ ){
       
-			for( int j = 0 ; j < nthreads ; j++ ){
-				local_comm* local_recv_comm = local_inspector::all_local_inspectors[j]->all_comm[iter_num];
-				for( int k = 0 ; k < nthreads ; k++ ){
-					local_comm* local_send_comm = local_inspector::all_local_inspectors[k]->all_comm[iter_num];
-					send_read_count += local_send_comm->GetReadSendCount(i*nthreads+j,send_read_count);
-					recv_read_count += local_recv_comm->GetReadRecvCount(i*nthreads+k,recv_read_count);
-					send_write_count += local_send_comm->GetWriteSendCount(i*nthreads+j,send_write_count);
-					recv_write_count += local_recv_comm->GetWriteRecvCount(i*nthreads+k,recv_write_count);
-				}
-			}
+// 			for( int j = 0 ; j < nthreads ; j++ ){
+			local_comm* local_recv_comm = local_inspector::all_local_inspectors[0/*j*/]->all_comm[iter_num];
+// 				for( int k = 0 ; k < nthreads ; k++ ){
+			local_comm* local_send_comm = local_inspector::all_local_inspectors[0/*k*/]->all_comm[iter_num];
+			send_read_count += local_send_comm->GetReadSendCount(i/**nthreads+j*/,send_read_count);
+			recv_read_count += local_recv_comm->GetReadRecvCount(i/**nthreads+k*/,recv_read_count);
+			send_write_count += local_send_comm->GetWriteSendCount(i/**nthreads+j*/,send_write_count);
+			recv_write_count += local_recv_comm->GetWriteRecvCount(i/**nthreads+k*/,recv_write_count);
+// 				}
+// 			}
 			curr_global_comm->read_send_count[i] = send_read_count - curr_global_comm->read_send_offset[i];
 			curr_global_comm->read_send_offset[i+1] = send_read_count;
 			curr_global_comm->read_recv_count[i] = recv_read_count - curr_global_comm->read_recv_offset[i];
@@ -797,9 +855,9 @@ void inspector::GetBufferSize()
 		global_comm::max_recv_size = ( global_comm::max_recv_size > curr_global_comm->write_recv_offset[nprocs] ? global_comm::max_recv_size : curr_global_comm->write_recv_offset[nprocs] );
 		global_comm::max_recv_size = ( global_comm::max_recv_size > curr_global_comm->read_recv_offset[nprocs] ? global_comm::max_recv_size : curr_global_comm->read_recv_offset[nprocs] );
 
-		MPI_Alltoall(curr_global_comm->read_recv_offset,1,MPI_INT,curr_global_comm->read_put_displ,1,MPI_INT,MPI_COMM_WORLD);
-		MPI_Alltoall(curr_global_comm->write_recv_offset,1,MPI_INT,curr_global_comm->write_put_displ,1,MPI_INT,MPI_COMM_WORLD);
-    
+		MPI_Alltoall(curr_global_comm->read_recv_offset,1,MPI_INT,curr_global_comm->read_put_displ,1,MPI_INT,global_comm::global_iec_communicator);
+		MPI_Alltoall(curr_global_comm->write_recv_offset,1,MPI_INT,curr_global_comm->write_put_displ,1,MPI_INT,global_comm::global_iec_communicator);
+
 		for( int i = 0 ; i < nprocs ; i++ ){
 			if( curr_global_comm->read_send_count[i] != 0 )
 				curr_global_comm->nprocs_read_send++;
@@ -847,6 +905,7 @@ void inspector::GetBufferSize()
   
 	global_comm::put_buffer = new char*[nprocs];
 	ARMCI_Malloc((void**)global_comm::put_buffer,global_comm::max_recv_size+1);
+
 	if( global_comm::max_recv_size > 0 )
 		global_comm::recv_buffer = (char*)global_comm::put_buffer[proc_id];
 
@@ -897,7 +956,7 @@ void inspector::CommunicateGhosts()
 		if( !(*it)->is_read_only )
 			n_data++;
 
-	int* sendghosts_count = new int[nprocs*nthreads*nthreads*n_data];
+	int* sendghosts_count = new int[nprocs/**nthreads*nthreads*/*n_data];
 
 	for( int i = 0 ; i < nprocs ; i++ ){
 		sendcount[i] = 0;
@@ -905,42 +964,43 @@ void inspector::CommunicateGhosts()
 	}
   
 	for( int i = 0 ; i < nprocs ; i++ ){
-		for( int j = 0 ; j < nthreads ; j++ ){
-			int dest_proc = i*nthreads+j;
-			for( int k = 0 ; k < nthreads ;k ++ ){
-				int source_thread = k;
-				local_inspector* source_inspector = local_inspector::instance(k);
-				int d=0;
-				for( deque<local_data*>::iterator it = source_inspector->all_data.begin() ; it != source_inspector->all_data.end() ; it++ )
-					if( !(*it)->is_read_only ){
-						int nghosts = (*it)->global_ghosts[dest_proc].size();
-						sendghosts_count[dest_proc*nthreads*n_data+source_thread*n_data+d] = nghosts;
-						sendcount[i] += nghosts;
-						d++;
-					}
+		// 		for( int j = 0 ; j < nthreads ; j++ ){
+		int dest_proc = i/**nthreads+j*/;
+		// 			for( int k = 0 ; k < nthreads ;k ++ ){
+		// 				int source_thread = k;
+		local_inspector* source_inspector = local_inspector::instance(/*k*/);
+		int d=0;
+		for( deque<local_data*>::iterator it = source_inspector->all_data.begin() ; it != source_inspector->all_data.end() ; it++ )
+			if( !(*it)->is_read_only ){
+				int nghosts = (*it)->global_ghosts[dest_proc].size();
+
+				sendghosts_count[dest_proc/**nthreads*/*n_data+/*source_thread*n_data*/+d] = nghosts;
+				sendcount[i] += nghosts;
+				d++;
 			}
-		}
+		// 			}
+		// 		}
 	}
 	senddispl[0] = 0;
 	for(int i = 0 ; i < nprocs ; i++ )
 		senddispl[i+1] = senddispl[i] + sendcount[i];
   
-	int* recvghosts_count = new int[nprocs*nthreads*nthreads*n_data];
-  
-	MPI_Alltoall(sendghosts_count,nthreads*nthreads*n_data,MPI_INT,recvghosts_count,nthreads*nthreads*n_data,MPI_INT,MPI_COMM_WORLD);
+	int* recvghosts_count = new int[nprocs/**nthreads*nthreads*/*n_data];
+
+	MPI_Alltoall(sendghosts_count,/*nthreads*nthreads**/n_data,MPI_INT,recvghosts_count,/*nthreads*nthreads**/n_data,MPI_INT,global_comm::global_iec_communicator);
 
 	for( int i = 0 ; i < nprocs ; i++ ){
-		for( int j = 0 ; j < nthreads ; j++ ){
-			int recv_thread = j;
-			local_inspector* recv_inspector = local_inspector::instance(j);
-			for( int k = 0 ; k < nthreads ; k++ ){
-				int send_proc = i*nthreads+k;
-				for( int d = 0 ; d < n_data ; d++ ){
-					int nghosts = recvghosts_count[i*nthreads*nthreads*n_data+recv_thread*nthreads*n_data+k*n_data+d];
-					recvcount[i] += nghosts;
-				}
-			}
+		// 		for( int j = 0 ; j < nthreads ; j++ ){
+		// 			int recv_thread = j;
+		local_inspector* recv_inspector = local_inspector::instance(/*j*/);
+		// 			for( int k = 0 ; k < nthreads ; k++ ){
+		int send_proc = i/**nthreads+k*/;
+		for( int d = 0 ; d < n_data ; d++ ){
+			int nghosts = recvghosts_count[i/**nthreads*nthreads*/*n_data+/*recv_thread*nthreads*n_data+k*n_data*/+d];
+			recvcount[i] += nghosts;
 		}
+		// 	        }
+		// 		}
 	}
 	recvdispl[0] = 0;
 	for( int i = 0 ; i < nprocs ; i++ )
@@ -952,43 +1012,52 @@ void inspector::CommunicateGhosts()
 
 	int counter = 0;
 	for( int i = 0 ; i < nprocs ; i++ ){
-		for( int j = 0 ; j < nthreads ; j++ ){
-			int dest_proc = i*nthreads+j;
-			for( int k = 0 ; k < nthreads ;k ++ ){
-				int source_thread = k;
-				local_inspector* source_inspector = local_inspector::instance(source_thread);
+// 		for( int j = 0 ; j < nthreads ; j++ ){
+// 			int dest_proc = i*nthreads+j;
+// 			for( int k = 0 ; k < nthreads ;k ++ ){
+// 				int source_thread = k;
+// 				local_inspector* source_inspector = local_inspector::instance(source_thread);
+
+				local_inspector* source_inspector = local_inspector::instance();
 				int d = 0; 
+
 				for( deque<local_data*>::iterator it = source_inspector->all_data.begin() ; it != source_inspector->all_data.end() ; it++ )
 					if( !(*it)->is_read_only ){
-						for( set<int>::iterator jt = (*it)->global_ghosts[dest_proc].begin() ; jt != (*it)->global_ghosts[dest_proc].end() ; jt++ )
-							ghosts_send_val[counter++] = (*jt);
+// 						for( set<int>::iterator jt = (*it)->global_ghosts[dest_proc].begin() ; jt != (*it)->global_ghosts[dest_proc].end() ; jt++ )
+
+						for( set<int>::iterator jt = (*it)->global_ghosts[i].begin() ; jt != (*it)->global_ghosts[i].end() ; jt++ ){
+							ghosts_send_val[counter/*++*/] = (*jt);
+							++counter;
+						}
+
 						d++;
 					}
-			}
-		}
+// 			}
+// 		}
 	}
 
 	assert(counter==senddispl[nprocs]);
 
-	MPI_Alltoallv(ghosts_send_val,sendcount,senddispl,MPI_INT,ghosts_recv_val,recvcount,recvdispl,MPI_INT,MPI_COMM_WORLD);
+	MPI_Alltoallv(ghosts_send_val,sendcount,senddispl,MPI_INT,ghosts_recv_val,recvcount,recvdispl,MPI_INT, global_comm::global_iec_communicator);
 
 	counter = 0;
 	for( int i = 0 ; i < nprocs ; i++ ){
-		for( int j = 0 ; j < nthreads ; j++ ){
-			int recv_thread = j;
-			local_inspector* recv_inspector = local_inspector::instance(j);
-			for( int k = 0 ; k < nthreads ; k++ ){
-				int send_proc = i*nthreads+k;
+// 		for( int j = 0 ; j < nthreads ; j++ ){
+// 			int recv_thread = j;
+		local_inspector* recv_inspector = local_inspector::instance(/*j*/);
+// 			for( int k = 0 ; k < nthreads ; k++ ){
+// 				int send_proc = i*nthreads+k;
 				int d =0 ;
 				for( deque<local_data*>::iterator it = recv_inspector->all_data.begin() ; it!= recv_inspector->all_data.end() ; it++ )
 					if( !(*it)->is_read_only ){	  
-						int nghosts = recvghosts_count[i*nthreads*nthreads*n_data+recv_thread*nthreads*n_data+k*n_data+d];
+						int nghosts = recvghosts_count[i/**nthreads*nthreads*/*n_data+/*recv_thread*nthreads*n_data+k*n_data*/+d];
 						for( int g = 0 ; g < nghosts ; g++ )
-							(*it)->global_owned[send_proc].insert(ghosts_recv_val[counter++]);
+// 							(*it)->global_owned[send_proc].insert(ghosts_recv_val[counter++]);
+							(*it)->global_owned[i].insert(ghosts_recv_val[counter++]);
 						d++;
 					}
-			}
-		}
+// 			}
+// 		}
 	}
 
 	delete[] ghosts_send_val;
@@ -999,28 +1068,31 @@ void inspector::CommunicateGhosts()
 }
 
 
-void inspector::CommunicateReads(int thread_id, int comm_num)
+void inspector::CommunicateReads(/*int thread_id,*/ int comm_num)
 {
-	int nparts = nprocs*nthreads;
+	int nparts = nprocs/**nthreads*/;
 
 #ifdef COMM_TIME
 	double start_t,stop_t,start_t1,stop_t1,start_t2,stop_t2,start_t3,stop_t3;
 	start_t = rtclock();
 #endif
 
-	local_comm* curr_local_comm = local_inspector::all_local_inspectors[thread_id]->all_comm[comm_num];
+// 	local_comm* curr_local_comm = local_inspector::all_local_inspectors[thread_id]->all_comm[comm_num];
+	local_comm* curr_local_comm = local_inspector::all_local_inspectors[0]->all_comm[comm_num];
 	if( global_comm::max_send_size > 0 )
 		curr_local_comm->PopulateReadSendBuffer(global_comm::send_buffer,global_comm::max_send_size);
 
-#pragma omp barrier
+// #pragma omp barrier
 
-#pragma omp master
+// #pragma omp master
 	{
 		//MPI_Barrier(MPI_COMM_WORLD);
+
+		// For all participants in the communication with id "comm_num", send and receive alive signals
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_read_recv ; i++ )
-			MPI_Isend(global_comm::read_recv_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_read_recv[i],comm_num,MPI_COMM_WORLD,global_comm::read_recv_start_request+i);
+			MPI_Isend(global_comm::read_recv_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_read_recv[i],comm_num,global_comm::global_iec_communicator,global_comm::read_recv_start_request+i);
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_read_send ; i++ )
-			MPI_Recv(global_comm::read_send_signal+i,1,MPI_CHAR,all_comm[comm_num]->proc_id_read_send[i],comm_num,MPI_COMM_WORLD,global_comm::read_send_start_status+i);
+			MPI_Recv(global_comm::read_send_signal+i,1,MPI_CHAR,all_comm[comm_num]->proc_id_read_send[i],comm_num,global_comm::global_iec_communicator,global_comm::read_send_start_status+i);
 		if( all_comm[comm_num]->nprocs_read_recv > 0 )
 			MPI_Waitall(all_comm[comm_num]->nprocs_read_recv,global_comm::read_recv_start_request,global_comm::read_recv_start_status);
 
@@ -1033,31 +1105,39 @@ void inspector::CommunicateReads(int thread_id, int comm_num)
 		}
 	}
 
-	for( int i = 1; i < nthreads ; i++ ){
-		int source_thread = (thread_id+i)%nthreads;
-		int source_id = proc_id*nthreads+source_thread;
-		if( curr_local_comm->read_recv_count[source_id] > 0 ){
-			local_inspector* source_inspector = local_inspector::all_local_inspectors[source_thread];
+// 	for( int i = 1; i < nthreads ; i++ ){
+// 		int source_thread = (thread_id+i)%nthreads;
+// 		int source_id = proc_id*nthreads+source_thread;
+// 		if( curr_local_comm->read_recv_count[source_id] > 0 ){
+		if( curr_local_comm->read_recv_count[0] > 0 ){
+// 			local_inspector* source_inspector = local_inspector::all_local_inspectors[source_thread];
+			local_inspector* source_inspector = local_inspector::all_local_inspectors[0];
 			vector<local_data*>::iterator it = curr_local_comm->read_arrays.begin();
 			for( ; it != curr_local_comm->read_arrays.end() ; it++ )
-				(*it)->PopulateLocalGhosts(source_inspector->all_data[(*it)->my_num],source_id);
+// 				(*it)->PopulateLocalGhosts(source_inspector->all_data[(*it)->my_num],source_id);
+				(*it)->PopulateLocalGhosts(source_inspector->all_data[(*it)->my_num],proc_id);
 		}
-	}
+// 	}
 
-#pragma omp master
-	{
+// #pragma omp master
+ 	{
 		ARMCI_WaitAll();
 		//ARMCI_Barrier();
 		ARMCI_AllFence();
+
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_read_send ; i++ )
-			MPI_Isend(global_comm::read_send_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_read_send[i],comm_num,MPI_COMM_WORLD,global_comm::read_send_end_request+i);
+			MPI_Isend(global_comm::read_send_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_read_send[i],
+			          comm_num,global_comm::global_iec_communicator,global_comm::read_send_end_request+i);
+
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_read_recv ; i++ )
-			MPI_Recv(global_comm::read_recv_signal+i,1,MPI_CHAR,all_comm[comm_num]->proc_id_read_recv[i],comm_num,MPI_COMM_WORLD,global_comm::read_recv_end_status+i);
+			MPI_Recv(global_comm::read_recv_signal+i,1,MPI_CHAR,all_comm[comm_num]->proc_id_read_recv[i],
+			         comm_num,global_comm::global_iec_communicator,global_comm::read_recv_end_status+i);
+
 		if( all_comm[comm_num]->nprocs_read_send > 0 )
 			MPI_Waitall(all_comm[comm_num]->nprocs_read_send,global_comm::read_send_end_request,global_comm::read_send_end_status);
-	}
+ 	}
 
-#pragma omp barrier
+// #pragma omp barrier
 
 	if( global_comm::max_recv_size > 0 )
 		curr_local_comm->ExtractReadRecvBuffer(global_comm::recv_buffer,global_comm::max_recv_size);
@@ -1070,27 +1150,28 @@ void inspector::CommunicateReads(int thread_id, int comm_num)
 }
 
 
-void inspector::CommunicateWrites(int thread_id, int comm_num)
+void inspector::CommunicateWrites(/*int thread_id,*/ int comm_num)
 {
 
 #ifdef COMM_TIME
 	double start_t = rtclock();
 #endif
 
-	local_comm* curr_local_comm = local_inspector::all_local_inspectors[thread_id]->all_comm[comm_num];
+// 	local_comm* curr_local_comm = local_inspector::all_local_inspectors[thread_id]->all_comm[comm_num];
+	local_comm* curr_local_comm = local_inspector::all_local_inspectors[0]->all_comm[comm_num];
 	if( global_comm::max_send_size > 0 )
 		curr_local_comm->PopulateWriteSendBuffer(global_comm::send_buffer);
 
-#pragma omp barrier
+// #pragma omp barrier
 
  
-#pragma omp master
+// #pragma omp master
 	{
 		//MPI_Barrier(MPI_COMM_WORLD);
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_recv ; i++ )
-			MPI_Isend(global_comm::write_recv_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_recv[i],comm_num,MPI_COMM_WORLD,global_comm::write_recv_start_request+i);
+			MPI_Isend(global_comm::write_recv_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_recv[i],comm_num,global_comm::global_iec_communicator,global_comm::write_recv_start_request+i);
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_send ; i++ )
-			MPI_Recv(global_comm::write_send_signal+i,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_send[i],comm_num,MPI_COMM_WORLD,global_comm::write_send_start_status+i);
+			MPI_Recv(global_comm::write_send_signal+i,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_send[i],comm_num,global_comm::global_iec_communicator,global_comm::write_send_start_status+i);
 		if( all_comm[comm_num]->nprocs_write_recv > 0 )
 			MPI_Waitall(all_comm[comm_num]->nprocs_write_recv,global_comm::write_recv_start_request,global_comm::write_recv_start_status);
 
@@ -1104,33 +1185,33 @@ void inspector::CommunicateWrites(int thread_id, int comm_num)
 		}
 	}
 
-	for( int i = 1; i < nthreads ; i++ ){
-		int source_thread = (thread_id + i)%nthreads;
-		int source_id = proc_id*nthreads+source_thread;
-		if( curr_local_comm->write_recv_count[source_id] > 0 ){
-			local_inspector* source_inspector = local_inspector::all_local_inspectors[source_thread];
-			vector<local_data*>::iterator it = curr_local_comm->write_arrays.begin();
+// 	for( int i = 1; i < nthreads ; i++ ){
+// 		int source_thread = (thread_id + i)%nthreads;
+// 		int source_id = proc_id*nthreads+source_thread;
+// 		if( curr_local_comm->write_recv_count[source_id] > 0 ){
+// 			local_inspector* source_inspector = local_inspector::all_local_inspectors[source_thread];
+// 			vector<local_data*>::iterator it = curr_local_comm->write_arrays.begin();
       
-			for(; it != curr_local_comm->write_arrays.end() ; it++ ){
-				(*it)->UpdateLocalOwned(source_inspector->all_data[(*it)->my_num],source_id);
-			}
-		}
-	}  
+// 			for(; it != curr_local_comm->write_arrays.end() ; it++ ){
+// 				(*it)->UpdateLocalOwned(source_inspector->all_data[(*it)->my_num],source_id);
+// 			}
+// 		}
+// 	}  
 
-#pragma omp master
+// #pragma omp master
 	{
 		ARMCI_WaitAll();
 		//ARMCI_Barrier();
 		ARMCI_AllFence();
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_send ; i++ )
-			MPI_Isend(global_comm::write_send_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_send[i],comm_num,MPI_COMM_WORLD,global_comm::write_send_end_request+i);
+			MPI_Isend(global_comm::write_send_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_send[i],comm_num,global_comm::global_iec_communicator,global_comm::write_send_end_request+i);
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_recv ; i++ )
-			MPI_Recv(global_comm::write_recv_signal+i,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_recv[i],comm_num,MPI_COMM_WORLD,global_comm::write_recv_end_status+i);
+			MPI_Recv(global_comm::write_recv_signal+i,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_recv[i],comm_num,global_comm::global_iec_communicator,global_comm::write_recv_end_status+i);
 		if( all_comm[comm_num]->nprocs_write_send > 0 )
 			MPI_Waitall(all_comm[comm_num]->nprocs_write_send,global_comm::write_send_end_request,global_comm::write_send_end_status);
 	}
   
-#pragma omp barrier
+// #pragma omp barrier
 
 	if( global_comm::max_recv_size > 0 )
 		curr_local_comm->ExtractWriteRecvBuffer(global_comm::recv_buffer);
@@ -1180,5 +1261,5 @@ void inspector::print_hypergraph(FILE* outfile)
 				fprintf(outfile,"\n");
 			}
 	fflush(outfile);
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(global_comm::global_iec_communicator);
 }
