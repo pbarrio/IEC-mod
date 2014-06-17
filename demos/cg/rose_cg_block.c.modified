@@ -260,29 +260,7 @@ int main(int argc,char *argv[])
 	int iter_num_count[1] = {n - 0};
 	int data_num_count[6] = { nz , n , n , n , n ,  n };
 	int ro_mask[6] = {1,0,0,0,0, 0};
-
-
-
-
-
-	//--- Pablo{
-	/* __nprocs__ = 2; */
-	/* if (__proc_id__ >= __nprocs__){ */
-
-	/* 	/\* create_inspector(__proc_id__,__nprocs__,1,6,5,2,iter_num_count,data_num_count,ro_mask); *\/ */
-	/* 	/\* delete_inspector(); *\/ */
-	/* 	/\* ARMCI_Finalize(); *\/ */
-	/* 	MPI_Finalize(); */
-	/* 	return 0; */
-	/* } */
-	//--- }
-
-
-
-
-
 	create_inspector(__proc_id__,__nprocs__,/*__nthreads__,*/1,6,5,2,iter_num_count,data_num_count,ro_mask);
-
 	int __size_rows__ =  n + 1 ;
 	set_access_array_param(0, n + 1 , 1 ,__size_rows__ / __nprocs__ * __proc_id__ + rows);
 	int __size_cols__ =  nz ;
@@ -389,9 +367,7 @@ int main(int argc,char *argv[])
 			}
 			else ;;
 	} while (!done_graph_gen());
-
 	partition_hypergraph(2);;
-
 	free(__0_status__);
 	__0_status__ = ((int *)(malloc(sizeof(int ) * get_proc_iter_size(0))));
 	memset(__0_status__,0,sizeof(int ) * get_proc_iter_size(0));

@@ -83,12 +83,13 @@ void partitionable_loop::GenerateCInspector(SgStatement* graph_gen, SgStatement*
   SgVarRefExp* init_counter_arg2 = SageBuilder::buildVarRefExp(orig_iterator);
   SgExprListExp* init_counter_fn_args = SageBuilder::buildExprListExp(init_counter_arg1,init_counter_arg2);
   SgFunctionCallExp* init_counter_fn_call = SageBuilder::buildFunctionCallExp(get_vertex_home_fn,init_counter_fn_args);
-  SgName init_counter_nthreads_name("__nthreads__");
+//   SgName init_counter_nthreads_name("__nthreads__");
   SgName init_counter_procid_name("__proc_id__");
-  SgVarRefExp* init_counter_nthreads_var = SageBuilder::buildVarRefExp(init_counter_nthreads_name);
-  SgDivideOp* init_counter_lhs = SageBuilder::buildBinaryExpression<SgDivideOp>(init_counter_fn_call,init_counter_nthreads_var);
+//   SgVarRefExp* init_counter_nthreads_var = SageBuilder::buildVarRefExp(init_counter_nthreads_name);
+//   SgDivideOp* init_counter_lhs = SageBuilder::buildBinaryExpression<SgDivideOp>(init_counter_fn_call,init_counter_nthreads_var);
   SgVarRefExp* init_counter_procid_var = SageBuilder::buildVarRefExp(init_counter_procid_name);
-  SgEqualityOp* init_counter_condn_exp = SageBuilder::buildBinaryExpression<SgEqualityOp>(init_counter_lhs,init_counter_procid_var);
+//   SgEqualityOp* init_counter_condn_exp = SageBuilder::buildBinaryExpression<SgEqualityOp>(init_counter_lhs,init_counter_procid_var);
+  SgEqualityOp* init_counter_condn_exp = SageBuilder::buildBinaryExpression<SgEqualityOp>(init_counter_fn_call,init_counter_procid_var);
   SgNullStatement* init_counter_local_then = SageBuilder::buildNullStatement();
   SgIfStmt* init_counter_local_iter_stmt = SageBuilder::buildIfStmt(init_counter_condn_exp,init_counter_local_then,SageBuilder::buildNullStatement());
   SageInterface::insertStatementBefore(init_counter_loop_body,init_counter_local_iter_stmt);

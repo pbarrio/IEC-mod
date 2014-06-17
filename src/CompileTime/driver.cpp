@@ -104,14 +104,14 @@ void ie_init::visit(SgNode* curr_node)
       assert(last_statement);
 
       //Insert MPI_Barrier;
-      SgName mpi_barrier_name("MPI_Barrier");
-      SgFunctionSymbol* mpi_barrier_fn  = global_scope->lookup_function_symbol(mpi_barrier_name);
-      assert(mpi_barrier_fn);
-      SgExpression* barrier_arg1 = SageBuilder::buildVarRefExp(mpi_comm_world);
-      SgExprListExp* barrier_args = SageBuilder::buildExprListExp(barrier_arg1);
-      SgFunctionCallExp* mpi_barrier_call = SageBuilder::buildFunctionCallExp(mpi_barrier_fn,barrier_args);
-      SgExprStatement* mpi_barrier_stmt = SageBuilder::buildExprStatement(mpi_barrier_call);
-      SageInterface::insertStatementBefore(last_statement,mpi_barrier_stmt);
+//       SgName mpi_barrier_name("MPI_Barrier");
+//       SgFunctionSymbol* mpi_barrier_fn  = global_scope->lookup_function_symbol(mpi_barrier_name);
+//       assert(mpi_barrier_fn);
+//       SgExpression* barrier_arg1 = SageBuilder::buildVarRefExp(mpi_comm_world);
+//       SgExprListExp* barrier_args = SageBuilder::buildExprListExp(barrier_arg1);
+//       SgFunctionCallExp* mpi_barrier_call = SageBuilder::buildFunctionCallExp(mpi_barrier_fn,barrier_args);
+//       SgExprStatement* mpi_barrier_stmt = SageBuilder::buildExprStatement(mpi_barrier_call);
+//       SageInterface::insertStatementBefore(last_statement,mpi_barrier_stmt);
   
       //Insert ARMCI Finalize
       SgName armci_finalize_name("ARMCI_Finalize");

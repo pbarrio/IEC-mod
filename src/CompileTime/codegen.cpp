@@ -52,32 +52,32 @@ void codegen::GenerateCCode(SgGlobal* global_scope)
 
 	SgExprStatement *init_thread_id,*init_myid;
   
-	if( CompilerOpts::IsOpenMPMode() ){ 
-		//Get number of threads
-		SgName get_num_threads_fn_name("omp_get_max_threads");
-		SgFunctionSymbol* get_num_threads_fn = global_scope->lookup_function_symbol("omp_get_max_threads");
-		assert(get_num_threads_fn);
-		SgFunctionCallExp* get_num_threads_exp = SageBuilder::buildFunctionCallExp(get_num_threads_fn);
-		SgName nthreads_decl("__nthreads__");
-		SgAssignOp* nthreads_assign_op = SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(nthreads_decl),get_num_threads_exp);
-		SgExprStatement* nthreads_stmt = SageBuilder::buildExprStatement(nthreads_assign_op);
-		SageInterface::insertStatementBefore(graph_gen ,nthreads_stmt);
+// 	if( CompilerOpts::IsOpenMPMode() ){ 
+// 		//Get number of threads
+// 		SgName get_num_threads_fn_name("omp_get_max_threads");
+// 		SgFunctionSymbol* get_num_threads_fn = global_scope->lookup_function_symbol("omp_get_max_threads");
+// 		assert(get_num_threads_fn);
+// 		SgFunctionCallExp* get_num_threads_exp = SageBuilder::buildFunctionCallExp(get_num_threads_fn);
+// 		SgName nthreads_decl("__nthreads__");
+// 		SgAssignOp* nthreads_assign_op = SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(nthreads_decl),get_num_threads_exp);
+// 		SgExprStatement* nthreads_stmt = SageBuilder::buildExprStatement(nthreads_assign_op);
+// 		SageInterface::insertStatementBefore(graph_gen ,nthreads_stmt);
     
-		SgName omp_thread_id_name("omp_get_thread_num");
-		SgFunctionSymbol* omp_thread_id_fn = global_scope->lookup_function_symbol(omp_thread_id_name);
-		init_thread_id = SageBuilder::buildExprStatement(SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildFunctionCallExp(omp_thread_id_fn)));
-		SgMultiplyOp* init_myid_lhs = SageBuilder::buildBinaryExpression<SgMultiplyOp>(SageBuilder::buildVarRefExp(proc_id_name),SageBuilder::buildVarRefExp(nthreads_name));
-		SgAddOp* init_myid_rhs = SageBuilder::buildBinaryExpression<SgAddOp>(init_myid_lhs,SageBuilder::buildVarRefExp(thread_id_name));
-		SgAssignOp* init_myid_exp = SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(myid_name),init_myid_rhs);
-		init_myid = SageBuilder::buildExprStatement(init_myid_exp);
-	}
-	else{
-		SgExprStatement* nthreads_stmt = SageBuilder::buildExprStatement(SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(nthreads_name),SageBuilder::buildIntVal(1)));
-		SageInterface::insertStatementBefore(graph_gen,nthreads_stmt);
-		init_thread_id = SageBuilder::buildExprStatement(SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildIntVal(0)));
+// 		SgName omp_thread_id_name("omp_get_thread_num");
+// 		SgFunctionSymbol* omp_thread_id_fn = global_scope->lookup_function_symbol(omp_thread_id_name);
+// 		init_thread_id = SageBuilder::buildExprStatement(SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildFunctionCallExp(omp_thread_id_fn)));
+// 		SgMultiplyOp* init_myid_lhs = SageBuilder::buildBinaryExpression<SgMultiplyOp>(SageBuilder::buildVarRefExp(proc_id_name),SageBuilder::buildVarRefExp(nthreads_name));
+// 		SgAddOp* init_myid_rhs = SageBuilder::buildBinaryExpression<SgAddOp>(init_myid_lhs,SageBuilder::buildVarRefExp(thread_id_name));
+// 		SgAssignOp* init_myid_exp = SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(myid_name),init_myid_rhs);
+// 		init_myid = SageBuilder::buildExprStatement(init_myid_exp);
+// 	}
+// 	else{
+// 		SgExprStatement* nthreads_stmt = SageBuilder::buildExprStatement(SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(nthreads_name),SageBuilder::buildIntVal(1)));
+// 		SageInterface::insertStatementBefore(graph_gen,nthreads_stmt);
+// 		init_thread_id = SageBuilder::buildExprStatement(SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildIntVal(0)));
 		init_myid = SageBuilder::buildExprStatement(SageBuilder::buildBinaryExpression<SgAssignOp>(SageBuilder::buildVarRefExp(myid_name),SageBuilder::buildVarRefExp(proc_id_name)));
-	}
-	SageInterface::insertStatementBefore(init_thread_counter,init_thread_id);
+// 	}
+// 	SageInterface::insertStatementBefore(init_thread_counter,init_thread_id);
 	SageInterface::insertStatementBefore(init_thread_counter,init_myid);
 
 	//Create array with loop sizes
@@ -109,7 +109,7 @@ void codegen::GenerateCCode(SgGlobal* global_scope)
 	assert(create_inspector_fn);
 	SgVarRefExp* arg1 = SageBuilder::buildVarRefExp(proc_id_name);
 	SgVarRefExp* arg2 = SageBuilder::buildVarRefExp(nprocs_name);
-	SgVarRefExp* arg3 = SageBuilder::buildVarRefExp(nthreads_name);
+// 	SgVarRefExp* arg3 = SageBuilder::buildVarRefExp(nthreads_name);
 	SgIntVal* arg4 = SageBuilder::buildIntVal(num_partitionable_groups);
 	SgIntVal* arg5 = SageBuilder::buildIntVal(num_data_arrays);
 	SgIntVal* arg6 = SageBuilder::buildIntVal(num_partitionable_loops);
@@ -117,7 +117,7 @@ void codegen::GenerateCCode(SgGlobal* global_scope)
 	SgVarRefExp* arg8 = SageBuilder::buildVarRefExp(iter_num_count);
 	SgVarRefExp* arg9 = SageBuilder::buildVarRefExp(data_num_count);
 	SgVarRefExp* arg10 = SageBuilder::buildVarRefExp(ro_mask);
-	SgExprListExp* args = SageBuilder::buildExprListExp(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10);
+	SgExprListExp* args = SageBuilder::buildExprListExp(arg1,arg2/*,arg3*/,arg4,arg5,arg6,arg7,arg8,arg9,arg10);
 	SgExprStatement* create_inspector_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(create_inspector_fn,args));
 	SageInterface::insertStatementBefore(graph_gen,create_inspector_stmt);
   
@@ -267,8 +267,9 @@ void codegen::GenerateCCode(SgGlobal* global_scope)
 	//Setup Executor
 	SgName setup_executor_name("setup_executor");
 	SgFunctionSymbol* setup_executor_fn = global_scope->lookup_function_symbol(setup_executor_name);
-	SgExprListExp* setup_executor_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name));
-	SgExprStatement* setup_executor_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(setup_executor_fn,setup_executor_args));
+// 	SgExprListExp* setup_executor_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name));
+// 	SgExprStatement* setup_executor_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(setup_executor_fn,setup_executor_args));
+	SgExprStatement* setup_executor_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(setup_executor_fn,NULL));
 	SageInterface::insertStatementBefore(init_access_array,setup_executor_stmt);
   
 	SgName communicate_reads_name("communicate_reads");
@@ -315,7 +316,8 @@ void codegen::GenerateCCode(SgGlobal* global_scope)
 	SgName populate_global_fn_name("populate_global_arrays");
 	SgFunctionSymbol* populate_global_fn = global_scope->lookup_function_symbol(populate_global_fn_name);
 	assert(populate_global_fn);
-	SgFunctionCallExp* populate_global_exp = SageBuilder::buildFunctionCallExp(populate_global_fn,SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name)));
+// 	SgFunctionCallExp* populate_global_exp = SageBuilder::buildFunctionCallExp(populate_global_fn,SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name)));
+	SgFunctionCallExp* populate_global_exp = SageBuilder::buildFunctionCallExp(populate_global_fn,NULL);
 	SgExprStatement* populate_global_stmt = SageBuilder::buildExprStatement(populate_global_exp);
 	SageInterface::insertStatementBefore(inspector_end,populate_global_stmt);
 
@@ -330,8 +332,9 @@ void codegen::GenerateCCode(SgGlobal* global_scope)
       
 	SgName delete_insepector_fn_name("delete_inspector");
 	SgFunctionSymbol* delete_inspector_fn = global_scope->lookup_function_symbol(delete_insepector_fn_name);
-	SgExprListExp* delete_inspector_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name));
-	SgExprStatement* delete_inspector_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(delete_inspector_fn,delete_inspector_args));
+// 	SgExprListExp* delete_inspector_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name));
+// 	SgExprStatement* delete_inspector_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(delete_inspector_fn,delete_inspector_args));
+	SgExprStatement* delete_inspector_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(delete_inspector_fn,NULL));
 	SageInterface::insertStatementBefore(inspector_end,delete_inspector_stmt);
 
 	if( CompilerOpts::IsOpenMPMode() )

@@ -201,8 +201,8 @@ pair<SgStatement*,SgStatement*> access_details::GenerateCArrayStore( const int a
 void access_details::RenumberAccess(SgStatement* insert_before, const int array_num) const 
 {
 	if( access_array ){
-		SgName thread_id_name("__thread_id__");
-		SgVarRefExp* thread_id_var = SageBuilder::buildVarRefExp(thread_id_name);
+// 		SgName thread_id_name("__thread_id__");
+// 		SgVarRefExp* thread_id_var = SageBuilder::buildVarRefExp(thread_id_name);
 		SgIntVal* array_num_ref = SageBuilder::buildIntVal(array_num);
 		SgVarRefExp* array_ref = SageBuilder::buildVarRefExp(access_array);
 		SgExprStatement* renumber_stmt;
@@ -226,7 +226,7 @@ void access_details::RenumberAccess(SgStatement* insert_before, const int array_
 				const conditional* my_condn = static_cast<const conditional*>(my_branch);
 				access_size = SageBuilder::buildVarRefExp(my_condn->GetCondnCounter());
 			}
-			SgExprListExp* all_args = SageBuilder::buildExprListExp(thread_id_var,array_num_ref,access_size,array_ref);
+			SgExprListExp* all_args = SageBuilder::buildExprListExp(/*thread_id_var,*/array_num_ref,access_size,array_ref);
 			SgFunctionCallExp* renumber_fn_call = SageBuilder::buildFunctionCallExp(renumber_fn,all_args);
 			renumber_stmt = SageBuilder::buildExprStatement(renumber_fn_call);
 		}

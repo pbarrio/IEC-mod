@@ -218,7 +218,7 @@ void array_details::CheckConflicts(access_details* new_access)
 void array_details::GetCommunicationInfo(SgStatement* insert_before)
 {
   printf("Array %s, communication req., size = %d,%d,%d :",array_name.c_str(),(int)write_loops.size(),(int)local_writes.size(),(int)read_loops.size());
-  SgName thread_id_name("__thread_id__");
+//   SgName thread_id_name("__thread_id__");
   assert(communicate_reads_for_fn && communicate_writes_for_fn );
   if( write_loops.size() != 0 || local_writes.size() != 0 ){
     int* read_loop_num = new int[read_loops.size()];
@@ -228,7 +228,7 @@ void array_details::GetCommunicationInfo(SgStatement* insert_before)
 
     for( deque< pair<partitionable_loop*,VariantT> >::iterator it = write_loops.begin() ; it != write_loops.end() ; it++ ){
       (*it).first->CommunicateWrites();
-      SgExprListExp* write_fn_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildIntVal((*it).first->GetLoopNum()),SageBuilder::buildIntVal(my_num));
+      SgExprListExp* write_fn_args = SageBuilder::buildExprListExp(/*SageBuilder::buildVarRefExp(thread_id_name),*/SageBuilder::buildIntVal((*it).first->GetLoopNum()),SageBuilder::buildIntVal(my_num));
       SgExprStatement* write_fn_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(communicate_writes_for_fn,write_fn_args));
       SageInterface::insertStatementBefore(insert_before,write_fn_stmt);
       int write_loop_num = (*it).first->GetLoopNum();
@@ -240,14 +240,14 @@ void array_details::GetCommunicationInfo(SgStatement* insert_before)
 	    break;
 	if( pos == read_loops.size() ){
 	  read_loops[0]->CommunicateReads();
-	  SgExprListExp* read_fn_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildIntVal(read_loops[0]->GetLoopNum()),SageBuilder::buildIntVal(my_num));
+	  SgExprListExp* read_fn_args = SageBuilder::buildExprListExp(/*SageBuilder::buildVarRefExp(thread_id_name),*/SageBuilder::buildIntVal(read_loops[0]->GetLoopNum()),SageBuilder::buildIntVal(my_num));
 	  SgExprStatement* read_fn_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(communicate_reads_for_fn,read_fn_args));
 	  SageInterface::insertStatementBefore(insert_before,read_fn_stmt);
 	  printf(" %d(read)",read_loop_num[0]);
 	}
 	else{
 	  read_loops[pos]->CommunicateReads();
-	  SgExprListExp* read_fn_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildIntVal(read_loops[pos]->GetLoopNum()),SageBuilder::buildIntVal(my_num));
+	  SgExprListExp* read_fn_args = SageBuilder::buildExprListExp(/*SageBuilder::buildVarRefExp(thread_id_name),*/SageBuilder::buildIntVal(read_loops[pos]->GetLoopNum()),SageBuilder::buildIntVal(my_num));
 	  SgExprStatement* read_fn_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(communicate_reads_for_fn,read_fn_args));
 	  SageInterface::insertStatementBefore(insert_before,read_fn_stmt);
 
@@ -265,14 +265,14 @@ void array_details::GetCommunicationInfo(SgStatement* insert_before)
     	    break;
     	if( pos == read_loops.size() ){
     	  read_loops[0]->CommunicateReads();
-	  SgExprListExp* read_fn_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildIntVal(read_loops[0]->GetLoopNum()),SageBuilder::buildIntVal(my_num));
+	  SgExprListExp* read_fn_args = SageBuilder::buildExprListExp(/*SageBuilder::buildVarRefExp(thread_id_name),*/SageBuilder::buildIntVal(read_loops[0]->GetLoopNum()),SageBuilder::buildIntVal(my_num));
 	  SgExprStatement* read_fn_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(communicate_reads_for_fn,read_fn_args));
 	  SageInterface::insertStatementBefore(insert_before,read_fn_stmt);
     	  printf(" %d(read)",read_loop_num[0]);
     	}
     	else{
     	  read_loops[pos]->CommunicateReads();
-	  SgExprListExp* read_fn_args = SageBuilder::buildExprListExp(SageBuilder::buildVarRefExp(thread_id_name),SageBuilder::buildIntVal(read_loops[pos]->GetLoopNum()),SageBuilder::buildIntVal(my_num));
+	  SgExprListExp* read_fn_args = SageBuilder::buildExprListExp(/*SageBuilder::buildVarRefExp(thread_id_name),*/SageBuilder::buildIntVal(read_loops[pos]->GetLoopNum()),SageBuilder::buildIntVal(my_num));
 	  SgExprStatement* read_fn_stmt = SageBuilder::buildExprStatement(SageBuilder::buildFunctionCallExp(communicate_reads_for_fn,read_fn_args));
 	  SageInterface::insertStatementBefore(insert_before,read_fn_stmt);
 
@@ -325,10 +325,10 @@ void array_details::InitLocalArrays(SgStatement* insert_before)
   string local_array_size_string = array_name;
   local_array_size_string.insert(0,"__localsize_").append("__");
   SgName local_array_size_name(local_array_size_string);
-  SgName thread_id_name("__thread_id__");
-  SgVarRefExp* thread_id_var = SageBuilder::buildVarRefExp(thread_id_name);
+//   SgName thread_id_name("__thread_id__");
+//   SgVarRefExp* thread_id_var = SageBuilder::buildVarRefExp(thread_id_name);
   SgIntVal* local_array_num = SageBuilder::buildIntVal(my_num);
-  SgFunctionCallExp* local_array_size_exp = SageBuilder::buildFunctionCallExp(get_size_fn,SageBuilder::buildExprListExp(thread_id_var,local_array_num));
+  SgFunctionCallExp* local_array_size_exp = SageBuilder::buildFunctionCallExp(get_size_fn,SageBuilder::buildExprListExp(/*thread_id_var,*/local_array_num));
   SgAssignInitializer* local_array_size_rhs = SageBuilder::buildAssignInitializer(local_array_size_exp);
   local_array_size = SageBuilder::buildVariableDeclaration(local_array_size_string,SageBuilder::buildIntType(),local_array_size_rhs);
   SageInterface::insertStatementBefore(insert_before,local_array_size);
@@ -339,8 +339,8 @@ void array_details::InitLocalArrays(SgStatement* insert_before)
   local_array_string.insert(0,"__local_").append("__");
   SgType* base_type = local_array_type->get_base_type();
 
-  SgName thread_id_name2("__thread_id__");
-  SgVarRefExp* populate_arg1 = SageBuilder::buildVarRefExp(thread_id_name2);
+//   SgName thread_id_name2("__thread_id__");
+//   SgVarRefExp* populate_arg1 = SageBuilder::buildVarRefExp(thread_id_name2);
   SgIntVal* populate_arg2 = SageBuilder::buildIntVal(my_num);
   SgExpression* populate_arg5;
   SgExpression* populate_arg3;
@@ -393,7 +393,7 @@ void array_details::InitLocalArrays(SgStatement* insert_before)
     populate_arg4 = SageBuilder::buildBinaryExpression<SgPntrArrRefExp>(SageBuilder::buildVarRefExp(array_symbol->get_name()),SageBuilder::buildIntVal(0));
   }
   
-  SgExprListExp* populate_args = SageBuilder::buildExprListExp(populate_arg1,populate_arg2,populate_arg3,populate_arg4,populate_arg5);
+  SgExprListExp* populate_args = SageBuilder::buildExprListExp(/*populate_arg1,*/populate_arg2,populate_arg3,populate_arg4,populate_arg5);
   SgFunctionCallExp* populate_fn_call = SageBuilder::buildFunctionCallExp(populate_fn,populate_args);
   SgExprStatement* populate_fn_stmt = SageBuilder::buildExprStatement(populate_fn_call);
   SageInterface::insertStatementBefore(insert_before,populate_fn_stmt);
