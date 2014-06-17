@@ -16,39 +16,39 @@
 #endif
 
 struct options {
-    int quiet;    /* run quietly unless there are errors (-Q) */
-    int help;     /* do we want to print a help message (-h -H) */
+	int quiet;    /* run quietly unless there are errors (-Q) */
+	int help;     /* do we want to print a help message (-h -H) */
 };
 
 struct excitation {
 
-  double dt;       /* time step */
-  double duration; /* total duration */
-  double t0;       /* rise time */
+	double dt;       /* time step */
+	double duration; /* total duration */
+	double t0;       /* rise time */
 
 };
 
 struct damping {
 
-  double zeta, consta, constb, freq;
+	double zeta, consta, constb, freq;
 
 };
 
 struct properties {
 
-  double cp;        /* compressional wave velocity */
-  double cs;        /* shear wave velocity */
-  double den;       /* density */
+	double cp;        /* compressional wave velocity */
+	double cs;        /* shear wave velocity */
+	double den;       /* density */
 
 };
 
 struct source {
 
-  double dip, strike, rake, fault;
-  double xyz[3];
-  double epixyz[3];
-  int sourcenode;
-  int epicenternode;
+	double dip, strike, rake, fault;
+	double xyz[3];
+	double epixyz[3];
+	int sourcenode;
+	int epicenternode;
 
 };
 
@@ -95,15 +95,15 @@ double distance(double p1[], double p2[]);
 void centroid(double x[][3], double xc[]);
 double point2fault(double x[]);
 void abe_matrix(double vertices[][3], int bv[],
-		struct properties *prop, double Ce[]);
+                struct properties *prop, double Ce[]);
 void element_matrices(double vertices[][3], struct properties *prop,
-		      double Ke[][12], double Me[]);
+                      double Ke[][12], double Me[]);
 void vv12x12(double v1[], double v2[], double u[]);
 void mv12x12(double m[][12], double v[]);
 void smvp(int nodes, double ***A, int *Acol, int *Aindex,
-		double **v, double **w);
+          double **v, double **w);
 void smvp_opt(int nodes, double ***A, int *Acol, int *Aindex,
-		double **v, double **w);
+              double **v, double **w);
 
 double phi0(double t,double bound);
 double phi1(double t,double bound);
@@ -125,562 +125,549 @@ struct damping Damp;
 
 int main(int argc, char **argv)
 {
-  int i, j, k, ii, jj, kk, iter, timesteps;
-  int disptplus, dispt, disptminus;
-  int verticesonbnd;
-  int cor[4], bv[4];
-  int Step_stride;
+	int i, j, k, ii, jj, kk, iter, timesteps;
+	int disptplus, dispt, disptminus;
+	int verticesonbnd;
+	int cor[4], bv[4];
+	int Step_stride;
 
-  double time;
-  double Ke[12][12], Me[12], Ce[12], Mexv[12], Cexv[12], v[12];
-  double alpha, c0[3], d1, d2, bigdist1, bigdist2, xc[3], uf[3];
-  double vertices[4][3];
+	double time;
+	double Ke[12][12], Me[12], Ce[12], Mexv[12], Cexv[12], v[12];
+	double alpha, c0[3], d1, d2, bigdist1, bigdist2, xc[3], uf[3];
+	double vertices[4][3];
 
-  struct properties prop;
+	struct properties prop;
 
-/* NOTE: There are 5 possible flag values for the node data:
+	/* NOTE: There are 5 possible flag values for the node data:
 
-           1 if the node is in the interior 
-           4 if the node is on a x=const boundary surface
-           5 if the node is on a y=const boundary surface
-           6 if the node is on the bottom surface (z=z_lower)
-           3 if the node is on the surface (z=0) (but not along the edges)
-*/
+	   1 if the node is in the interior 
+	   4 if the node is on a x=const boundary surface
+	   5 if the node is on a y=const boundary surface
+	   6 if the node is on the bottom surface (z=z_lower)
+	   3 if the node is on the surface (z=0) (but not along the edges)
+	*/
 
-/*--------------------------------------------------------------------------*/ 
+	/*--------------------------------------------------------------------------*/ 
 
-/* Read in data from the pack file */
+	/* Read in data from the pack file */
   
-  arch_init(argc, argv, &options);
+	arch_init(argc, argv, &options);
 
-/* Dynamic memory allocations and initializations */
+	/* Dynamic memory allocations and initializations */
 
-  mem_init();
+	mem_init();
 
-  arch_readnodevector(nodekindf, ARCHnodes);
+	arch_readnodevector(nodekindf, ARCHnodes);
 
-  if (!options.quiet)
-    fprintf(stderr, "%s: Beginning simulation.\n", argv[0]);
+	if (!options.quiet)
+		fprintf(stderr, "%s: Beginning simulation.\n", argv[0]);
 
-/* Excitation characteristics */
+	/* Excitation characteristics */
 
-  Exc.dt = 0.0024;
-  Exc.duration = ARCHduration;
-  Exc.t0 = 0.6;
-  timesteps = Exc.duration / Exc.dt + 1;
+	Exc.dt = 0.0024;
+	Exc.duration = ARCHduration;
+	Exc.t0 = 0.6;
+	timesteps = Exc.duration / Exc.dt + 1;
 
-/* Damping characteristics */
+	/* Damping characteristics */
 
-  Damp.zeta = 30.0;
-  Damp.consta = 0.00533333;
-  Damp.constb = 0.06666667;
-  Damp.freq = 0.5;
+	Damp.zeta = 30.0;
+	Damp.consta = 0.00533333;
+	Damp.constb = 0.06666667;
+	Damp.freq = 0.5;
 
-/* Source characteristics */
+	/* Source characteristics */
 
-  Src.strike = 111.0 * PI / 180.0;
-  Src.dip = 44.0 * PI / 180.0;
-  Src.rake = 70.0 * PI / 180.0;
-  Src.fault = 29.640788;
-  Src.xyz[0] = 32.264153;
-  Src.xyz[1] = 23.814432;
-  Src.xyz[2] = - 11.25;
-  Src.epixyz[0] = Src.xyz[0];
-  Src.epixyz[1] = Src.xyz[1];
-  Src.epixyz[2] = 0.0;
-  Src.sourcenode = - 1;
-  Src.epicenternode = - 1;
+	Src.strike = 111.0 * PI / 180.0;
+	Src.dip = 44.0 * PI / 180.0;
+	Src.rake = 70.0 * PI / 180.0;
+	Src.fault = 29.640788;
+	Src.xyz[0] = 32.264153;
+	Src.xyz[1] = 23.814432;
+	Src.xyz[2] = - 11.25;
+	Src.epixyz[0] = Src.xyz[0];
+	Src.epixyz[1] = Src.xyz[1];
+	Src.epixyz[2] = 0.0;
+	Src.sourcenode = - 1;
+	Src.epicenternode = - 1;
 
-/* Prescribe slip motion */
+	/* Prescribe slip motion */
 
-  uf[0] = uf[1] = uf[2] = 0.0;
-  slip(&uf[0], &uf[1], &uf[2]);
-  uf[0] *= Src.fault;
-  uf[1] *= Src.fault;
-  uf[2] *= Src.fault;
+	uf[0] = uf[1] = uf[2] = 0.0;
+	slip(&uf[0], &uf[1], &uf[2]);
+	uf[0] *= Src.fault;
+	uf[1] *= Src.fault;
+	uf[2] *= Src.fault;
 
-/* Soil properties (homogeneous material) */
+	/* Soil properties (homogeneous material) */
 
-  prop.cp = 6.0;
-  prop.cs = 3.2;
-  prop.den = 2.0;
+	prop.cp = 6.0;
+	prop.cs = 3.2;
+	prop.den = 2.0;
 
-/* Output frequency parameter */
+	/* Output frequency parameter */
 
-  Step_stride = 30;
+	Step_stride = 30;
 
-  disptplus = 0;
-  dispt = 1;
-  disptminus = 2;
+	disptplus = 0;
+	dispt = 1;
+	disptminus = 2;
 
-/* Case info */
+	/* Case info */
 
-  fprintf(stderr, "\n");
-  fprintf(stderr, "CASE SUMMARY\n");
-  fprintf(stderr, "Fault information\n");
-  fprintf(stderr, "  Orientation:  strike: %f\n", Src.strike);
-  fprintf(stderr, "                   dip: %f\n", Src.dip);
-  fprintf(stderr, "                  rake: %f\n", Src.rake);
-  fprintf(stderr, "           dislocation: %f cm\n", Src.fault);
-  fprintf(stderr, "Hypocenter: (%f, %f, %f) Km\n", 
-	  Src.xyz[0], Src.xyz[1], Src.xyz[2]);
-  fprintf(stderr, "Excitation characteristics\n");
-  fprintf(stderr, "     Time step: %f sec\n", Exc.dt);
-  fprintf(stderr, "      Duration: %f sec\n", Exc.duration);
-  fprintf(stderr, "     Rise time: %f sec\n", Exc.t0);
-  fprintf(stderr, "\n");
-  fflush(stderr);
+	fprintf(stderr, "\n");
+	fprintf(stderr, "CASE SUMMARY\n");
+	fprintf(stderr, "Fault information\n");
+	fprintf(stderr, "  Orientation:  strike: %f\n", Src.strike);
+	fprintf(stderr, "                   dip: %f\n", Src.dip);
+	fprintf(stderr, "                  rake: %f\n", Src.rake);
+	fprintf(stderr, "           dislocation: %f cm\n", Src.fault);
+	fprintf(stderr, "Hypocenter: (%f, %f, %f) Km\n", 
+	        Src.xyz[0], Src.xyz[1], Src.xyz[2]);
+	fprintf(stderr, "Excitation characteristics\n");
+	fprintf(stderr, "     Time step: %f sec\n", Exc.dt);
+	fprintf(stderr, "      Duration: %f sec\n", Exc.duration);
+	fprintf(stderr, "     Rise time: %f sec\n", Exc.t0);
+	fprintf(stderr, "\n");
+	fflush(stderr);
 
-/* Redefine nodekind to be 1 for all surface nodes */
+	/* Redefine nodekind to be 1 for all surface nodes */
 
-  for (i = 0; i < ARCHnodes; i++) {
-    nodekind[i] = (int) nodekindf[i];
-    if (nodekind[i] == 3) 
-      nodekind[i] = 1;
-  }
-
-/* Search for the node closest to the point source (hypocenter) and */
-/*        for the node closest to the epicenter */
-
-  bigdist1 = 1000000.0;
-  bigdist2 = 1000000.0;
-
-  for (i = 0; i < ARCHnodes; i++) {
-    c0[0] = ARCHcoord[i][0];
-    c0[1] = ARCHcoord[i][1];
-    c0[2] = ARCHcoord[i][2];
-    d1 = distance(c0, Src.xyz);
-    d2 = distance(c0, Src.epixyz);
-
-    if (d1 < bigdist1) {
-      bigdist1 = d1;
-      Src.sourcenode = i;
-    }
-
-    if (d2 < bigdist2) {
-      bigdist2 = d2;
-      Src.epicenternode = i;
-    }
-
-  }
-
-  if (Src.sourcenode != 0 && Src.sourcenode <= ARCHmine) {
-    fprintf(stderr, "The source is node %d at (%f  %f  %f)\n", 
-	    ARCHglobalnode[Src.sourcenode], 
-	    ARCHcoord[Src.sourcenode][0],
-	    ARCHcoord[Src.sourcenode][1],
-	    ARCHcoord[Src.sourcenode][2]);
-    fflush(stderr);
-  }
-
-  if (Src.epicenternode != 0 && Src.epicenternode <= ARCHmine) {
-    fprintf(stderr, "The epicenter is node %d at (%f  %f  %f)\n", 
-	    ARCHglobalnode[Src.epicenternode],
-	    ARCHcoord[Src.epicenternode][0],
-	    ARCHcoord[Src.epicenternode][1],
-	    ARCHcoord[Src.epicenternode][2]);
-    fflush(stderr);
-  }
-
-/* Search for all the elements that contain the source node */
-
-  if (Src.sourcenode != 0) {
-
-    for (i = 0; i < ARCHelems; i++) {
-      for (j = 0; j < 4; j++)
-        cor[j] = ARCHvertex[i][j];
-
-      if (cor[0] == Src.sourcenode || cor[1] == Src.sourcenode ||
-	  cor[2] == Src.sourcenode || cor[3] == Src.sourcenode) {
-
-	for (j = 0; j < 4; j++)
-	  for (k = 0; k < 3; k++)
-	    vertices[j][k] = ARCHcoord[cor[j]][k];
-
-        centroid(vertices, xc);
-
-        source_elms[i] = 2;
-        if (point2fault(xc) >= 0) 
-	  source_elms[i] = 3;
-
-      }
-    }
-  }
-
-/* Simulation */
-
-  for (i = 0; i < ARCHelems; i++) {
-    for (j = 0; j < 12; j++) {
-      Me[j] = 0.0;
-      Ce[j] = 0.0;
-      v[j] = 0.0;
-      for (k = 0; k < 12; k++) 
-	Ke[j][k] = 0.0;
-    }
-
-    for (j = 0; j < 4; j++) {
-      cor[j] = ARCHvertex[i][j];
-    }
-
-    verticesonbnd = 0;
-    for (j = 0; j < 4; j++)
-      if (nodekind[cor[j]] != 1)
-	bv[verticesonbnd++] = j;
-
-    /*
-    if (verticesonbnd == 4) {
-      fprintf (stderr, "Warning! 4 vertices seem to be on the boundary\n");
-      for (j = 0; j < 4; j++)
-	fprintf (stderr, "%f %f %f nodekind[cor[%d]]=%d\n",
-		 ARCHcoord[cor[bv[j]]][0],
-		 ARCHcoord[cor[bv[j]]][1],
-		 ARCHcoord[cor[bv[j]]][2],j,nodekind[cor[j]]);
-    }
-    */
-
-    if (verticesonbnd == 3) {
-      for (j = 0; j < 3; j++)
-	for (k = 0; k < 3; k++)
-	  vertices[j][k] = ARCHcoord[cor[bv[j]]][k];
-
-      abe_matrix(vertices, bv, &prop, Ce);
-
-    }
-
-    for (j = 0; j < 4; j++)
-      for (k = 0; k < 3; k++)
-	vertices[j][k] = ARCHcoord[cor[j]][k];
-
-    element_matrices(vertices, &prop, Ke, Me);
-
-    /* Damping (proportional) */
-
-    centroid(vertices, xc);
-
-    if (xc[2] < - 11.5)
-      alpha = 2.0 * Damp.zeta / 100.0 * (2.0 * PI * Damp.freq);
-    else
-      alpha = 4.0 * PI * Damp.consta * 0.95 / (prop.cs + Damp.constb);
-
-    for (j = 0; j < 12; j++)
-      Ce[j] = Ce[j] + alpha * Me[j];
-
-    /* Source mechanism */
-
-    if (source_elms[i] == 2 || source_elms[i] == 3) {
-
-      for (j = 0; j < 4; j++) {
-
-        if (cor[j] == Src.sourcenode) {
-
-          v[3 * j] = uf[0];
-          v[3 * j + 1] = uf[1];
-          v[3 * j + 2] = uf[2];
-
-        } else {
-
-          v[3 * j] = 0;
-          v[3 * j + 1] = 0;
-          v[3 * j + 2] = 0;
-
-        }
-      }
-
-      vv12x12(Me, v, Mexv);
-      vv12x12(Ce, v, Cexv);
-      mv12x12(Ke, v);
-
-      if (source_elms[i] == 3)
-	for (j = 0; j < 12; j++) {
-	  v[j] = - v[j];
-	  Mexv[j] = - Mexv[j];
-	  Cexv[j] = - Cexv[j];
+	for (i = 0; i < ARCHnodes; i++) {
+		nodekind[i] = (int) nodekindf[i];
+		if (nodekind[i] == 3) 
+			nodekind[i] = 1;
 	}
 
-      /* Assemble vectors3 V23, M23, C23 */
+	/* Search for the node closest to the point source (hypocenter) and */
+	/*        for the node closest to the epicenter */
 
-      for (j = 0; j < 4; j++) {
-        V23[ARCHvertex[i][j]][0] += v[j * 3];
-        V23[ARCHvertex[i][j]][1] += v[j * 3 + 1];
-        V23[ARCHvertex[i][j]][2] += v[j * 3 + 2];
-        M23[ARCHvertex[i][j]][0] += Mexv[j * 3];
-        M23[ARCHvertex[i][j]][1] += Mexv[j * 3 + 1];
-        M23[ARCHvertex[i][j]][2] += Mexv[j * 3 + 2];
-        C23[ARCHvertex[i][j]][0] += Cexv[j * 3];
-        C23[ARCHvertex[i][j]][1] += Cexv[j * 3 + 1];
-        C23[ARCHvertex[i][j]][2] += Cexv[j * 3 + 2];
-      }
+	bigdist1 = 1000000.0;
+	bigdist2 = 1000000.0;
 
-    }
+	for (i = 0; i < ARCHnodes; i++) {
+		c0[0] = ARCHcoord[i][0];
+		c0[1] = ARCHcoord[i][1];
+		c0[2] = ARCHcoord[i][2];
+		d1 = distance(c0, Src.xyz);
+		d2 = distance(c0, Src.epixyz);
 
-    /* Assemble vectors3 Me, Ce and matrix3 Ke */
+		if (d1 < bigdist1) {
+			bigdist1 = d1;
+			Src.sourcenode = i;
+		}
 
-    for (j = 0; j < 4; j++) {
-      M[ARCHvertex[i][j]][0] += Me[j * 3];
-      M[ARCHvertex[i][j]][1] += Me[j * 3 + 1];
-      M[ARCHvertex[i][j]][2] += Me[j * 3 + 2];
-      C[ARCHvertex[i][j]][0] += Ce[j * 3];
-      C[ARCHvertex[i][j]][1] += Ce[j * 3 + 1];
-      C[ARCHvertex[i][j]][2] += Ce[j * 3 + 2];
-      for (k = 0; k < 4; k++) {
-        if (ARCHvertex[i][j] <= ARCHvertex[i][k]) {
-          kk = ARCHmatrixindex[ARCHvertex[i][j]];
-          while (ARCHmatrixcol[kk] != ARCHvertex[i][k]) {
-            kk++;
-            if (kk >= ARCHmatrixindex[ARCHvertex[i][k] + 1]) {
-              printf("K indexing error!!! %d %d\n", ARCHvertex[i][j], 
-                  ARCHvertex[i][k]);
-              exit(1);
-            }
-          }
-          for (ii = 0; ii < 3; ii++)
-            for (jj = 0; jj < 3; jj++)
-              K[kk][ii*3+jj] += Ke[j * 3 + ii][k * 3 + jj];
-        }
-      }
-    }
-  }
+		if (d2 < bigdist2) {
+			bigdist2 = d2;
+			Src.epicenternode = i;
+		}
 
-/* Time integration loop */
+	}
 
-  fprintf(stderr, "\n");
-  double sum0,sum1,sum2;
-  int Anext,Alast,col;
-  int stride1 = 3,stride2 = 9;
-  double Exc_dt = Exc.dt;
-  double Exc_t0 = Exc.t0;
+	if (Src.sourcenode != 0 && Src.sourcenode <= ARCHmine) {
+		fprintf(stderr, "The source is node %d at (%f  %f  %f)\n", 
+		        ARCHglobalnode[Src.sourcenode], 
+		        ARCHcoord[Src.sourcenode][0],
+		        ARCHcoord[Src.sourcenode][1],
+		        ARCHcoord[Src.sourcenode][2]);
+		fflush(stderr);
+	}
 
-/* #pragma orig_loop */
+	if (Src.epicenternode != 0 && Src.epicenternode <= ARCHmine) {
+		fprintf(stderr, "The epicenter is node %d at (%f  %f  %f)\n", 
+		        ARCHglobalnode[Src.epicenternode],
+		        ARCHcoord[Src.epicenternode][0],
+		        ARCHcoord[Src.epicenternode][1],
+		        ARCHcoord[Src.epicenternode][2]);
+		fflush(stderr);
+	}
+
+	/* Search for all the elements that contain the source node */
+
+	if (Src.sourcenode != 0) {
+
+		for (i = 0; i < ARCHelems; i++) {
+			for (j = 0; j < 4; j++)
+				cor[j] = ARCHvertex[i][j];
+
+			if (cor[0] == Src.sourcenode || cor[1] == Src.sourcenode ||
+			    cor[2] == Src.sourcenode || cor[3] == Src.sourcenode) {
+
+				for (j = 0; j < 4; j++)
+					for (k = 0; k < 3; k++)
+						vertices[j][k] = ARCHcoord[cor[j]][k];
+
+				centroid(vertices, xc);
+
+				source_elms[i] = 2;
+				if (point2fault(xc) >= 0) 
+					source_elms[i] = 3;
+
+			}
+		}
+	}
+
+	/* Simulation */
+
+	for (i = 0; i < ARCHelems; i++) {
+		for (j = 0; j < 12; j++) {
+			Me[j] = 0.0;
+			Ce[j] = 0.0;
+			v[j] = 0.0;
+			for (k = 0; k < 12; k++) 
+				Ke[j][k] = 0.0;
+		}
+
+		for (j = 0; j < 4; j++) {
+			cor[j] = ARCHvertex[i][j];
+		}
+
+		verticesonbnd = 0;
+		for (j = 0; j < 4; j++)
+			if (nodekind[cor[j]] != 1)
+				bv[verticesonbnd++] = j;
+
+		if (verticesonbnd == 3) {
+			for (j = 0; j < 3; j++)
+				for (k = 0; k < 3; k++)
+					vertices[j][k] = ARCHcoord[cor[bv[j]]][k];
+
+			abe_matrix(vertices, bv, &prop, Ce);
+
+		}
+
+		for (j = 0; j < 4; j++)
+			for (k = 0; k < 3; k++)
+				vertices[j][k] = ARCHcoord[cor[j]][k];
+
+		element_matrices(vertices, &prop, Ke, Me);
+
+		/* Damping (proportional) */
+
+		centroid(vertices, xc);
+
+		if (xc[2] < - 11.5)
+			alpha = 2.0 * Damp.zeta / 100.0 * (2.0 * PI * Damp.freq);
+		else
+			alpha = 4.0 * PI * Damp.consta * 0.95 / (prop.cs + Damp.constb);
+
+		for (j = 0; j < 12; j++)
+			Ce[j] = Ce[j] + alpha * Me[j];
+
+		/* Source mechanism */
+
+		if (source_elms[i] == 2 || source_elms[i] == 3) {
+
+			for (j = 0; j < 4; j++) {
+
+				if (cor[j] == Src.sourcenode) {
+
+					v[3 * j] = uf[0];
+					v[3 * j + 1] = uf[1];
+					v[3 * j + 2] = uf[2];
+
+				} else {
+
+					v[3 * j] = 0;
+					v[3 * j + 1] = 0;
+					v[3 * j + 2] = 0;
+
+				}
+			}
+
+			vv12x12(Me, v, Mexv);
+			vv12x12(Ce, v, Cexv);
+			mv12x12(Ke, v);
+
+			if (source_elms[i] == 3)
+				for (j = 0; j < 12; j++) {
+					v[j] = - v[j];
+					Mexv[j] = - Mexv[j];
+					Cexv[j] = - Cexv[j];
+				}
+
+			/* Assemble vectors3 V23, M23, C23 */
+
+			for (j = 0; j < 4; j++) {
+				V23[ARCHvertex[i][j]][0] += v[j * 3];
+				V23[ARCHvertex[i][j]][1] += v[j * 3 + 1];
+				V23[ARCHvertex[i][j]][2] += v[j * 3 + 2];
+				M23[ARCHvertex[i][j]][0] += Mexv[j * 3];
+				M23[ARCHvertex[i][j]][1] += Mexv[j * 3 + 1];
+				M23[ARCHvertex[i][j]][2] += Mexv[j * 3 + 2];
+				C23[ARCHvertex[i][j]][0] += Cexv[j * 3];
+				C23[ARCHvertex[i][j]][1] += Cexv[j * 3 + 1];
+				C23[ARCHvertex[i][j]][2] += Cexv[j * 3 + 2];
+			}
+
+		}
+
+		/* Assemble vectors3 Me, Ce and matrix3 Ke */
+
+		for (j = 0; j < 4; j++) {
+			M[ARCHvertex[i][j]][0] += Me[j * 3];
+			M[ARCHvertex[i][j]][1] += Me[j * 3 + 1];
+			M[ARCHvertex[i][j]][2] += Me[j * 3 + 2];
+			C[ARCHvertex[i][j]][0] += Ce[j * 3];
+			C[ARCHvertex[i][j]][1] += Ce[j * 3 + 1];
+			C[ARCHvertex[i][j]][2] += Ce[j * 3 + 2];
+			for (k = 0; k < 4; k++) {
+				if (ARCHvertex[i][j] <= ARCHvertex[i][k]) {
+					kk = ARCHmatrixindex[ARCHvertex[i][j]];
+					while (ARCHmatrixcol[kk] != ARCHvertex[i][k]) {
+						kk++;
+						if (kk >= ARCHmatrixindex[ARCHvertex[i][k] + 1]) {
+							printf("K indexing error!!! %d %d\n", ARCHvertex[i][j], 
+							       ARCHvertex[i][k]);
+							exit(1);
+						}
+					}
+					for (ii = 0; ii < 3; ii++)
+						for (jj = 0; jj < 3; jj++)
+							K[kk][ii*3+jj] += Ke[j * 3 + ii][k * 3 + jj];
+				}
+			}
+		}
+	}
+
+	/* Time integration loop */
+
+	fprintf(stderr, "\n");
+	double sum0,sum1,sum2;
+	int Anext,Alast,col;
+	int stride1 = 3,stride2 = 9;
+	double Exc_dt = Exc.dt;
+	double Exc_t0 = Exc.t0;
+
 #pragma arrays disp0[ARCHnodes][3],disp1[ARCHnodes][3],disp2[ARCHnodes][3],K[ARCHmatrixlen][9],M[ARCHnodes][3],C[ARCHnodes][3],vel[ARCHnodes][3],M23[ARCHnodes][3],C23[ARCHnodes][3],V23[ARCHnodes][3],ARCHmatrixindex[ARCHnodes+1][1],ARCHmatrixcol[ARCHmatrixlen][1]
 
-//#pragma inspector_begin
-  for (iter = 1; iter <= timesteps ;  ) {
+	for (iter = 1; iter <= timesteps ;  ) {
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp0[i][j] = 0.0;
+		/*
+		 * LOOP 1
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp0[i][j] = 0.0;
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++) {
-      Anext = ARCHmatrixindex[i];
+		/*
+		 * LOOP 2
+		 */
+		for (i = 0; i < ARCHnodes; i++) {
+			Anext = ARCHmatrixindex[i];
 
-      sum0 = K[Anext][0]*disp1[i][0] + K[Anext][1]*disp1[i][1] + K[Anext][2]*disp1[i][2];
-      sum1 = K[Anext][3]*disp1[i][0] + K[Anext][4]*disp1[i][1] + K[Anext][5]*disp1[i][2];
-      sum2 = K[Anext][6]*disp1[i][0] + K[Anext][7]*disp1[i][1] + K[Anext][8]*disp1[i][2];
+			sum0 = K[Anext][0]*disp1[i][0] + K[Anext][1]*disp1[i][1] + K[Anext][2]*disp1[i][2];
+			sum1 = K[Anext][3]*disp1[i][0] + K[Anext][4]*disp1[i][1] + K[Anext][5]*disp1[i][2];
+			sum2 = K[Anext][6]*disp1[i][0] + K[Anext][7]*disp1[i][1] + K[Anext][8]*disp1[i][2];
 
-      for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
-    	col = ARCHmatrixcol[j];
+			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
+				col = ARCHmatrixcol[j];
 
-    	sum0 += K[j][0]*disp1[col][0] + K[j][1]*disp1[col][1] + K[j][2]*disp1[col][2];
-    	sum1 += K[j][3]*disp1[col][0] + K[j][4]*disp1[col][1] + K[j][5]*disp1[col][2];
-    	sum2 += K[j][6]*disp1[col][0] + K[j][7]*disp1[col][1] + K[j][8]*disp1[col][2];
+				sum0 += K[j][0]*disp1[col][0] + K[j][1]*disp1[col][1] + K[j][2]*disp1[col][2];
+				sum1 += K[j][3]*disp1[col][0] + K[j][4]*disp1[col][1] + K[j][5]*disp1[col][2];
+				sum2 += K[j][6]*disp1[col][0] + K[j][7]*disp1[col][1] + K[j][8]*disp1[col][2];
       
 
-    	disp0[col][0] += K[j][0]*disp1[i][0] + K[j][3]*disp1[i][1] + K[j][6]*disp1[i][2];
-    	disp0[col][1] += K[j][1]*disp1[i][0] + K[j][4]*disp1[i][1] + K[j][7]*disp1[i][2];
-    	disp0[col][2] += K[j][2]*disp1[i][0] + K[j][5]*disp1[i][1] + K[j][8]*disp1[i][2];
-      }
-      disp0[i][0] += sum0;
-      disp0[i][1] += sum1;
-      disp0[i][2] += sum2;
-    }
+				disp0[col][0] += K[j][0]*disp1[i][0] + K[j][3]*disp1[i][1] + K[j][6]*disp1[i][2];
+				disp0[col][1] += K[j][1]*disp1[i][0] + K[j][4]*disp1[i][1] + K[j][7]*disp1[i][2];
+				disp0[col][2] += K[j][2]*disp1[i][0] + K[j][5]*disp1[i][1] + K[j][8]*disp1[i][2];
+			}
+			disp0[i][0] += sum0;
+			disp0[i][1] += sum1;
+			disp0[i][2] += sum2;
+		}
 
+		time = iter * Exc_dt ;
 
-    //time = iter * Exc_dt * 3;
-    time = iter * Exc_dt ;
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp0[i][j] = (-disp0[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp1[i][j] -
-    	  (M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp2[i][j] -
-	  Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
-    	    		       C23[i][j] * phi1(time,Exc_t0) / 2.0 +
-    	    		       V23[i][j] * phi0(time,Exc_t0) / 2.0);
+		/*
+		 * LOOP 3
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp0[i][j] = (-disp0[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp1[i][j] -
+					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp2[i][j] -
+					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
+					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 +
+					                   V23[i][j] * phi0(time,Exc_t0) / 2.0);
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp0[i][j] = disp0[i][j] /
-    	                        (M[i][j] + Exc_dt / 2.0 * C[i][j]);
+		/*
+		 * LOOP 4
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp0[i][j] = disp0[i][j] /
+					(M[i][j] + Exc_dt / 2.0 * C[i][j]);
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        vel[i][j] = 0.5 / Exc_dt * (disp0[i][j] -
-    				    disp2[i][j]);
+		/*
+		 * LOOP 5
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				vel[i][j] = 0.5 / Exc_dt * (disp0[i][j] -
+				                            disp2[i][j]);
 
-    iter += 1;
-    /* Print out the response at the source and epicenter nodes */
+		iter += 1;
+		/* Print out the response at the source and epicenter nodes */
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp2[i][j] = 0.0;
+		/*
+		 * LOOP 6
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp2[i][j] = 0.0;
 
  
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++) {
-      Anext = ARCHmatrixindex[i];
+		/*
+		 * LOOP 7
+		 */
+		for (i = 0; i < ARCHnodes; i++) {
+			Anext = ARCHmatrixindex[i];
 
-      sum0 = K[Anext][0]*disp0[i][0] + K[Anext][1]*disp0[i][1] + K[Anext][2]*disp0[i][2];
-      sum1 = K[Anext][3]*disp0[i][0] + K[Anext][4]*disp0[i][1] + K[Anext][5]*disp0[i][2];
-      sum2 = K[Anext][6]*disp0[i][0] + K[Anext][7]*disp0[i][1] + K[Anext][8]*disp0[i][2];
+			sum0 = K[Anext][0]*disp0[i][0] + K[Anext][1]*disp0[i][1] + K[Anext][2]*disp0[i][2];
+			sum1 = K[Anext][3]*disp0[i][0] + K[Anext][4]*disp0[i][1] + K[Anext][5]*disp0[i][2];
+			sum2 = K[Anext][6]*disp0[i][0] + K[Anext][7]*disp0[i][1] + K[Anext][8]*disp0[i][2];
 
-      for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
-    	col = ARCHmatrixcol[j];
+			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
+				col = ARCHmatrixcol[j];
 
-    	sum0 += K[j][0]*disp0[col][0] + K[j][1]*disp0[col][1] + K[j][2]*disp0[col][2];
-    	sum1 += K[j][3]*disp0[col][0] + K[j][4]*disp0[col][1] + K[j][5]*disp0[col][2];
-    	sum2 += K[j][6]*disp0[col][0] + K[j][7]*disp0[col][1] + K[j][8]*disp0[col][2];
+				sum0 += K[j][0]*disp0[col][0] + K[j][1]*disp0[col][1] + K[j][2]*disp0[col][2];
+				sum1 += K[j][3]*disp0[col][0] + K[j][4]*disp0[col][1] + K[j][5]*disp0[col][2];
+				sum2 += K[j][6]*disp0[col][0] + K[j][7]*disp0[col][1] + K[j][8]*disp0[col][2];
       
 
-    	disp2[col][0] += K[j][0]*disp0[i][0] + K[j][3]*disp0[i][1] + K[j][6]*disp0[i][2];
-    	disp2[col][1] += K[j][1]*disp0[i][0] + K[j][4]*disp0[i][1] + K[j][7]*disp0[i][2];
-    	disp2[col][2] += K[j][2]*disp0[i][0] + K[j][5]*disp0[i][1] + K[j][8]*disp0[i][2];
-      }
-      disp2[i][0] += sum0;
-      disp2[i][1] += sum1;
-      disp2[i][2] += sum2;
-    }
+				disp2[col][0] += K[j][0]*disp0[i][0] + K[j][3]*disp0[i][1] + K[j][6]*disp0[i][2];
+				disp2[col][1] += K[j][1]*disp0[i][0] + K[j][4]*disp0[i][1] + K[j][7]*disp0[i][2];
+				disp2[col][2] += K[j][2]*disp0[i][0] + K[j][5]*disp0[i][1] + K[j][8]*disp0[i][2];
+			}
+			disp2[i][0] += sum0;
+			disp2[i][1] += sum1;
+			disp2[i][2] += sum2;
+		}
+
+		time = iter * Exc_dt ;
+
+		/*
+		 * LOOP 8
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp2[i][j] = (-disp2[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp0[i][j] -
+					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp1[i][j] -
+					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
+					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 +
+					                   V23[i][j] * phi0(time,Exc_t0) / 2.0);
+
+		/*
+		 * LOOP 9
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp2[i][j] = disp2[i][j] /
+					(M[i][j] + Exc_dt / 2.0 * C[i][j]);
+
+		/*
+		 * LOOP 10
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				vel[i][j] = 0.5 / Exc_dt * (disp2[i][j] -
+				                            disp1[i][j]);
+
+		iter += 1;
 
 
-    /* time = (3*iter+1) * Exc_dt; */
-    time = iter * Exc_dt ;
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp2[i][j] = (-disp2[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp0[i][j] -
-    	  (M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp1[i][j] -
-    	    Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
-    			       C23[i][j] * phi1(time,Exc_t0) / 2.0 +
-    			       V23[i][j] * phi0(time,Exc_t0) / 2.0);
+		/*
+		 * LOOP 11
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp1[i][j] = 0.0;
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp2[i][j] = disp2[i][j] /
-    	                        (M[i][j] + Exc_dt / 2.0 * C[i][j]);
+		/*
+		 * LOOP 12
+		 */
+		for (i = 0; i < ARCHnodes; i++) {
+			Anext = ARCHmatrixindex[i];
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        vel[i][j] = 0.5 / Exc_dt * (disp2[i][j] -
-    				    disp1[i][j]);
+			sum0 = K[Anext][0]*disp2[i][0] + K[Anext][1]*disp2[i][1] + K[Anext][2]*disp2[i][2];
+			sum1 = K[Anext][3]*disp2[i][0] + K[Anext][4]*disp2[i][1] + K[Anext][5]*disp2[i][2];
+			sum2 = K[Anext][6]*disp2[i][0] + K[Anext][7]*disp2[i][1] + K[Anext][8]*disp2[i][2];
 
-    iter += 1;
+			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
+				col = ARCHmatrixcol[j];
 
-
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp1[i][j] = 0.0;
-
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++) {
-      Anext = ARCHmatrixindex[i];
-
-      sum0 = K[Anext][0]*disp2[i][0] + K[Anext][1]*disp2[i][1] + K[Anext][2]*disp2[i][2];
-      sum1 = K[Anext][3]*disp2[i][0] + K[Anext][4]*disp2[i][1] + K[Anext][5]*disp2[i][2];
-      sum2 = K[Anext][6]*disp2[i][0] + K[Anext][7]*disp2[i][1] + K[Anext][8]*disp2[i][2];
-
-      for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
-    	col = ARCHmatrixcol[j];
-
-    	sum0 += K[j][0]*disp2[col][0] + K[j][1]*disp2[col][1] + K[j][2]*disp2[col][2];
-    	sum1 += K[j][3]*disp2[col][0] + K[j][4]*disp2[col][1] + K[j][5]*disp2[col][2];
-    	sum2 += K[j][6]*disp2[col][0] + K[j][7]*disp2[col][1] + K[j][8]*disp2[col][2];
+				sum0 += K[j][0]*disp2[col][0] + K[j][1]*disp2[col][1] + K[j][2]*disp2[col][2];
+				sum1 += K[j][3]*disp2[col][0] + K[j][4]*disp2[col][1] + K[j][5]*disp2[col][2];
+				sum2 += K[j][6]*disp2[col][0] + K[j][7]*disp2[col][1] + K[j][8]*disp2[col][2];
       
 
-    	disp1[col][0] += K[j][0]*disp2[i][0] + K[j][3]*disp2[i][1] + K[j][6]*disp2[i][2];
-    	disp1[col][1] += K[j][1]*disp2[i][0] + K[j][4]*disp2[i][1] + K[j][7]*disp2[i][2];
-    	disp1[col][2] += K[j][2]*disp2[i][0] + K[j][5]*disp2[i][1] + K[j][8]*disp2[i][2];
-      }
-      disp1[i][0] += sum0;
-      disp1[i][1] += sum1;
-      disp1[i][2] += sum2;
-    }
+				disp1[col][0] += K[j][0]*disp2[i][0] + K[j][3]*disp2[i][1] + K[j][6]*disp2[i][2];
+				disp1[col][1] += K[j][1]*disp2[i][0] + K[j][4]*disp2[i][1] + K[j][7]*disp2[i][2];
+				disp1[col][2] += K[j][2]*disp2[i][0] + K[j][5]*disp2[i][1] + K[j][8]*disp2[i][2];
+			}
+			disp1[i][0] += sum0;
+			disp1[i][1] += sum1;
+			disp1[i][2] += sum2;
+		}
 
-    //time = (3*iter+2) * Exc_dt;
-    time = iter * Exc_dt;
+		time = iter * Exc_dt;
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp1[i][j] = (-disp1[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp2[i][j] -
-    	  (M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp0[i][j] -
-    	    Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
-    			       C23[i][j] * phi1(time,Exc_t0) / 2.0 +
-    			       V23[i][j] * phi0(time,Exc_t0) / 2.0);
+		/*
+		 * LOOP 13
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp1[i][j] = (-disp1[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp2[i][j] -
+					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp0[i][j] -
+					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
+					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 +
+					                   V23[i][j] * phi0(time,Exc_t0) / 2.0);
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        disp1[i][j] = disp1[i][j] /
-    	                        (M[i][j] + Exc_dt / 2.0 * C[i][j]);
+		/*
+		 * LOOP 14
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp1[i][j] = disp1[i][j] /
+					(M[i][j] + Exc_dt / 2.0 * C[i][j]);
 
-//#pragma part_loop
-    for (i = 0; i < ARCHnodes; i++)
-      for (j = 0; j < 3; j++)
-        vel[i][j] = 0.5 / Exc_dt * (disp1[i][j] -
-    				    disp0[i][j]);
+		/*
+		 * LOOP 15
+		 */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				vel[i][j] = 0.5 / Exc_dt * (disp1[i][j] -
+				                            disp0[i][j]);
 
-    iter += 1;
+		iter += 1;
+	}
 
+	fprintf(stderr, "Time step %d\n", iter);
 
-    /* if (iter % Step_stride == 0) { */
+	if (Src.sourcenode <= ARCHmine)
+		printf("%d: %.2e %.2e %.2e\n", ARCHglobalnode[Src.sourcenode],
+		       disp0[Src.sourcenode][0], 
+		       disp0[Src.sourcenode][1],
+		       disp0[Src.sourcenode][2]);
 
-/*       fprintf(stderr, "Time step %d\n", iter); */
-
-/*       if (Src.sourcenode <= ARCHmine) */
-/* 	printf("%d: %.2e %.2e %.2e\n", ARCHglobalnode[Src.sourcenode], */
-/* 	       disp0[Src.sourcenode][0],  */
-/* 	       disp0[Src.sourcenode][1], */
-/* 	       disp0[Src.sourcenode][2]); */
-
-/*       if (Src.epicenternode <= ARCHmine) */
-/* 	printf("%d: %.2e %.2e %.2e\n", ARCHglobalnode[Src.epicenternode],  */
-/* 	       disp0[Src.epicenternode][0], */
-/* 	       disp0[Src.epicenternode][1], */
-/* 	       disp0[Src.epicenternode][2]); */
-
-/*       fflush(stdout); */
-    /* } */
-
-/*     i = disptminus; */
-/*     disptminus = dispt; */
-/*     dispt = disptplus; */
-/*     disptplus = i; */
-
-  }
-//#pragma inspector_end
-
-  fprintf(stderr, "Time step %d\n", iter);
-
-  if (Src.sourcenode <= ARCHmine)
-    printf("%d: %.2e %.2e %.2e\n", ARCHglobalnode[Src.sourcenode],
-	   disp0[Src.sourcenode][0], 
-	   disp0[Src.sourcenode][1],
-	   disp0[Src.sourcenode][2]);
-
-  if (Src.epicenternode <= ARCHmine)
-    printf("%d: %.2e %.2e %.2e\n", ARCHglobalnode[Src.epicenternode], 
-	   disp0[Src.epicenternode][0],
-	   disp0[Src.epicenternode][1],
-	   disp0[Src.epicenternode][2]);
+	if (Src.epicenternode <= ARCHmine)
+		printf("%d: %.2e %.2e %.2e\n", ARCHglobalnode[Src.epicenternode], 
+		       disp0[Src.epicenternode][0],
+		       disp0[Src.epicenternode][1],
+		       disp0[Src.epicenternode][2]);
 
 
 
-  fprintf(stderr, "%s: %d nodes %d elems %d timesteps\n", 
-	  progname, ARCHglobalnodes, ARCHglobalelems, timesteps);
-  fprintf(stderr, "\n");
-  fflush(stderr);
+	fprintf(stderr, "%s: %d nodes %d elems %d timesteps\n", 
+	        progname, ARCHglobalnodes, ARCHglobalelems, timesteps);
+	fprintf(stderr, "\n");
+	fflush(stderr);
 
-  if (!options.quiet) {
-    fprintf(stderr, "%s: Done. Terminating the simulation.\n", progname);
-  }
+	if (!options.quiet) {
+		fprintf(stderr, "%s: Done. Terminating the simulation.\n", progname);
+	}
 
-  return 0;
+	return 0;
 }
 /* --------------------------------------------------------------------------*/
 
@@ -693,20 +680,20 @@ int main(int argc, char **argv)
 /* N_4 = t                                                                   */
 
 void shape_ders(ds)
-double ds[][4];
+     double ds[][4];
 {
-  ds[0][0] = - 1;
-  ds[1][0] = - 1;
-  ds[2][0] = - 1;
-  ds[0][1] = 1;
-  ds[1][1] = 0;
-  ds[2][1] = 0;
-  ds[0][2] = 0;
-  ds[1][2] = 1;
-  ds[2][2] = 0;
-  ds[0][3] = 0;
-  ds[1][3] = 0;
-  ds[2][3] = 1;
+	ds[0][0] = - 1;
+	ds[1][0] = - 1;
+	ds[2][0] = - 1;
+	ds[0][1] = 1;
+	ds[1][1] = 0;
+	ds[2][1] = 0;
+	ds[0][2] = 0;
+	ds[1][2] = 1;
+	ds[2][2] = 0;
+	ds[0][3] = 0;
+	ds[1][3] = 0;
+	ds[2][3] = 1;
 }
 
 /* --------------------------------------------------------------------------*/
@@ -714,15 +701,15 @@ double ds[][4];
 /* given a pair of compressional (cp) and shear (cs) wave velocities         */
 
 void get_Enu(prop, E, nu)
-struct properties *prop;
-double *E, *nu;
+     struct properties *prop;
+     double *E, *nu;
 {
-  double ratio;
+	double ratio;
   
-  ratio = prop->cp / prop->cs;
-  ratio = ratio * ratio;
-  *nu = 0.5 * (ratio - 2.0) / (ratio - 1.0);
-  *E = 2.0 * prop->den * prop->cs * prop->cs * (1.0 + *nu);
+	ratio = prop->cp / prop->cs;
+	ratio = ratio * ratio;
+	*nu = 0.5 * (ratio - 2.0) / (ratio - 1.0);
+	*E = 2.0 * prop->den * prop->cs * prop->cs * (1.0 + *nu);
 }
 /* --------------------------------------------------------------------------*/
 
@@ -733,27 +720,27 @@ double *E, *nu;
 /* (a on input holds the Jacobian and on output its inverse                  */
 
 void inv_J(a, det)
-double a[][3];
-double *det;
+     double a[][3];
+     double *det;
 {
-  double d1;
-  double c[3][3];
-  int i, j;
+	double d1;
+	double c[3][3];
+	int i, j;
   
-  c[0][0] = a[1][1] * a[2][2] - a[2][1] * a[1][2];
-  c[0][1] = a[0][2] * a[2][1] - a[0][1] * a[2][2];
-  c[0][2] = a[0][1] * a[1][2] - a[0][2] * a[1][1];
-  c[1][0] = a[1][2] * a[2][0] - a[1][0] * a[2][2];
-  c[1][1] = a[0][0] * a[2][2] - a[0][2] * a[2][0];
-  c[1][2] = a[0][2] * a[1][0] - a[0][0] * a[1][2];
-  c[2][0] = a[1][0] * a[2][1] - a[1][1] * a[2][0];
-  c[2][1] = a[0][1] * a[2][0] - a[0][0] * a[2][1];
-  c[2][2] = a[0][0] * a[1][1] - a[0][1] * a[1][0];
-  *det = a[0][0] * c[0][0] + a[0][1] * c[1][0] + a[0][2] * c[2][0];
-  d1 = 1.0 / *det;
-  for (i = 0; i < 3; i++)
-    for (j = 0; j < 3; j++)
-      a[i][j] = c[i][j] * d1;
+	c[0][0] = a[1][1] * a[2][2] - a[2][1] * a[1][2];
+	c[0][1] = a[0][2] * a[2][1] - a[0][1] * a[2][2];
+	c[0][2] = a[0][1] * a[1][2] - a[0][2] * a[1][1];
+	c[1][0] = a[1][2] * a[2][0] - a[1][0] * a[2][2];
+	c[1][1] = a[0][0] * a[2][2] - a[0][2] * a[2][0];
+	c[1][2] = a[0][2] * a[1][0] - a[0][0] * a[1][2];
+	c[2][0] = a[1][0] * a[2][1] - a[1][1] * a[2][0];
+	c[2][1] = a[0][1] * a[2][0] - a[0][0] * a[2][1];
+	c[2][2] = a[0][0] * a[1][1] - a[0][1] * a[1][0];
+	*det = a[0][0] * c[0][0] + a[0][1] * c[1][0] + a[0][2] * c[2][0];
+	d1 = 1.0 / *det;
+	for (i = 0; i < 3; i++)
+		for (j = 0; j < 3; j++)
+			a[i][j] = c[i][j] * d1;
 }
 /* --------------------------------------------------------------------------*/
 
@@ -764,94 +751,94 @@ double *det;
 /* given the four vertices of a tetrahedron                                  */
 
 void element_matrices(vertices, prop, Ke, Me)
-double vertices[][3], Ke[][12], Me[];
-struct properties *prop;
+     double vertices[][3], Ke[][12], Me[];
+     struct properties *prop;
 {
-  double ds[3][4];
-  double sum[3];
-  double jacobian[3][3];
-  double det;
-  double volume;
-  double E, nu;
-  double c1, c2, c3;
-  double tt, ts;
-  int i, j, m, n, row, column;
+	double ds[3][4];
+	double sum[3];
+	double jacobian[3][3];
+	double det;
+	double volume;
+	double E, nu;
+	double c1, c2, c3;
+	double tt, ts;
+	int i, j, m, n, row, column;
   
-  shape_ders(ds);
+	shape_ders(ds);
 
-  for (i = 0; i < 3; i++)
-    for (j = 0; j < 3; j++) {
-      sum[0] = 0.0;
-      for (m = 0; m < 4; m++)
-        sum[0] = sum[0] + ds[i][m] * vertices[m][j];
-      jacobian[j][i] = sum[0];         /* compute Jacobian */
-    }
+	for (i = 0; i < 3; i++)
+		for (j = 0; j < 3; j++) {
+			sum[0] = 0.0;
+			for (m = 0; m < 4; m++)
+				sum[0] = sum[0] + ds[i][m] * vertices[m][j];
+			jacobian[j][i] = sum[0];         /* compute Jacobian */
+		}
 
-  inv_J(jacobian, &det);               /* compute J^-1 & its determinant */
+	inv_J(jacobian, &det);               /* compute J^-1 & its determinant */
 
-  for (m = 0; m < 4; m++) {
+	for (m = 0; m < 4; m++) {
 
-    for (i = 0; i < 3; i++) {
-      sum[i] = 0.0;
-      for (j = 0; j < 3; j++)
-	sum[i] = sum[i] + jacobian[j][i] * ds[j][m];
-    }
+		for (i = 0; i < 3; i++) {
+			sum[i] = 0.0;
+			for (j = 0; j < 3; j++)
+				sum[i] = sum[i] + jacobian[j][i] * ds[j][m];
+		}
 
-    for (i = 0; i < 3; i++) 
-      ds[i][m] = sum[i];
+		for (i = 0; i < 3; i++) 
+			ds[i][m] = sum[i];
 
-  }
+	}
 
-  volume = det / 6.0;
+	volume = det / 6.0;
 
-  if (volume <= 0) {
-    fprintf(stderr, "Warning: Element volume = %f !\n", volume);
-  }
+	if (volume <= 0) {
+		fprintf(stderr, "Warning: Element volume = %f !\n", volume);
+	}
 
-  get_Enu(prop, &E, &nu);
+	get_Enu(prop, &E, &nu);
 
-  c1 = E / (2.0 * (nu + 1.0) * (1.0 - nu * 2.0)) * volume;
-  c2 = E * nu / ((nu + 1.0) * (1.0 - nu * 2.0)) * volume;
-  c3 = E / ((nu + 1.0) * 2.0) * volume;
+	c1 = E / (2.0 * (nu + 1.0) * (1.0 - nu * 2.0)) * volume;
+	c2 = E * nu / ((nu + 1.0) * (1.0 - nu * 2.0)) * volume;
+	c3 = E / ((nu + 1.0) * 2.0) * volume;
 
-  row = - 1;
+	row = - 1;
 
-  for (m = 0; m < 4; m++) {            /* lower triangular stiffness matrix */
-    for (i = 0; i < 3; ++i) {
-      ++row;
-      column = - 1;
-      for (n = 0; n <= m; n++) {
-        for (j = 0; j < 3; j++) {
-          ++column;
-          ts = ds[i][m] * ds[j][n];
-          if (i == j) {
-            ts = ts * c1;
-            tt = (ds[0][m] * ds[0][n] +
-		  ds[1][m] * ds[1][n] +
-		  ds[2][m] * ds[2][n]) * c3;
-          }
-	  else {
-            if (m == n) {
-              ts = ts * c1;
-              tt = 0;
-            }
-	    else {
-              ts = ts * c2;
-              tt = ds[j][m] * ds[i][n] * c3;
-            }
-          }
-          Ke[row][column] = Ke[row][column] + ts + tt;
-        }
-      }
-    }
-  }
-  tt = prop->den * volume / 4.0;
-  for (i = 0; i < 12; i++) 
-    Me[i] = tt;
+	for (m = 0; m < 4; m++) {            /* lower triangular stiffness matrix */
+		for (i = 0; i < 3; ++i) {
+			++row;
+			column = - 1;
+			for (n = 0; n <= m; n++) {
+				for (j = 0; j < 3; j++) {
+					++column;
+					ts = ds[i][m] * ds[j][n];
+					if (i == j) {
+						ts = ts * c1;
+						tt = (ds[0][m] * ds[0][n] +
+						      ds[1][m] * ds[1][n] +
+						      ds[2][m] * ds[2][n]) * c3;
+					}
+					else {
+						if (m == n) {
+							ts = ts * c1;
+							tt = 0;
+						}
+						else {
+							ts = ts * c2;
+							tt = ds[j][m] * ds[i][n] * c3;
+						}
+					}
+					Ke[row][column] = Ke[row][column] + ts + tt;
+				}
+			}
+		}
+	}
+	tt = prop->den * volume / 4.0;
+	for (i = 0; i < 12; i++) 
+		Me[i] = tt;
 
-  for (i = 0; i < 12; i++)
-    for (j = 0; j <= i; j++) 
-      Ke[j][i] = Ke[i][j];
+	for (i = 0; i < 12; i++)
+		for (j = 0; j <= i; j++) 
+			Ke[j][i] = Ke[i][j];
 }
 /* --------------------------------------------------------------------------*/
 
@@ -861,33 +848,33 @@ struct properties *prop;
 /* its three vertices                                                        */
 
 double area_triangle(vertices)
-double vertices[][3];
+     double vertices[][3];
 {
-  double a, b, c;
-  double x2, y2, z2;
-  double p;
-  double area;
+	double a, b, c;
+	double x2, y2, z2;
+	double p;
+	double area;
   
-  x2 = (vertices[0][0] - vertices[1][0]) * (vertices[0][0] - vertices[1][0]);
-  y2 = (vertices[0][1] - vertices[1][1]) * (vertices[0][1] - vertices[1][1]);
-  z2 = (vertices[0][2] - vertices[1][2]) * (vertices[0][2] - vertices[1][2]);
-  a = sqrt(x2 + y2 + z2);
+	x2 = (vertices[0][0] - vertices[1][0]) * (vertices[0][0] - vertices[1][0]);
+	y2 = (vertices[0][1] - vertices[1][1]) * (vertices[0][1] - vertices[1][1]);
+	z2 = (vertices[0][2] - vertices[1][2]) * (vertices[0][2] - vertices[1][2]);
+	a = sqrt(x2 + y2 + z2);
 
-  x2 = (vertices[2][0] - vertices[1][0]) * (vertices[2][0] - vertices[1][0]);
-  y2 = (vertices[2][1] - vertices[1][1]) * (vertices[2][1] - vertices[1][1]);
-  z2 = (vertices[2][2] - vertices[1][2]) * (vertices[2][2] - vertices[1][2]);
-  b = sqrt(x2 + y2 + z2);
+	x2 = (vertices[2][0] - vertices[1][0]) * (vertices[2][0] - vertices[1][0]);
+	y2 = (vertices[2][1] - vertices[1][1]) * (vertices[2][1] - vertices[1][1]);
+	z2 = (vertices[2][2] - vertices[1][2]) * (vertices[2][2] - vertices[1][2]);
+	b = sqrt(x2 + y2 + z2);
 
-  x2 = (vertices[0][0] - vertices[2][0]) * (vertices[0][0] - vertices[2][0]);
-  y2 = (vertices[0][1] - vertices[2][1]) * (vertices[0][1] - vertices[2][1]);
-  z2 = (vertices[0][2] - vertices[2][2]) * (vertices[0][2] - vertices[2][2]);
-  c = sqrt(x2 + y2 + z2);
+	x2 = (vertices[0][0] - vertices[2][0]) * (vertices[0][0] - vertices[2][0]);
+	y2 = (vertices[0][1] - vertices[2][1]) * (vertices[0][1] - vertices[2][1]);
+	z2 = (vertices[0][2] - vertices[2][2]) * (vertices[0][2] - vertices[2][2]);
+	c = sqrt(x2 + y2 + z2);
 
-  p = (a + b + c) / 2.0;
+	p = (a + b + c) / 2.0;
 
-  area = sqrt(p * (p - a) * (p - b) * (p - c));
+	area = sqrt(p * (p - a) * (p - b) * (p - c));
 
-  return area;
+	return area;
 
 }
 /* --------------------------------------------------------------------------*/
@@ -898,22 +885,22 @@ double vertices[][3];
 /* (triangular plane element)                                                */
 
 void abe_matrix(vertices, bv, prop, Ce)
-double vertices[][3];
-int bv[];
-struct properties *prop;
-double Ce[];
+     double vertices[][3];
+     int bv[];
+     struct properties *prop;
+     double Ce[];
 {
-  int i, j;
-  double area;
+	int i, j;
+	double area;
   
-  area = area_triangle(vertices);
+	area = area_triangle(vertices);
 
-  for (i = 0; i < 3; i++) {
-    j = 3 * bv[i];
-    Ce[j] = Ce[j] + prop->cs * prop->den * area / 3.0;
-    Ce[j + 1] = Ce[j + 1] + prop->cs * prop->den * area / 3.0;
-    Ce[j + 2] = Ce[j + 2] + prop->cp * prop->den * area / 3.0;
-  }
+	for (i = 0; i < 3; i++) {
+		j = 3 * bv[i];
+		Ce[j] = Ce[j] + prop->cs * prop->den * area / 3.0;
+		Ce[j + 1] = Ce[j + 1] + prop->cs * prop->den * area / 3.0;
+		Ce[j + 2] = Ce[j + 2] + prop->cp * prop->den * area / 3.0;
+	}
 
 }
 /* --------------------------------------------------------------------------*/
@@ -922,18 +909,18 @@ double Ce[];
 /* Excitation (ramp function)                                                */
 
 double phi0(t,bound)
-	    double t,bound;
+     double t,bound;
 {
-  double value;
+	double value;
   
-  if (t <= bound) {
+	if (t <= bound) {
 
-    value = 0.5 / PI * (2.0 * PI * t / bound - sin(2.0 * PI * t / bound));
-    return value;
+		value = 0.5 / PI * (2.0 * PI * t / bound - sin(2.0 * PI * t / bound));
+		return value;
 
-  } 
-  else
-    return 1.0;
+	} 
+	else
+		return 1.0;
 
 }
 /* --------------------------------------------------------------------------*/
@@ -943,18 +930,18 @@ double phi0(t,bound)
 /* First derivative of the excitation (velocity of ramp function)            */
 
 double phi1(t,bound)
-	    double t,bound;
+     double t,bound;
 {
-  double value;
+	double value;
   
-  if (t <= bound) {
+	if (t <= bound) {
 
-    value = (1.0 - cos(2.0 * PI * t / bound)) / bound;
-    return value;
+		value = (1.0 - cos(2.0 * PI * t / bound)) / bound;
+		return value;
 
-  }
-  else
-    return 0.0;
+	}
+	else
+		return 0.0;
 }
 /* --------------------------------------------------------------------------*/
 
@@ -965,16 +952,16 @@ double phi1(t,bound)
 double phi2(t,bound)
      double t,bound;
 {
-  double value;
+	double value;
   
-  if (t <= bound) {
+	if (t <= bound) {
 
-    value = 2.0 * PI / bound / bound * sin(2.0 * PI * t / bound);
-    return value;
+		value = 2.0 * PI / bound / bound * sin(2.0 * PI * t / bound);
+		return value;
 
-  }
-  else
-    return 0.0;
+	}
+	else
+		return 0.0;
 }
 /* --------------------------------------------------------------------------*/
 
@@ -983,14 +970,14 @@ double phi2(t,bound)
 /* Calculate the slip motion at the source node                              */
 
 void slip(u, v, w)
-double *u, *v, *w;
+     double *u, *v, *w;
 {
-  *u = *v = *w = 0.0;
-  *u = (cos(Src.rake) * sin(Src.strike) - 
-	sin(Src.rake) * cos(Src.strike) * cos(Src.dip));
-  *v = (cos(Src.rake) * cos(Src.strike) +
-	sin(Src.rake) * sin(Src.strike) * cos(Src.dip));
-  *w = sin(Src.rake) * sin(Src.dip);
+	*u = *v = *w = 0.0;
+	*u = (cos(Src.rake) * sin(Src.strike) - 
+	      sin(Src.rake) * cos(Src.strike) * cos(Src.dip));
+	*v = (cos(Src.rake) * cos(Src.strike) +
+	      sin(Src.rake) * sin(Src.strike) * cos(Src.dip));
+	*w = sin(Src.rake) * sin(Src.dip);
 }
 /* --------------------------------------------------------------------------*/
 
@@ -999,11 +986,11 @@ double *u, *v, *w;
 /* Calculate the distance between two points p1 and p2                       */
 
 double distance(p1, p2)
-double p1[], p2[];
+     double p1[], p2[];
 {
-  return ((p1[0] - p2[0]) * (p1[0] - p2[0]) +
-	  (p1[1] - p2[1]) * (p1[1] - p2[1]) +
-	  (p1[2] - p2[2]) * (p1[2] - p2[2]));
+	return ((p1[0] - p2[0]) * (p1[0] - p2[0]) +
+	        (p1[1] - p2[1]) * (p1[1] - p2[1]) +
+	        (p1[2] - p2[2]) * (p1[2] - p2[2]));
 }
 /* --------------------------------------------------------------------------*/
 
@@ -1012,13 +999,13 @@ double p1[], p2[];
 /* Calculate the centroid of a tetrahedron                                   */
 
 void centroid(x, xc)
-double x[][3], xc[];
+     double x[][3], xc[];
 {
 
-  int i;
+	int i;
   
-  for (i = 0; i < 3; i++)
-    xc[i] = (x[0][i] + x[1][i] + x[2][i] + x[3][i]) / 4.0;
+	for (i = 0; i < 3; i++)
+		xc[i] = (x[0][i] + x[1][i] + x[2][i] + x[3][i]) / 4.0;
 
 }
 /* --------------------------------------------------------------------------*/
@@ -1028,19 +1015,19 @@ double x[][3], xc[];
 /* Calculate the distance to the fault from a given point x                 */
 
 double point2fault(x)
-double x[];
+     double x[];
 {
 
-  double nx, ny, nz;
-  double d0;
+	double nx, ny, nz;
+	double d0;
   
-  nx = cos(Src.strike) * sin(Src.dip);
-  ny = - sin(Src.strike) * sin(Src.dip);
-  nz = cos(Src.dip);
+	nx = cos(Src.strike) * sin(Src.dip);
+	ny = - sin(Src.strike) * sin(Src.dip);
+	nz = cos(Src.dip);
 
-  d0 = - (nx * Src.xyz[0] + ny * Src.xyz[1] + nz * Src.xyz[2]);
+	d0 = - (nx * Src.xyz[0] + ny * Src.xyz[1] + nz * Src.xyz[2]);
 
-  return (double) nx * x[0] + ny * x[1] + nz * x[2] + d0;
+	return (double) nx * x[0] + ny * x[1] + nz * x[2] + d0;
 }
 /* --------------------------------------------------------------------------*/
 
@@ -1049,20 +1036,20 @@ double x[];
 /* Matrix (12x12) times vector (12x1) product                                */
 
 void mv12x12(m, v)
-double m[][12], v[];
+     double m[][12], v[];
 {
-  int i, j;
-  double u[12];
+	int i, j;
+	double u[12];
   
-  for (i = 0; i < 12; i++) {
+	for (i = 0; i < 12; i++) {
 
-    u[i] = 0;
-    for (j = 0; j < 12; j++) 
-      u[i] += m[i][j] * v[j];
-  }
+		u[i] = 0;
+		for (j = 0; j < 12; j++) 
+			u[i] += m[i][j] * v[j];
+	}
 
-  for (i = 0; i < 12; i++) 
-    v[i] = u[i];
+	for (i = 0; i < 12; i++) 
+		v[i] = u[i];
 
 }
 /* --------------------------------------------------------------------------*/
@@ -1072,12 +1059,12 @@ double m[][12], v[];
 /* Vector (12x1) times vector (12x1) product                                 */
 
 void vv12x12(v1, v2, u)
-double v1[], v2[], u[];
+     double v1[], v2[], u[];
 {
-  int i;
+	int i;
   
-  for (i = 0; i < 12; i++) 
-    u[i] = v1[i] * v2[i];
+	for (i = 0; i < 12; i++) 
+		u[i] = v1[i] * v2[i];
 
 }
 
@@ -1085,7 +1072,7 @@ double v1[], v2[], u[];
 /* Graceful exit                                                            */
 
 void arch_bail(void) {
-    exit(0);
+	exit(0);
 }
 /*--------------------------------------------------------------------------*/ 
 
@@ -1093,14 +1080,14 @@ void arch_bail(void) {
 /*--------------------------------------------------------------------------*/ 
 void arch_info(void)
 {
-    printf("\n");
-    printf("You are running an Archimedes finite element simulation called %s.\n\n", progname);
-    printf("The command syntax is:\n\n");
-    printf("%s [-Qh] < packfile\n\n", progname);
-    printf("Command line options:\n\n");
-    printf("    -Q  Quietly suppress all explanation of what this program is doing\n");
-    printf("        unless an error occurs.\n");
-    printf("    -h  Print this message and exit.\n");
+	printf("\n");
+	printf("You are running an Archimedes finite element simulation called %s.\n\n", progname);
+	printf("The command syntax is:\n\n");
+	printf("%s [-Qh] < packfile\n\n", progname);
+	printf("Command line options:\n\n");
+	printf("    -Q  Quietly suppress all explanation of what this program is doing\n");
+	printf("        unless an error occurs.\n");
+	printf("    -h  Print this message and exit.\n");
 }
 /*--------------------------------------------------------------------------*/ 
 
@@ -1111,29 +1098,29 @@ void arch_info(void)
  */
 void arch_parsecommandline(int argc, char **argv, struct options *op) 
 {
-    int i, j;
+	int i, j;
     
-    /* first set up the defaults */
-    op->quiet = 0;
-    op->help = 0;
+	/* first set up the defaults */
+	op->quiet = 0;
+	op->help = 0;
 
-    /* now see if the user wants to change any of these */
-    for (i=1; i<argc; i++) {
-	if (argv[i][0] == '-') {
-	    for (j = 1; argv[i][j] != '\0'; j++) {
-		if (argv[i][j] == 'Q') {
-		    op->quiet = 1;
+	/* now see if the user wants to change any of these */
+	for (i=1; i<argc; i++) {
+		if (argv[i][0] == '-') {
+			for (j = 1; argv[i][j] != '\0'; j++) {
+				if (argv[i][j] == 'Q') {
+					op->quiet = 1;
+				}
+				if ((argv[i][j] == 'h' ||argv[i][j] == 'H')) {
+					op->help = 1;
+				}
+			}
 		}
-		if ((argv[i][j] == 'h' ||argv[i][j] == 'H')) {
-		    op->help = 1;
-		}
-	    }
 	}
-    }
-    if (op->help) {
-	arch_info();
-	exit(0);
-    }
+	if (op->help) {
+		arch_info();
+		exit(0);
+	}
 }
 /*--------------------------------------------------------------------------*/ 
 
@@ -1144,24 +1131,24 @@ void arch_parsecommandline(int argc, char **argv, struct options *op)
  *                       called by READNODEVECTOR.stub               
  */
 void arch_readnodevector(double *v, int n) {
-    int i;
-    int type, attributes;
+	int i;
+	int type, attributes;
     
-    fscanf(packfile, "%d %d\n", &type, &attributes);
+	fscanf(packfile, "%d %d\n", &type, &attributes);
 
-    if (type != 2) {
-	fprintf(stderr, 
-		"READNODEVECTOR: unexpected data type\n");
-	arch_bail();
-    }
-    if (attributes != 1) {
-	fprintf(stderr, 
-		"READNODEVECTOR: unexpected number of attributes\n");
-	arch_bail();
-    }
-    for (i=0; i<n; i++) {	
-	fscanf(packfile, "%lf", &v[i]);
-    }
+	if (type != 2) {
+		fprintf(stderr, 
+		        "READNODEVECTOR: unexpected data type\n");
+		arch_bail();
+	}
+	if (attributes != 1) {
+		fprintf(stderr, 
+		        "READNODEVECTOR: unexpected number of attributes\n");
+		arch_bail();
+	}
+	for (i=0; i<n; i++) {	
+		fscanf(packfile, "%lf", &v[i]);
+	}
 }
 /*--------------------------------------------------------------------------*/ 
 
@@ -1172,23 +1159,23 @@ void arch_readnodevector(double *v, int n) {
  *                       called by READELEMVECTOR.stub               
  */
 void arch_readelemvector(double *v, int n) {
-    int i;
-    int type, attributes;
+	int i;
+	int type, attributes;
     
-    fscanf(packfile, "%d %d\n", &type, &attributes);
-    if (type != 1) {
-	fprintf(stderr, 
-		"READELEMVECTOR: unexpected data type\n");
-	arch_bail();
-    }
-    if (attributes != 1) {
-	fprintf(stderr, 
-		"READELEMVECTOR: unexpected number of attributes\n");
-	arch_bail();
-    }
-    for (i=0; i<n; i++) {	
-	fscanf(packfile, "%lf", &v[i]);
-    }
+	fscanf(packfile, "%d %d\n", &type, &attributes);
+	if (type != 1) {
+		fprintf(stderr, 
+		        "READELEMVECTOR: unexpected data type\n");
+		arch_bail();
+	}
+	if (attributes != 1) {
+		fprintf(stderr, 
+		        "READELEMVECTOR: unexpected number of attributes\n");
+		arch_bail();
+	}
+	for (i=0; i<n; i++) {	
+		fscanf(packfile, "%lf", &v[i]);
+	}
 }
 /*--------------------------------------------------------------------------*/ 
 
@@ -1198,132 +1185,132 @@ void arch_readelemvector(double *v, int n) {
  * arch_readdouble - read a floating point number from the pack file
  */
 void arch_readdouble(double *v) {
-    int type, attributes;
+	int type, attributes;
     
-    fscanf(packfile, "%d %d\n", &type, &attributes);
-    if (type != 3) {
-	fprintf(stderr, 
-		"READDOUBLE: unexpected data type\n");
-	arch_bail();
-    }
-    if (attributes != 1) {
-	fprintf(stderr, 
-		"READDOUBLE: unexpected number of attributes\n");
-	arch_bail();
-    }
-    fscanf(packfile, "%lf", &v[0]);
+	fscanf(packfile, "%d %d\n", &type, &attributes);
+	if (type != 3) {
+		fprintf(stderr, 
+		        "READDOUBLE: unexpected data type\n");
+		arch_bail();
+	}
+	if (attributes != 1) {
+		fprintf(stderr, 
+		        "READDOUBLE: unexpected number of attributes\n");
+		arch_bail();
+	}
+	fscanf(packfile, "%lf", &v[0]);
 }
 /*--------------------------------------------------------------------------*/ 
 
 
 /*--------------------------------------------------------------------------*/ 
 void readpackfile(FILE *packfile, struct options *op) {
-  int oldrow, newrow;
-  int i, j;
-  int temp1, temp2;
+	int oldrow, newrow;
+	int i, j;
+	int temp1, temp2;
 
-  fscanf(packfile, "%d", &ARCHglobalnodes);
-  fscanf(packfile, "%d", &ARCHmesh_dim);
-  fscanf(packfile, "%d", &ARCHglobalelems);
-  fscanf(packfile, "%d", &ARCHcorners);
-  fscanf(packfile, "%d", &ARCHsubdomains);
-  fscanf(packfile, "%lf", &ARCHduration);
+	fscanf(packfile, "%d", &ARCHglobalnodes);
+	fscanf(packfile, "%d", &ARCHmesh_dim);
+	fscanf(packfile, "%d", &ARCHglobalelems);
+	fscanf(packfile, "%d", &ARCHcorners);
+	fscanf(packfile, "%d", &ARCHsubdomains);
+	fscanf(packfile, "%lf", &ARCHduration);
 
-  /* only one subdomain allowed */
-  if (ARCHsubdomains != 1) {
-    fprintf(stderr, "%s: too many subdomains(%d), rerun slice using -s1\n",
-	    progname, ARCHsubdomains);
-    arch_bail();
-  }
+	/* only one subdomain allowed */
+	if (ARCHsubdomains != 1) {
+		fprintf(stderr, "%s: too many subdomains(%d), rerun slice using -s1\n",
+		        progname, ARCHsubdomains);
+		arch_bail();
+	}
 
-  /* read nodes */
-  if (!op->quiet) {
-    fprintf(stderr, "%s: Reading nodes.\n", progname);
-  }
+	/* read nodes */
+	if (!op->quiet) {
+		fprintf(stderr, "%s: Reading nodes.\n", progname);
+	}
 
-  fscanf(packfile, "%d %d %d", &ARCHnodes, &ARCHmine, &ARCHpriv);
+	fscanf(packfile, "%d %d %d", &ARCHnodes, &ARCHmine, &ARCHpriv);
 
-  ARCHglobalnode = (int *) malloc(ARCHnodes * sizeof(int));
-  if (ARCHglobalnode == (int *) NULL) {
-    fprintf(stderr, "malloc failed for ARCHglobalnode\n");
-    fflush(stderr);
-    exit(0);
-  }
+	ARCHglobalnode = (int *) malloc(ARCHnodes * sizeof(int));
+	if (ARCHglobalnode == (int *) NULL) {
+		fprintf(stderr, "malloc failed for ARCHglobalnode\n");
+		fflush(stderr);
+		exit(0);
+	}
 
-  ARCHcoord = (double **) malloc(ARCHnodes * sizeof(double *));
-  for (i = 0; i < ARCHnodes; i++)
-    ARCHcoord[i] = (double *) malloc(3 * sizeof(double));
+	ARCHcoord = (double **) malloc(ARCHnodes * sizeof(double *));
+	for (i = 0; i < ARCHnodes; i++)
+		ARCHcoord[i] = (double *) malloc(3 * sizeof(double));
 
-  for (i=0; i<ARCHnodes; i++) {
-    fscanf(packfile, "%d", &ARCHglobalnode[i]);
-    for (j=0; j<ARCHmesh_dim; j++) {
-      fscanf(packfile, "%lf", &ARCHcoord[i][j]);
-    }
-  }
+	for (i=0; i<ARCHnodes; i++) {
+		fscanf(packfile, "%d", &ARCHglobalnode[i]);
+		for (j=0; j<ARCHmesh_dim; j++) {
+			fscanf(packfile, "%lf", &ARCHcoord[i][j]);
+		}
+	}
 
-  /* read elements */
-  if (!op->quiet)
-    fprintf(stderr, "%s: Reading elements.\n", progname);
+	/* read elements */
+	if (!op->quiet)
+		fprintf(stderr, "%s: Reading elements.\n", progname);
 
-  fscanf(packfile, "%d", &ARCHelems);
+	fscanf(packfile, "%d", &ARCHelems);
 
-  ARCHglobalelem = (int *) malloc(ARCHelems * sizeof(int));
-  if (ARCHglobalelem == (int *) NULL) {
-    fprintf(stderr, "malloc failed for ARCHglobalelem\n");
-    fflush(stderr);
-    exit(0);
-  }
+	ARCHglobalelem = (int *) malloc(ARCHelems * sizeof(int));
+	if (ARCHglobalelem == (int *) NULL) {
+		fprintf(stderr, "malloc failed for ARCHglobalelem\n");
+		fflush(stderr);
+		exit(0);
+	}
 
-  ARCHvertex = (int **) malloc(ARCHelems * sizeof(int *));
-  for (i = 0; i < ARCHelems; i++)
-    ARCHvertex[i] = (int *) malloc(4 * sizeof(int));
+	ARCHvertex = (int **) malloc(ARCHelems * sizeof(int *));
+	for (i = 0; i < ARCHelems; i++)
+		ARCHvertex[i] = (int *) malloc(4 * sizeof(int));
 
-  for (i=0; i<ARCHelems; i++) {
-    fscanf(packfile, "%d", &ARCHglobalelem[i]);	
-    for (j=0; j<ARCHcorners; j++) {
-      fscanf(packfile, "%d", &ARCHvertex[i][j]);
-    }
-  }
+	for (i=0; i<ARCHelems; i++) {
+		fscanf(packfile, "%d", &ARCHglobalelem[i]);	
+		for (j=0; j<ARCHcorners; j++) {
+			fscanf(packfile, "%d", &ARCHvertex[i][j]);
+		}
+	}
     
-  /* read sparse matrix structure and convert from tuples to CSR */
-  if (!op->quiet)
-    fprintf(stderr, "%s: Reading sparse matrix structure.\n", progname);
+	/* read sparse matrix structure and convert from tuples to CSR */
+	if (!op->quiet)
+		fprintf(stderr, "%s: Reading sparse matrix structure.\n", progname);
 
-  fscanf(packfile, "%d %d", &ARCHmatrixlen, &ARCHcholeskylen);
+	fscanf(packfile, "%d %d", &ARCHmatrixlen, &ARCHcholeskylen);
 
-  ARCHmatrixcol = (int *) malloc((ARCHmatrixlen + 1) * sizeof(int));
-  if (ARCHmatrixcol == (int *) NULL) {
-    fprintf(stderr, "malloc failed for ARCHmatrixcol\n");
-    fflush(stderr);
-    exit(0);
-  }
+	ARCHmatrixcol = (int *) malloc((ARCHmatrixlen + 1) * sizeof(int));
+	if (ARCHmatrixcol == (int *) NULL) {
+		fprintf(stderr, "malloc failed for ARCHmatrixcol\n");
+		fflush(stderr);
+		exit(0);
+	}
 
-  ARCHmatrixindex = (int *) malloc((ARCHnodes + 1) * sizeof(int));
-  if (ARCHmatrixindex == (int *) NULL) {
-    fprintf(stderr, "malloc failed for ARCHmatrixindex\n");
-    fflush(stderr);
-    exit(0);
-  }
+	ARCHmatrixindex = (int *) malloc((ARCHnodes + 1) * sizeof(int));
+	if (ARCHmatrixindex == (int *) NULL) {
+		fprintf(stderr, "malloc failed for ARCHmatrixindex\n");
+		fflush(stderr);
+		exit(0);
+	}
 
-  oldrow = -1; 
-  for (i = 0; i < ARCHmatrixlen; i++) {
-    fscanf(packfile, "%d", &newrow);
-    fscanf(packfile, "%d", &ARCHmatrixcol[i]);
-    while (oldrow < newrow) { 
-      if (oldrow+1 >= ARCHnodes+1) {
-	printf("%s: error: (1)idx buffer too small (%d >= %d)\n", 
-	       progname, oldrow+1, ARCHnodes+1);
-	arch_bail();
-      }
-      ARCHmatrixindex[++oldrow] = i;
-    }
-  }
-  while (oldrow < ARCHnodes) {
-    ARCHmatrixindex[++oldrow] = ARCHmatrixlen;
-  }
+	oldrow = -1; 
+	for (i = 0; i < ARCHmatrixlen; i++) {
+		fscanf(packfile, "%d", &newrow);
+		fscanf(packfile, "%d", &ARCHmatrixcol[i]);
+		while (oldrow < newrow) { 
+			if (oldrow+1 >= ARCHnodes+1) {
+				printf("%s: error: (1)idx buffer too small (%d >= %d)\n", 
+				       progname, oldrow+1, ARCHnodes+1);
+				arch_bail();
+			}
+			ARCHmatrixindex[++oldrow] = i;
+		}
+	}
+	while (oldrow < ARCHnodes) {
+		ARCHmatrixindex[++oldrow] = ARCHmatrixlen;
+	}
     
-  /* read comm info (which nodes are shared between subdomains) */
-  fscanf(packfile, "%d %d", &temp1, &temp2);
+	/* read comm info (which nodes are shared between subdomains) */
+	fscanf(packfile, "%d %d", &temp1, &temp2);
     
 }
 /*--------------------------------------------------------------------------*/ 
@@ -1337,13 +1324,13 @@ void readpackfile(FILE *packfile, struct options *op) {
 void arch_init(int argc, char **argv, struct options *op)
 {
 
-  /* parse the command line options */
-  progname = argv[0];
-  arch_parsecommandline(argc, argv, op);
+	/* parse the command line options */
+	progname = argv[0];
+	arch_parsecommandline(argc, argv, op);
 	
-  /* read the pack file */
-  packfile = fopen(argv[1],"r");
-  readpackfile(packfile, op);
+	/* read the pack file */
+	packfile = fopen(argv[1],"r");
+	readpackfile(packfile, op);
 
 }
 /*--------------------------------------------------------------------------*/ 
@@ -1353,37 +1340,37 @@ void arch_init(int argc, char **argv, struct options *op)
 /* Matrix vector product - basic version                                    */
 
 void smvp(int nodes, double ***A, int *Acol, 
-		int *Aindex, double **v, double **w) {
-  int i;
-  int Anext, Alast, col;
-  double sum0, sum1, sum2;
+          int *Aindex, double **v, double **w) {
+	int i;
+	int Anext, Alast, col;
+	double sum0, sum1, sum2;
  
-  for (i = 0; i < nodes; i++) {
-    Anext = Aindex[i];
-    Alast = Aindex[i + 1];
+	for (i = 0; i < nodes; i++) {
+		Anext = Aindex[i];
+		Alast = Aindex[i + 1];
 
-    sum0 = A[Anext][0][0]*v[i][0] + A[Anext][0][1]*v[i][1] + A[Anext][0][2]*v[i][2];
-    sum1 = A[Anext][1][0]*v[i][0] + A[Anext][1][1]*v[i][1] + A[Anext][1][2]*v[i][2];
-    sum2 = A[Anext][2][0]*v[i][0] + A[Anext][2][1]*v[i][1] + A[Anext][2][2]*v[i][2];
+		sum0 = A[Anext][0][0]*v[i][0] + A[Anext][0][1]*v[i][1] + A[Anext][0][2]*v[i][2];
+		sum1 = A[Anext][1][0]*v[i][0] + A[Anext][1][1]*v[i][1] + A[Anext][1][2]*v[i][2];
+		sum2 = A[Anext][2][0]*v[i][0] + A[Anext][2][1]*v[i][1] + A[Anext][2][2]*v[i][2];
 
-    Anext++;
-    while (Anext < Alast) {
-      col = Acol[Anext];
+		Anext++;
+		while (Anext < Alast) {
+			col = Acol[Anext];
 
-      sum0 += A[Anext][0][0]*v[col][0] + A[Anext][0][1]*v[col][1] + A[Anext][0][2]*v[col][2];
-      sum1 += A[Anext][1][0]*v[col][0] + A[Anext][1][1]*v[col][1] + A[Anext][1][2]*v[col][2];
-      sum2 += A[Anext][2][0]*v[col][0] + A[Anext][2][1]*v[col][1] + A[Anext][2][2]*v[col][2];
+			sum0 += A[Anext][0][0]*v[col][0] + A[Anext][0][1]*v[col][1] + A[Anext][0][2]*v[col][2];
+			sum1 += A[Anext][1][0]*v[col][0] + A[Anext][1][1]*v[col][1] + A[Anext][1][2]*v[col][2];
+			sum2 += A[Anext][2][0]*v[col][0] + A[Anext][2][1]*v[col][1] + A[Anext][2][2]*v[col][2];
       
 
-      w[col][0] += A[Anext][0][0]*v[i][0] + A[Anext][1][0]*v[i][1] + A[Anext][2][0]*v[i][2];
-      w[col][1] += A[Anext][0][1]*v[i][0] + A[Anext][1][1]*v[i][1] + A[Anext][2][1]*v[i][2];
-      w[col][2] += A[Anext][0][2]*v[i][0] + A[Anext][1][2]*v[i][1] + A[Anext][2][2]*v[i][2];
-      Anext++;
-    }
-    w[i][0] += sum0;
-    w[i][1] += sum1;
-    w[i][2] += sum2;
-  }
+			w[col][0] += A[Anext][0][0]*v[i][0] + A[Anext][1][0]*v[i][1] + A[Anext][2][0]*v[i][2];
+			w[col][1] += A[Anext][0][1]*v[i][0] + A[Anext][1][1]*v[i][1] + A[Anext][2][1]*v[i][2];
+			w[col][2] += A[Anext][0][2]*v[i][0] + A[Anext][1][2]*v[i][1] + A[Anext][2][2]*v[i][2];
+			Anext++;
+		}
+		w[i][0] += sum0;
+		w[i][1] += sum1;
+		w[i][2] += sum2;
+	}
 }
 
 
@@ -1391,75 +1378,75 @@ void smvp(int nodes, double ***A, int *Acol,
 /* Matrix vector product - hand optimized with lots of temporaries          */
 
 void smvp_opt(nodes, A, Acol, Aindex, v, w)
-int nodes;
-double ***A;
-int *Acol;
-int *Aindex;
-double **v;
-double **w;
+     int nodes;
+     double ***A;
+     int *Acol;
+     int *Aindex;
+     double **v;
+     double **w;
 {
-  int i;
-  int Anext, Alast;
-  double vi0, vi1, vi2, sum0, sum1, sum2, value;
-  double vcol0, vcol1, vcol2, wcol0, wcol1, wcol2;
-  int col;
+	int i;
+	int Anext, Alast;
+	double vi0, vi1, vi2, sum0, sum1, sum2, value;
+	double vcol0, vcol1, vcol2, wcol0, wcol1, wcol2;
+	int col;
   
-  for (i = 0; i < nodes; i++) {
-    w[i][0] = 0.0;
-    w[i][1] = 0.0;
-    w[i][2] = 0.0;
-  }
-  for (i = 0; i < nodes; i++) {
-    vi0 = v[i][0];
-    vi1 = v[i][1];
-    vi2 = v[i][2];
-    Anext = Aindex[i];
-    Alast = Aindex[i + 1];
-    sum0 = w[i][0] +
-           A[Anext][0][0] * vi0 + A[Anext][0][1] * vi1 + A[Anext][0][2] * vi2;
-    sum1 = w[i][1] +
-           A[Anext][1][0] * vi0 + A[Anext][1][1] * vi1 + A[Anext][1][2] * vi2;
-    sum2 = w[i][2] +
-           A[Anext][2][0] * vi0 + A[Anext][2][1] * vi1 + A[Anext][2][2] * vi2;
-    Anext++;
-    while (Anext < Alast) {
-      col = Acol[Anext];
-      vcol0 = v[col][0];
-      vcol1 = v[col][1];
-      vcol2 = v[col][2];
-      value = A[Anext][0][0];
-      sum0 += value * vcol0;
-      wcol0 = w[col][0] + value * vi0;
-      value = A[Anext][0][1];
-      sum0 += value * vcol1;
-      wcol1 = w[col][1] + value * vi0;
-      value = A[Anext][0][2];
-      sum0 += value * vcol2;
-      wcol2 = w[col][2] + value * vi0;
-      value = A[Anext][1][0];
-      sum1 += value * vcol0;
-      wcol0 += value * vi1;
-      value = A[Anext][1][1];
-      sum1 += value * vcol1;
-      wcol1 += value * vi1;
-      value = A[Anext][1][2];
-      sum1 += value * vcol2;
-      wcol2 += value * vi1;
-      value = A[Anext][2][0];
-      sum2 += value * vcol0;
-      w[col][0] = wcol0 + value * vi2;
-      value = A[Anext][2][1];
-      sum2 += value * vcol1;
-      w[col][1] = wcol1 + value * vi2;
-      value = A[Anext][2][2];
-      sum2 += value * vcol2;
-      w[col][2] = wcol2 + value * vi2;
-      Anext++;
-    }
-    w[i][0] = sum0;
-    w[i][1] = sum1;
-    w[i][2] = sum2;
-  }
+	for (i = 0; i < nodes; i++) {
+		w[i][0] = 0.0;
+		w[i][1] = 0.0;
+		w[i][2] = 0.0;
+	}
+	for (i = 0; i < nodes; i++) {
+		vi0 = v[i][0];
+		vi1 = v[i][1];
+		vi2 = v[i][2];
+		Anext = Aindex[i];
+		Alast = Aindex[i + 1];
+		sum0 = w[i][0] +
+			A[Anext][0][0] * vi0 + A[Anext][0][1] * vi1 + A[Anext][0][2] * vi2;
+		sum1 = w[i][1] +
+			A[Anext][1][0] * vi0 + A[Anext][1][1] * vi1 + A[Anext][1][2] * vi2;
+		sum2 = w[i][2] +
+			A[Anext][2][0] * vi0 + A[Anext][2][1] * vi1 + A[Anext][2][2] * vi2;
+		Anext++;
+		while (Anext < Alast) {
+			col = Acol[Anext];
+			vcol0 = v[col][0];
+			vcol1 = v[col][1];
+			vcol2 = v[col][2];
+			value = A[Anext][0][0];
+			sum0 += value * vcol0;
+			wcol0 = w[col][0] + value * vi0;
+			value = A[Anext][0][1];
+			sum0 += value * vcol1;
+			wcol1 = w[col][1] + value * vi0;
+			value = A[Anext][0][2];
+			sum0 += value * vcol2;
+			wcol2 = w[col][2] + value * vi0;
+			value = A[Anext][1][0];
+			sum1 += value * vcol0;
+			wcol0 += value * vi1;
+			value = A[Anext][1][1];
+			sum1 += value * vcol1;
+			wcol1 += value * vi1;
+			value = A[Anext][1][2];
+			sum1 += value * vcol2;
+			wcol2 += value * vi1;
+			value = A[Anext][2][0];
+			sum2 += value * vcol0;
+			w[col][0] = wcol0 + value * vi2;
+			value = A[Anext][2][1];
+			sum2 += value * vcol1;
+			w[col][1] = wcol1 + value * vi2;
+			value = A[Anext][2][2];
+			sum2 += value * vcol2;
+			w[col][2] = wcol2 + value * vi2;
+			Anext++;
+		}
+		w[i][0] = sum0;
+		w[i][1] = sum1;
+		w[i][2] = sum2;
+	}
 }
 
 /*--------------------------------------------------------------------------*/ 
@@ -1467,247 +1454,231 @@ double **w;
 
 void mem_init(void) {
 
-int i, j, k;
+	int i, j, k;
 
-/* Node vector */
+	/* Node vector */
 
-  nodekindf = (double *) malloc(ARCHnodes * sizeof(double));
-  if (nodekindf == (double *) NULL) {
-    fprintf(stderr, "malloc failed for nodekindf\n");
-    fflush(stderr);
-    exit(0);
-  }
+	nodekindf = (double *) malloc(ARCHnodes * sizeof(double));
+	if (nodekindf == (double *) NULL) {
+		fprintf(stderr, "malloc failed for nodekindf\n");
+		fflush(stderr);
+		exit(0);
+	}
 
-/* Node vector */
+	/* Node vector */
 
-  nodekind = (int *) malloc(ARCHnodes * sizeof(int));
-  if (nodekind == (int *) NULL) {
-    fprintf(stderr, "malloc failed for nodekind\n");
-    fflush(stderr);
-    exit(0);
-  }
+	nodekind = (int *) malloc(ARCHnodes * sizeof(int));
+	if (nodekind == (int *) NULL) {
+		fprintf(stderr, "malloc failed for nodekind\n");
+		fflush(stderr);
+		exit(0);
+	}
 
-/* Element vector */
+	/* Element vector */
 
-  source_elms = (int *) malloc(ARCHelems * sizeof(int));
-  if (source_elms == (int *) NULL) {
-    fprintf(stderr, "malloc failed for source_elms\n");
-    fflush(stderr);
-    exit(0);
-  }
+	source_elms = (int *) malloc(ARCHelems * sizeof(int));
+	if (source_elms == (int *) NULL) {
+		fprintf(stderr, "malloc failed for source_elms\n");
+		fflush(stderr);
+		exit(0);
+	}
 
-/* Velocity array */
+	/* Velocity array */
   
-  double* vel_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
-  vel = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (vel == (double **) NULL) {
-    fprintf(stderr, "malloc failed for vel\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (i = 0; i < ARCHnodes; i++) {
-    vel[i] = vel_temp + i * 3 ;//(double *) malloc(3 * sizeof(double));
-    if (vel[i] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for vel[%d]\n",i);
-      fflush(stderr);
-      exit(0);
-    }
-  }
+	double* vel_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
+	vel = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (vel == (double **) NULL) {
+		fprintf(stderr, "malloc failed for vel\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (i = 0; i < ARCHnodes; i++) {
+		vel[i] = vel_temp + i * 3 ;
+		if (vel[i] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for vel[%d]\n",i);
+			fflush(stderr);
+			exit(0);
+		}
+	}
 
-/* Mass matrix */
+	/* Mass matrix */
   
-  double* M_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
-  M = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (M == (double **) NULL) {
-    fprintf(stderr, "malloc failed for M\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (i = 0; i < ARCHnodes; i++) {
-    M[i] = M_temp + i*3; //(double *) malloc(3 * sizeof(double));
-    if (M[i] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for M[%d]\n",i);
-      fflush(stderr);
-      exit(0);
-    }
-  }
+	double* M_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
+	M = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (M == (double **) NULL) {
+		fprintf(stderr, "malloc failed for M\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (i = 0; i < ARCHnodes; i++) {
+		M[i] = M_temp + i*3;
+		if (M[i] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for M[%d]\n",i);
+			fflush(stderr);
+			exit(0);
+		}
+	}
 
-/* Damping matrix */
-  double* C_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
-  C = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (C == (double **) NULL) {
-    fprintf(stderr, "malloc failed for C\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (i = 0; i < ARCHnodes; i++) {
-    C[i] = C_temp+ i*3;//(double *) malloc(3 * sizeof(double));
-    if (C[i] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for C[%d]\n",i);
-      fflush(stderr);
-      exit(0);
-    }
-  }
+	/* Damping matrix */
+	double* C_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
+	C = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (C == (double **) NULL) {
+		fprintf(stderr, "malloc failed for C\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (i = 0; i < ARCHnodes; i++) {
+		C[i] = C_temp+ i*3;//(double *) malloc(3 * sizeof(double));
+		if (C[i] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for C[%d]\n",i);
+			fflush(stderr);
+			exit(0);
+		}
+	}
 
-/* Auxiliary mass matrix */
-  double* M23_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
-  M23 = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (M23 == (double **) NULL) {
-    fprintf(stderr, "malloc failed for M23\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (i = 0; i < ARCHnodes; i++) {
-    M23[i] = M23_temp + i*3 ; //(double *) malloc(3 * sizeof(double));
-    if (M23[i] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for M23[%d]\n",i);
-      fflush(stderr);
-      exit(0);
-    }
-  }
+	/* Auxiliary mass matrix */
+	double* M23_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
+	M23 = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (M23 == (double **) NULL) {
+		fprintf(stderr, "malloc failed for M23\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (i = 0; i < ARCHnodes; i++) {
+		M23[i] = M23_temp + i*3 ;
+		if (M23[i] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for M23[%d]\n",i);
+			fflush(stderr);
+			exit(0);
+		}
+	}
 
-/* Auxiliary damping matrix */
-  double* C23_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
-  C23 = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (C23 == (double **) NULL) {
-    fprintf(stderr, "malloc failed for C23\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (i = 0; i < ARCHnodes; i++) {
-    C23[i] = C23_temp + i*3 ; //(double *) malloc(3 * sizeof(double));
-    if (C23[i] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for C23[%d]\n",i);
-      fflush(stderr);
-      exit(0);
-    }
-  }
+	/* Auxiliary damping matrix */
+	double* C23_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
+	C23 = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (C23 == (double **) NULL) {
+		fprintf(stderr, "malloc failed for C23\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (i = 0; i < ARCHnodes; i++) {
+		C23[i] = C23_temp + i*3 ;
+		if (C23[i] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for C23[%d]\n",i);
+			fflush(stderr);
+			exit(0);
+		}
+	}
 
-/* Auxiliary vector */
-  double* V23_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
-  V23 = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (V23 == (double **) NULL) {
-    fprintf(stderr, "malloc failed for V23\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (i = 0; i < ARCHnodes; i++) {
-    V23[i] = V23_temp + i*3; //(double *) malloc(3 * sizeof(double));
-    if (V23[i] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for V23[%d]\n",i);
-      fflush(stderr);
-      exit(0);
-    }
-  }
-
-  /* Displacement array disp[3][ARCHnodes][3] */
-  /* disp = (double ***) malloc(3 * sizeof(double **)); */
-  /* if (disp == (double ***) NULL) { */
-  /*   fprintf(stderr, "malloc failed for disp\n"); */
-  /*   fflush(stderr); */
-  /*   exit(0); */
-  /* } */
-  double* disp0_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
-  disp0 = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (disp0 == (double **) NULL) {
-    fprintf(stderr, "malloc failed for disp0\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (j = 0; j < ARCHnodes; j++) {
-    disp0[j] = disp0_temp + j*3 ;//(double *) malloc(3 * sizeof(double));
-    if (disp0[j] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for disp0[%d]\n",j);
-      fflush(stderr);
-      exit(0);
-    }
-  }
+	/* Auxiliary vector */
+	double* V23_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
+	V23 = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (V23 == (double **) NULL) {
+		fprintf(stderr, "malloc failed for V23\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (i = 0; i < ARCHnodes; i++) {
+		V23[i] = V23_temp + i*3;
+		if (V23[i] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for V23[%d]\n",i);
+			fflush(stderr);
+			exit(0);
+		}
+	}
+	double* disp0_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
+	disp0 = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (disp0 == (double **) NULL) {
+		fprintf(stderr, "malloc failed for disp0\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (j = 0; j < ARCHnodes; j++) {
+		disp0[j] = disp0_temp + j*3 ;
+		if (disp0[j] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for disp0[%d]\n",j);
+			fflush(stderr);
+			exit(0);
+		}
+	}
   
-  double* disp1_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
-  disp1 = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (disp1 == (double **) NULL) {
-    fprintf(stderr, "malloc failed for disp1\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (j = 0; j < ARCHnodes; j++) {
-    disp1[j] = disp1_temp+j*3;//(double *) malloc(3 * sizeof(double));
-    if (disp1[j] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for disp1[%d]\n",j);
-      fflush(stderr);
-      exit(0);
-    }
-  }
+	double* disp1_temp = (double*) malloc(ARCHnodes * 3 * sizeof(double));
+	disp1 = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (disp1 == (double **) NULL) {
+		fprintf(stderr, "malloc failed for disp1\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (j = 0; j < ARCHnodes; j++) {
+		disp1[j] = disp1_temp+j*3;
+		if (disp1[j] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for disp1[%d]\n",j);
+			fflush(stderr);
+			exit(0);
+		}
+	}
 
-  double* disp2_temp = (double*) malloc(sizeof(double) * 3 * ARCHnodes);
-  disp2 = (double **) malloc(ARCHnodes * sizeof(double *));
-  if (disp2 == (double **) NULL) {
-    fprintf(stderr, "malloc failed for disp2\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (j = 0; j < ARCHnodes; j++) {
-    disp2[j] = disp2_temp + j*3 ;//(double *) malloc(3 * sizeof(double));
-    if (disp2[j] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for disp2[%d]\n",j);
-      fflush(stderr);
-      exit(0);
-    }
-  }
+	double* disp2_temp = (double*) malloc(sizeof(double) * 3 * ARCHnodes);
+	disp2 = (double **) malloc(ARCHnodes * sizeof(double *));
+	if (disp2 == (double **) NULL) {
+		fprintf(stderr, "malloc failed for disp2\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (j = 0; j < ARCHnodes; j++) {
+		disp2[j] = disp2_temp + j*3;
+		if (disp2[j] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for disp2[%d]\n",j);
+			fflush(stderr);
+			exit(0);
+		}
+	}
     
 
-  /* Stiffness matrix K[ARCHmatrixlen][3][3] */
+	/* Stiffness matrix K[ARCHmatrixlen][3][3] */
   
-  double* K_temp = (double*)malloc(sizeof(double)*9*ARCHmatrixlen);
-  K = (double **) malloc(ARCHmatrixlen * sizeof(double **));
-  if (K == (double **) NULL) {
-    fprintf(stderr, "malloc failed for K\n");
-    fflush(stderr);
-    exit(0);
-  }
-  for (i = 0; i < ARCHmatrixlen; i++) {
-    K[i] = K_temp + i*9; //(double **) malloc(3 * sizeof(double *));
-    if (K[i] == (double *) NULL) {
-      fprintf(stderr, "malloc failed for K[%d]\n",i);
-      fflush(stderr);
-      exit(0);
-    }
-    /* for (j = 0; j < 3; j++) { */
-    /*   K[i][j] = (double *) malloc(3 * sizeof(double)); */
-    /*   if (K[i][j] == (double *) NULL) { */
-    /* 	fprintf(stderr, "malloc failed for K[%d][%d]\n",i,j); */
-    /* 	fflush(stderr); */
-    /* 	exit(0); */
-    /*   } */
-    /* } */
-  }
+	double* K_temp = (double*)malloc(sizeof(double)*9*ARCHmatrixlen);
+	K = (double **) malloc(ARCHmatrixlen * sizeof(double **));
+	if (K == (double **) NULL) {
+		fprintf(stderr, "malloc failed for K\n");
+		fflush(stderr);
+		exit(0);
+	}
+	for (i = 0; i < ARCHmatrixlen; i++) {
+		K[i] = K_temp + i*9;
+		if (K[i] == (double *) NULL) {
+			fprintf(stderr, "malloc failed for K[%d]\n",i);
+			fflush(stderr);
+			exit(0);
+		}
+	}
 
-  /* Initializations */
+	/* Initializations */
 
-  for (i = 0; i < ARCHnodes; i++) {
-    nodekind[i] = 0;
-    for (j = 0; j < 3; j++) {
-      M[i][j] = 0.0;
-      C[i][j] = 0.0;
-      M23[i][j] = 0.0;
-      C23[i][j] = 0.0;
-      V23[i][j] = 0.0;
-      disp0[i][j] = 0.0;
-      disp1[i][j] = 0.0;
-      disp2[i][j] = 0.0;
-    }
-  }
+	for (i = 0; i < ARCHnodes; i++) {
+		nodekind[i] = 0;
+		for (j = 0; j < 3; j++) {
+			M[i][j] = 0.0;
+			C[i][j] = 0.0;
+			M23[i][j] = 0.0;
+			C23[i][j] = 0.0;
+			V23[i][j] = 0.0;
+			disp0[i][j] = 0.0;
+			disp1[i][j] = 0.0;
+			disp2[i][j] = 0.0;
+		}
+	}
 
-  for (i = 0; i < ARCHelems; i++) {
-    source_elms[i] = 1;
-  }
+	for (i = 0; i < ARCHelems; i++) {
+		source_elms[i] = 1;
+	}
 
-  for (i = 0; i < ARCHmatrixlen; i++) {
-    for (j = 0; j < 3; j++) {
-      for (k = 0; k < 3; k++) {
-        K[i][j*3+k] = 0.0;
-      }
-    }
-  }
+	for (i = 0; i < ARCHmatrixlen; i++) {
+		for (j = 0; j < 3; j++) {
+			for (k = 0; k < 3; k++) {
+				K[i][j*3+k] = 0.0;
+			}
+		}
+	}
 }
 /*--------------------------------------------------------------------------*/ 
