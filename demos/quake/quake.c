@@ -516,7 +516,6 @@ int main(int argc, char **argv)
 			for (j = 0; j < 3; j++)
 				disp2[i][j] = 0.0;
 
- 
 		/*
 		 * LOOP 7
 		 */
