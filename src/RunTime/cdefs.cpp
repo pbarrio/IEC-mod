@@ -60,7 +60,7 @@ extern "C" {
 #ifndef NDEBUG
 		fprintf(stdout,"PID:%d,Creating inspector:%p\n",md,new_inspector);
 		fflush(stdout);
-		MPI_Barrier(MPI_COMM_WORLD);
+// 		MPI_Barrier(MPI_COMM_WORLD);
 #endif
 	}
 
@@ -121,7 +121,6 @@ extern "C" {
 
 
 	void add_pin_to_net(int data_num, int index, int id, int isploop) {
-		//  printf("Adding pin to %d of %d\n",index,data_num);
 		inspector* my_inspect = inspector::instance();
 		my_inspect->AddNet(data_num,index,id,isploop);
 	}
@@ -547,5 +546,44 @@ extern "C" {
 		fflush(stdout);
 		fflush(stderr);
 	}
-  
+
+
+	/*
+	 * NEW FUNCTIONS FOR PIPELINING
+	 */
+
+	int pipe_registerLoop(){
+
+		static unsigned int loopId = 0;
+
+		inspector::instance()->pipe_registerLoop(loopId);
+
+		++loopId;
+		return loopId - 1;
+	}
+
+
+	void pipe_registerIteration(int loop, int iteration){
+
+		inspector::instance()->pipe_registerIteration(loop, iteration);
+	}
+
+
+	void pipe_comm(int loop, int iter){
+
+		inspector::instance()->pipe_comm(loop, iter);
+	}
+
+
+	void pipe_get(int loop, int iter){
+
+		inspector::instance()->pipe_getAndUnblock(loop, iter);
+	}
+
+
+	void pipe_endExternalIter(){
+
+		inspector::instance()->pipe_endExternalIter();
+	}
+
 }

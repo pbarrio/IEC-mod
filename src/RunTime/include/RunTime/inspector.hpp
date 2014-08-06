@@ -32,6 +32,8 @@
 #include <cstdlib>
 #include <cassert>
 
+#define PIPE_TAG 9813 // For instance :D
+
 //Class for the inspector to generate and partition hypergraph
 
 extern "C" double rtclock();
@@ -62,6 +64,39 @@ private:
 	///All arrays specified in pragma
 	std::deque<global_data*> all_data;
 
+
+
+
+
+	// consumers is: All loops < All iters <
+	//               total comm size for this iter + All target procs of this iter > >
+	// Each target proc (int + PipeProcComm in a map) is: proc ID (int in the map) + 
+	//                                                    total size of the comm +
+	//                                                    all last uses
+	// Each last use (Last) is : pointer to the data + size
+	typedef struct {
+		void* ptr;
+		int size;
+	} Data;
+	typedef struct {
+		int totalSize;
+		std::vector<Data> data;
+	} Comm;
+	typedef std::map<int, Comm> ProcToCommMap;
+	typedef struct {
+		int totalSize;
+		ProcToCommMap procDeps;
+	} PipeIterComms;
+	typedef std::map<int, PipeIterComms>[] LoopIterComms;
+	LoopIterComms consumers;
+	LoopIterComms producers;
+	// std::vector< std::vector< PipeIterComms > > consumers;
+	// std::vector< std::vector< PipeIterComms > > producers;
+
+
+
+
+
 	///All loops specified as parallel
 	std::deque<global_loop*> all_loops;
 
@@ -72,7 +107,7 @@ private:
 
 	int* const data_num_offset;
 
-	/* //Node level communicator */
+	/* Node level communicator */
 	std::deque<global_comm*> all_comm; 
 
 	std::deque<access_data*> all_access_data;
@@ -225,6 +260,26 @@ public:
 		all_solvers[0]->print(outfile);
 		fclose(outfile);
 	}
+
+
+
+
+
+
+	/*
+	 * NEW FUNCTIONS FOR PIPELINING
+	 */
+
+	void pipe_registerLoop(int loopId);
+	void pipe_registerIteration(int loop, int iteration);
+	void pipe_comm(int loop, int iter);
+	void pipe_getAndUnblock(int loop, int iter);
+
+	inline void pipe_endExternalIter(){
+
+		MPI_Barrier(global_comm::global_iec_communicator);
+	}
+
 };
 
 

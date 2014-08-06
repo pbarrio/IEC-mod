@@ -176,12 +176,19 @@ void local_comm::ExtractReadRecvBuffer(char* recv_buffer, int buffer_size)
 }
 
 
+/**
+ * \brief Populates a send buffer with all the data that must be sent to other processes
+ *
+ * \param send_buffer
+ */
 void local_comm::PopulateWriteSendBuffer(char* send_buffer)
 {
-	for( int i = 0 ; i < nprocs/**nthreads*/ ; i++ )
+	// offset_array must be filled in with the positions of the send buffer where each
+	// ghost must reside
+	for (int i = 0 ; i < nprocs/**nthreads*/ ; i++)
 		offset_array[i]  = write_send_offset[i];
 
-	for( vector<local_data*>::iterator it = write_arrays.begin() ; it  != write_arrays.end() ; it++){
+	for (vector<local_data*>::iterator it = write_arrays.begin() ; it  != write_arrays.end() ; it++){
 		(*it)->SendGhostData(send_buffer,offset_array);
 	}
 }

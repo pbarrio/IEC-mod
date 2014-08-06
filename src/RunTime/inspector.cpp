@@ -53,6 +53,19 @@ char* global_comm::write_send_signal = NULL;
 char* global_comm::write_recv_signal = NULL;
 
 
+/**
+ * \brief Sets up singleton inspector
+ *
+ * \param pid Process identifier in the distributed program
+ * \param np Number of processes in the distributed program
+ * \param nl Number of loop groups
+ * \param nd Number of direct access arrays
+ * \param nc
+ * \param nad
+ * \param iter_num_count Array of iteration limits (must be of size nl)
+ * \param data_num_count Array of direct array sizes (must be of size nd)
+ * \param ro Array of read-only flags for the direct arrays (must be of size nd)
+ */
 inspector::inspector(int pid, int np/*, int nt*/, int nl, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
 	proc_id(pid),
 	nprocs(np),
@@ -118,6 +131,9 @@ inspector::inspector(int pid, int np/*, int nt*/, int nl, int nd, int nc, int na
 	sprintf(access_file_name,"access_data_%d.dat",proc_id);
 	access_file = fopen(access_file_name,"w");
 #endif
+
+	// Pablo
+	MPI_Barrier(global_comm::global_iec_communicator);
 }
 
 
@@ -285,6 +301,12 @@ bool inspector::DoneGraphGeneration(){
 }
 
 
+/**
+ * \brief Adds a vertex to the iteration/data hypergraph
+ *
+ * \param iter_num The vertex will be added to this loop group
+ * \param iter_value The vertex represents this iteration number
+ */
 void inspector::AddVertex(int iter_num, int iter_value)
 {
 	assert(iter_num < all_loops.size());
@@ -295,16 +317,24 @@ void inspector::AddVertex(int iter_num, int iter_value)
 }
 
 
+/**
+ * \brief Adds a pin from the current vertex to a network representing some data.
+ *
+ * \param data_num Identifier of the array to be referenced
+ * \param index Identifier of the array position to be referenced
+ * \param is_direct =0 if addressing is affine; !=0 if it depends on indirection array.
+ * \param is_ploop !=0 if the access comes from a partitionable loop
+ */
 void inspector::AddNet(int data_num, int index, int is_direct, int is_ploop)
 {
 	assert(data_num < all_data.size());
 	global_data* curr_data = all_data[data_num];
-  
+
 	///Get the current net
 	net* net_num = all_data[data_num]->data_net_info[index];
 
 	pin_info new_pin(curr_vertex,is_direct != 0 ? true : false);
-  
+
 	///If access is from a partitionable loops and is direct access
 	if( is_ploop && is_direct ){
 		///The compile time analysis should ensure that there are not other "direct accesses" to this array. The direct_vertex field should be NULL or the same vertex as the curr_vertex
@@ -1159,6 +1189,8 @@ void inspector::CommunicateWrites(/*int thread_id,*/ int comm_num)
 
 // 	local_comm* curr_local_comm = local_inspector::all_local_inspectors[thread_id]->all_comm[comm_num];
 	local_comm* curr_local_comm = local_inspector::all_local_inspectors[0]->all_comm[comm_num];
+
+	// Fills in the buffer that will be sent to all neighbour processes. Here's all the meat!
 	if( global_comm::max_send_size > 0 )
 		curr_local_comm->PopulateWriteSendBuffer(global_comm::send_buffer);
 
@@ -1167,7 +1199,8 @@ void inspector::CommunicateWrites(/*int thread_id,*/ int comm_num)
  
 // #pragma omp master
 	{
-		//MPI_Barrier(MPI_COMM_WORLD);
+
+		// Sync with the receivers and senders
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_recv ; i++ )
 			MPI_Isend(global_comm::write_recv_signal,1,MPI_CHAR,all_comm[comm_num]->proc_id_write_recv[i],comm_num,global_comm::global_iec_communicator,global_comm::write_recv_start_request+i);
 		for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_send ; i++ )
@@ -1175,13 +1208,19 @@ void inspector::CommunicateWrites(/*int thread_id,*/ int comm_num)
 		if( all_comm[comm_num]->nprocs_write_recv > 0 )
 			MPI_Waitall(all_comm[comm_num]->nprocs_write_recv,global_comm::write_recv_start_request,global_comm::write_recv_start_status);
 
-
 		if( global_comm::max_send_size > 0 ){
 			global_comm* curr_communicator = all_comm[comm_num];
 			int count;
-			for( int i =0 ; i < nprocs ; i++ )
+			for(int i = 0; i < nprocs; i++){
+
 				if( ( count = curr_communicator->write_send_count[i]  ) != 0 )
-					ARMCI_NbPut(global_comm::send_buffer+curr_communicator->write_send_offset[i],global_comm::put_buffer[i]+curr_communicator->write_put_displ[i],count,i,NULL);
+
+					ARMCI_NbPut(global_comm::send_buffer + curr_communicator->write_send_offset[i],
+					            global_comm::put_buffer[i] + curr_communicator->write_put_displ[i],
+					            count,
+					            i,
+					            NULL);
+			}
 		}
 	}
 
@@ -1262,4 +1301,111 @@ void inspector::print_hypergraph(FILE* outfile)
 			}
 	fflush(outfile);
 	MPI_Barrier(global_comm::global_iec_communicator);
+}
+
+
+/*
+ * NEW FUNCTIONS FOR PIPELINING
+ */
+
+void inspector::pipe_registerLoop(int loopId){
+
+	
+}
+
+
+void inspector::pipe_comm(int loop, int iter){
+
+	// Get the "pipe communication" structure corresponding to this iteration and allocate send buffer
+	PipeIterComms& iterComms = consumers[loop][iter];
+	// ProcToCommMap& allTargetProcs = iterComms.procDeps;
+	// unsigned char* sendBuf = new unsigned char[iterComms.totalSize];
+	// unsigned char* sendHead = sendBuf;
+
+	// // Get all the processes to which something must be communicated in this iteration
+	// int nTargets = allTargetProcs.size();
+	// MPI_Request* reqs = new MPI_Request[nTargets];
+	// int iProc = 0;
+	// for (ProcToCommMap::iterator procIt = allTargetProcs.begin(),
+	// 	     procEnd = allTargetProcs.end();
+	//      procIt != procEnd;
+	//      ++procEnd, ++iProc){
+
+	// 	int proc = procIt->first;
+	// 	Comm commDetails = procIt->second;
+
+	// 	// Get all the last uses and fill in the processor's part of the send buffer
+	// 	unsigned char* writeHead = sendHead;
+	// 	for (std::vector<Data>::iterator lastIt = commDetails.data.begin(),
+	// 		     lastEnd = commDetails.data.end();
+	// 	     lastIt != lastEnd;
+	// 	     ++lastIt){
+
+	// 		memcpy(writeHead, lastIt->ptr, lastIt->size);
+	// 		writeHead += lastIt->size;
+	// 	}
+
+	// 	MPI_Issend(sendHead, commDetails.totalSize, MPI_BYTE, proc, PIPE_TAG,
+	// 	           global_comm::global_iec_communicator, &reqs[iProc]);
+
+	// 	// Update the pointer to the send region for the next process. Keep in mind
+	// 	// that there is only one buffer: all the send data to all the processes must
+	// 	// be held in the send buffer until a Waitall is issued. This is why we use
+	// 	// a single big send buffer rather than one smaller buffer per target process.
+	// 	sendHead = writeHead;
+	// }
+
+	// MPI_Waitall(allTargetProcs.size(), reqs, MPI_STATUSES_IGNORE);
+
+	// delete [] sendBuf;
+	// delete [] reqs;
+}
+
+
+void inspector::pipe_getAndUnblock(int loop, int iter){
+
+	// Get the "pipe communication" structure corresponding to this iteration
+	// and allocate receive buffer
+	PipeIterComms& iterComms = producers[loop][iter];
+	// ProcToCommMap& allSourceProcs = iterComms.procDeps;
+	// unsigned char* recvBuf = new unsigned char[iterComms.totalSize];
+	// unsigned char* recvHead = recvBuf;
+
+	// // Get all the processes that will send something to this one
+	// int nSources = allSourceProcs.size();
+	// MPI_Request* reqs = new MPI_Request[nSources];
+	// int iProc = 0;
+	// for (ProcToCommMap::iterator procIt = allSourceProcs.begin(),
+	// 	     procEnd = allSourceProcs.end();
+	//      procIt != procEnd;
+	//      ++procEnd, ++iProc){
+
+	// 	int proc = procIt->first;
+	// 	Comm commDetails = procIt->second;
+
+	// 	MPI_Irecv(recvHead, commDetails.totalSize, MPI_BYTE, proc, PIPE_TAG,
+	// 	           global_comm::global_iec_communicator, &reqs[iProc]);
+
+	// 	// Fill in the required arrays with the received values
+	// 	unsigned char* readHead = recvHead;
+	// 	for (std::vector<Data>::iterator firstIt = commDetails.data.begin(),
+	// 		     firstEnd = commDetails.data.end();
+	// 	     firstIt != firstEnd;
+	// 	     ++firstIt){
+
+	// 		memcpy(firstIt->ptr, readHead, firstIt->size);
+	// 		readHead += firstIt->size;
+	// 	}
+
+	// 	// Update the pointer to the send region for the next process. Keep in mind
+	// 	// that there is only one buffer: all the send data to all the processes must
+	// 	// be held in the send buffer until a Waitall is issued. This is why we use
+	// 	// a single big send buffer rather than one smaller buffer per target process.
+	// 	recvHead = readHead;
+	// }
+
+	// MPI_Waitall(allSourceProcs.size(), reqs, MPI_STATUSES_IGNORE);
+
+	// delete [] recvBuf;
+	// delete [] reqs;
 }
