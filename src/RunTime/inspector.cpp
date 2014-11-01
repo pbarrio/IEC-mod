@@ -1308,57 +1308,51 @@ void inspector::print_hypergraph(FILE* outfile)
  * NEW FUNCTIONS FOR PIPELINING
  */
 
-void inspector::pipe_registerLoop(int loopId){
-
-	
-}
-
-
 void inspector::pipe_comm(int loop, int iter){
 
-	// Get the "pipe communication" structure corresponding to this iteration and allocate send buffer
-	PipeIterComms& iterComms = consumers[loop][iter];
-	// ProcToCommMap& allTargetProcs = iterComms.procDeps;
-	// unsigned char* sendBuf = new unsigned char[iterComms.totalSize];
-	// unsigned char* sendHead = sendBuf;
+	// Get the "pipe communication" corresponding to this iteration and allocate send buffer
+	ProcComms& allProcComms = consumers[loop][iter];
+	unsigned char* sendBuf = new unsigned char[allProcComms.totalSize];
+	unsigned char* sendHead = sendBuf;
 
-	// // Get all the processes to which something must be communicated in this iteration
-	// int nTargets = allTargetProcs.size();
-	// MPI_Request* reqs = new MPI_Request[nTargets];
-	// int iProc = 0;
-	// for (ProcToCommMap::iterator procIt = allTargetProcs.begin(),
-	// 	     procEnd = allTargetProcs.end();
-	//      procIt != procEnd;
-	//      ++procEnd, ++iProc){
+	// Get all the processes to which something must be communicated in this iteration
+	ProcToCommMap& allTargetProcs = allProcComms.procToCommMap;
+	int nTargets = allTargetProcs.size();
+	MPI_Request* reqs = new MPI_Request[nTargets];
+	int iProc = 0;
+	for (ProcToCommMap::iterator procIt = allTargetProcs.begin(),
+		     procEnd = allTargetProcs.end();
+	     procIt != procEnd;
+	     ++procEnd, ++iProc){
 
-	// 	int proc = procIt->first;
-	// 	Comm commDetails = procIt->second;
+		int proc = procIt->first;
+		Comm commDetails = procIt->second;
 
-	// 	// Get all the last uses and fill in the processor's part of the send buffer
-	// 	unsigned char* writeHead = sendHead;
-	// 	for (std::vector<Data>::iterator lastIt = commDetails.data.begin(),
-	// 		     lastEnd = commDetails.data.end();
-	// 	     lastIt != lastEnd;
-	// 	     ++lastIt){
+		// Get all the last uses and fill in the processor's part of the send buffer
+		unsigned char* writeHead = sendHead;
+		for (std::vector<Last>::iterator lastIt = commDetails.data.begin(),
+			     lastEnd = commDetails.data.end();
+		     lastIt != lastEnd;
+		     ++lastIt){
 
-	// 		memcpy(writeHead, lastIt->ptr, lastIt->size);
-	// 		writeHead += lastIt->size;
-	// 	}
+			memcpy(writeHead, lastIt->ptr, lastIt->size);
+			writeHead += lastIt->size;
+		}
 
-	// 	MPI_Issend(sendHead, commDetails.totalSize, MPI_BYTE, proc, PIPE_TAG,
-	// 	           global_comm::global_iec_communicator, &reqs[iProc]);
+		MPI_Issend(sendHead, commDetails.totalSize, MPI_BYTE, proc, PIPE_TAG,
+		           global_comm::global_iec_communicator, &reqs[iProc]);
 
-	// 	// Update the pointer to the send region for the next process. Keep in mind
-	// 	// that there is only one buffer: all the send data to all the processes must
-	// 	// be held in the send buffer until a Waitall is issued. This is why we use
-	// 	// a single big send buffer rather than one smaller buffer per target process.
-	// 	sendHead = writeHead;
-	// }
+		// Update the pointer to the send region for the next process. Keep in mind
+		// that there is only one buffer: all the send data to all the processes must
+		// be held in the send buffer until a Waitall is issued. This is why we use
+		// a single big send buffer rather than one smaller buffer per target process.
+		sendHead = writeHead;
+	}
 
-	// MPI_Waitall(allTargetProcs.size(), reqs, MPI_STATUSES_IGNORE);
+	MPI_Waitall(allTargetProcs.size(), reqs, MPI_STATUSES_IGNORE);
 
-	// delete [] sendBuf;
-	// delete [] reqs;
+	delete [] sendBuf;
+	delete [] reqs;
 }
 
 
@@ -1366,46 +1360,46 @@ void inspector::pipe_getAndUnblock(int loop, int iter){
 
 	// Get the "pipe communication" structure corresponding to this iteration
 	// and allocate receive buffer
-	PipeIterComms& iterComms = producers[loop][iter];
-	// ProcToCommMap& allSourceProcs = iterComms.procDeps;
-	// unsigned char* recvBuf = new unsigned char[iterComms.totalSize];
-	// unsigned char* recvHead = recvBuf;
+	ProcComms& iterComms = producers[loop][iter];
+	ProcToCommMap& allSourceProcs = iterComms.procToCommMap;
+	unsigned char* recvBuf = new unsigned char[iterComms.totalSize];
+	unsigned char* recvHead = recvBuf;
 
-	// // Get all the processes that will send something to this one
-	// int nSources = allSourceProcs.size();
-	// MPI_Request* reqs = new MPI_Request[nSources];
-	// int iProc = 0;
-	// for (ProcToCommMap::iterator procIt = allSourceProcs.begin(),
-	// 	     procEnd = allSourceProcs.end();
-	//      procIt != procEnd;
-	//      ++procEnd, ++iProc){
+	// Get all the processes that will send something to this one
+	int nSources = allSourceProcs.size();
+	MPI_Request* reqs = new MPI_Request[nSources];
+	int iProc = 0;
+	for (ProcToCommMap::iterator procIt = allSourceProcs.begin(),
+		     procEnd = allSourceProcs.end();
+	     procIt != procEnd;
+	     ++procEnd, ++iProc){
 
-	// 	int proc = procIt->first;
-	// 	Comm commDetails = procIt->second;
+		int proc = procIt->first;
+		Comm commDetails = procIt->second;
 
-	// 	MPI_Irecv(recvHead, commDetails.totalSize, MPI_BYTE, proc, PIPE_TAG,
-	// 	           global_comm::global_iec_communicator, &reqs[iProc]);
+		MPI_Irecv(recvHead, commDetails.totalSize, MPI_BYTE, proc, PIPE_TAG,
+		           global_comm::global_iec_communicator, &reqs[iProc]);
 
-	// 	// Fill in the required arrays with the received values
-	// 	unsigned char* readHead = recvHead;
-	// 	for (std::vector<Data>::iterator firstIt = commDetails.data.begin(),
-	// 		     firstEnd = commDetails.data.end();
-	// 	     firstIt != firstEnd;
-	// 	     ++firstIt){
+		// Fill in the required arrays with the received values
+		unsigned char* readHead = recvHead;
+		for (std::vector<Last>::iterator firstIt = commDetails.data.begin(),
+			     firstEnd = commDetails.data.end();
+		     firstIt != firstEnd;
+		     ++firstIt){
 
-	// 		memcpy(firstIt->ptr, readHead, firstIt->size);
-	// 		readHead += firstIt->size;
-	// 	}
+			memcpy(firstIt->ptr, readHead, firstIt->size);
+			readHead += firstIt->size;
+		}
 
-	// 	// Update the pointer to the send region for the next process. Keep in mind
-	// 	// that there is only one buffer: all the send data to all the processes must
-	// 	// be held in the send buffer until a Waitall is issued. This is why we use
-	// 	// a single big send buffer rather than one smaller buffer per target process.
-	// 	recvHead = readHead;
-	// }
+		// Update the pointer to the send region for the next process. Keep in mind
+		// that there is only one buffer: all the send data to all the processes must
+		// be held in the send buffer until a Waitall is issued. This is why we use
+		// a single big send buffer rather than one smaller buffer per target process.
+		recvHead = readHead;
+	}
 
-	// MPI_Waitall(allSourceProcs.size(), reqs, MPI_STATUSES_IGNORE);
+	MPI_Waitall(allSourceProcs.size(), reqs, MPI_STATUSES_IGNORE);
 
-	// delete [] recvBuf;
-	// delete [] reqs;
+	delete [] recvBuf;
+	delete [] reqs;
 }

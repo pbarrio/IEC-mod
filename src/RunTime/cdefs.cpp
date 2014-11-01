@@ -552,23 +552,6 @@ extern "C" {
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
 
-	int pipe_registerLoop(){
-
-		static unsigned int loopId = 0;
-
-		inspector::instance()->pipe_registerLoop(loopId);
-
-		++loopId;
-		return loopId - 1;
-	}
-
-
-	void pipe_registerIteration(int loop, int iteration){
-
-		inspector::instance()->pipe_registerIteration(loop, iteration);
-	}
-
-
 	void pipe_comm(int loop, int iter){
 
 		inspector::instance()->pipe_comm(loop, iter);

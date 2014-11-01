@@ -64,38 +64,35 @@ private:
 	///All arrays specified in pragma
 	std::deque<global_data*> all_data;
 
-
-
-
-
-	// consumers is: All loops < All iters <
-	//               total comm size for this iter + All target procs of this iter > >
-	// Each target proc (int + PipeProcComm in a map) is: proc ID (int in the map) + 
-	//                                                    total size of the comm +
-	//                                                    all last uses
-	// Each last use (Last) is : pointer to the data + size
+	/*
+	 * MAIN DATA STRUCTURES FOR PIPELINE AND PREFETCHING
+	 *
+	 * "consumers" track the processes that require data from this one.
+	 * "producers" track the processes that send data to this one.
+	 *
+	 * Last -> Marks the last use of the data. Pointer to the data + size.
+	 * Comm -> Communication (group of Last uses) assigned to one process (consumer or producer).
+	 * ProcToCommMap -> maps each process to the corresponding communication.
+	 * IterComms -> for each loop iteration, the related processor-communications.
+	 * LoopComms -> for each loop, the related iteration-processor-communications.
+	 */
 	typedef struct {
 		void* ptr;
 		int size;
-	} Data;
+	} Last;
 	typedef struct {
 		int totalSize;
-		std::vector<Data> data;
+		std::vector<Last> data;
 	} Comm;
 	typedef std::map<int, Comm> ProcToCommMap;
 	typedef struct {
 		int totalSize;
-		ProcToCommMap procDeps;
-	} PipeIterComms;
-	typedef std::map<int, PipeIterComms>[] LoopIterComms;
-	LoopIterComms consumers;
-	LoopIterComms producers;
-	// std::vector< std::vector< PipeIterComms > > consumers;
-	// std::vector< std::vector< PipeIterComms > > producers;
-
-
-
-
+		ProcToCommMap procToCommMap;
+	} ProcComms;
+	typedef std::map<int, ProcComms> IterComms;
+	typedef std::map<int, IterComms> LoopComms;
+	LoopComms consumers;
+	LoopComms producers;
 
 	///All loops specified as parallel
 	std::deque<global_loop*> all_loops;
@@ -270,8 +267,6 @@ public:
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
 
-	void pipe_registerLoop(int loopId);
-	void pipe_registerIteration(int loop, int iteration);
 	void pipe_comm(int loop, int iter);
 	void pipe_getAndUnblock(int loop, int iter);
 
@@ -281,7 +276,6 @@ public:
 	}
 
 };
-
 
 
 #endif
