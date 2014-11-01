@@ -410,42 +410,26 @@ int main(int argc,char **argv)
   
 #pragma arrays disp0 [ ARCHnodes ] [ 3 ], disp1 [ ARCHnodes ] [ 3 ], disp2 [ ARCHnodes ] [ 3 ], K [ ARCHmatrixlen ] [ 9 ], M [ ARCHnodes ] [ 3 ], C [ ARCHnodes ] [ 3 ], vel [ ARCHnodes ] [ 3 ], M23 [ ARCHnodes ] [ 3 ], C23 [ ARCHnodes ] [ 3 ], V23 [ ARCHnodes ] [ 3 ], ARCHmatrixindex [ ARCHnodes + 1 ] [ 1 ], ARCHmatrixcol [ ARCHmatrixlen ] [ 1 ]
 
-
-
-
-
 	const int nTeams = 2; // For now, one loop goes to team 0 and another goes to team 1.
-	if (__nprocs__ % nTeams != 0){ // For now, each team must have the same number of processes.
+	if (__nprocs__ % nTeams != 0){ // Each team must have the same number of processes.
 
-		printf("ERROR - Current implementation only allows #procs to be multiple of the pipeline depth\n");
+		printf("ERROR - #procs must be multiple of the pipeline depth\n");
 		ARMCI_Finalize();
 		MPI_Finalize();
 		return -1;
 	}
 	const int teamSize = __nprocs__ / nTeams;
 	int myTeam = __proc_id__ / nTeams;
-	int myTeamId = __proc_id__ - nTeams * teamSize;
+	int idInMyTeam = __proc_id__ - nTeams * teamSize;
 
 	/* int iter_num_count[1] = {ARCHnodes - 0}; */
 	int iter_num_count[2] = {ARCHnodes - 0, ARCHnodes - 0};
 
-
-
-
-
 	int data_num_count[3] = { ARCHnodes , ARCHnodes ,  ARCHmatrixlen };
 	int ro_mask[3] = {0,1, 1};
 
-
-
-
-
 	/* create_inspector(__proc_id__,__nprocs__,1,3,2,2,iter_num_count,data_num_count,ro_mask); */
 	create_inspector(__proc_id__,__nprocs__,2,3,2,2,iter_num_count,data_num_count,ro_mask);
-
-
-
-
 
 	int __size_ARCHmatrixcol__ =  ARCHmatrixlen ;
 	set_access_array_param(0, ARCHmatrixlen , 1 ,__size_ARCHmatrixcol__ / __nprocs__ * __proc_id__ + ARCHmatrixcol);
@@ -549,7 +533,6 @@ int main(int argc,char **argv)
 	memset(__1_status__,0,sizeof(int ) * get_proc_iter_size(0));
 
 	/* STAGE 2: Create data structures? */
-	unsigned int pipeId0, pipeId1;
 	do {
 		int __0_status_counter__ = 0;
 		for (i = 0; i < ARCHnodes; i++) {
@@ -626,12 +609,22 @@ int main(int argc,char **argv)
 		int __body_1__ = 0;
 		int __loop_i_6__ = 0;
 		int __body_i_6__ = 0;
+
+		// Loop 0
 		for (i = 0; i < ARCHnodes; i++) {
-			if (get_vertex_home(0,i) == __myid__) {
+
+
+
+			DETECTAR AQUI QUE DATOS SE USAN EN QUE PROCESADORES
+				(P. EJ. ESTE BUCLE TIENE QUE RECORRERLO TEAM 0 Y 1 PARA VER
+				 A QUIEN TIENE QUE ENVIAR Y DE QUIEN TIENE QUE RECIBIR)
+			if (get_vertex_home(0,i) == idInMyTeam) {
 				__body_0__ = __body_0__ + 1;;
 			}
 			else ;;
 		}
+
+		// Loop 1
 		for (i = 0; i < ARCHnodes; i++) {
 			if (get_vertex_home(0,i) == __myid__) {{
 					Anext = get_elem(1,i);
@@ -702,55 +695,12 @@ int main(int argc,char **argv)
 		renumber_access_array(2,__body_1__,__i_K_i_1_);
 		renumber_offset_array(2,__loop_i_6__,__o_K_j_3_,__lb_j_i_6__);
 
-
-
-
-
-		/*
-		 * PIPELINE INSPECTOR
-		 *
-		 * This part of the code generates the structures required by the pipelined
-		 * loops to sync and prefetch data.
-		 */
-		if (myTeam == 0){
-
-			// LOOP 0
-			for (i = 0; i < __nlocal_0__; ++i) {
-
-				/* for (j = 0; j < 3; j++) { */
-				/* 	__local_disp0__[i][j] = 0.0;; */
-				/* }; */
-			}
-		}
-
 		if (myTeam == 1){
 
 			// LOOP 1
 			for (i = 0; i < __nlocal_1__; ++i) {
-
-				/* sum0 = (((__local_K__[__i_K_i_1_[i]][0] * __local_disp1__[i][0]) + (__local_K__[__i_K_i_1_[i]][1] * __local_disp1__[i][1])) + (__local_K__[__i_K_i_1_[i]][2] * __local_disp1__[i][2])); */
-				/* sum1 = (((__local_K__[__i_K_i_1_[i]][3] * __local_disp1__[i][0]) + (__local_K__[__i_K_i_1_[i]][4] * __local_disp1__[i][1])) + (__local_K__[__i_K_i_1_[i]][5] * __local_disp1__[i][2])); */
-				/* sum2 = (((__local_K__[__i_K_i_1_[i]][6] * __local_disp1__[i][0]) + (__local_K__[__i_K_i_1_[i]][7] * __local_disp1__[i][1])) + (__local_K__[__i_K_i_1_[i]][8] * __local_disp1__[i][2])); */
-				/* __o_K_j_3__offset = __o_K_j_3_[__loop_i_6__]; */
-				/* for (j = __lb_j_i_6__[__loop_i_6__]; j < __ub_j_i_6__[__loop_i_6__]; ++j) { */
-				/* 	sum0 += (((__local_K__[__o_K_j_3__offset + j][0] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][0]) + (__local_K__[__o_K_j_3__offset + j][1] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][1])) + (__local_K__[__o_K_j_3__offset + j][2] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][2])); */
-				/* 	sum1 += (((__local_K__[__o_K_j_3__offset + j][3] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][0]) + (__local_K__[__o_K_j_3__offset + j][4] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][1])) + (__local_K__[__o_K_j_3__offset + j][5] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][2])); */
-				/* 	sum2 += (((__local_K__[__o_K_j_3__offset + j][6] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][0]) + (__local_K__[__o_K_j_3__offset + j][7] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][1])) + (__local_K__[__o_K_j_3__offset + j][8] * __local_disp1__[__i_disp1_j_4_[__body_i_6__]][2])); */
-				/* 	__local_disp0__[__i_disp0_j_5_[__body_i_6__]][0] += (((__local_K__[__o_K_j_3__offset + j][0] * __local_disp1__[i][0]) + (__local_K__[__o_K_j_3__offset + j][3] * __local_disp1__[i][1])) + (__local_K__[__o_K_j_3__offset + j][6] * __local_disp1__[i][2])); */
-				/* 	__local_disp0__[__i_disp0_j_5_[__body_i_6__]][1] += (((__local_K__[__o_K_j_3__offset + j][1] * __local_disp1__[i][0]) + (__local_K__[__o_K_j_3__offset + j][4] * __local_disp1__[i][1])) + (__local_K__[__o_K_j_3__offset + j][7] * __local_disp1__[i][2])); */
-				/* 	__local_disp0__[__i_disp0_j_5_[__body_i_6__]][2] += (((__local_K__[__o_K_j_3__offset + j][2] * __local_disp1__[i][0]) + (__local_K__[__o_K_j_3__offset + j][5] * __local_disp1__[i][1])) + (__local_K__[__o_K_j_3__offset + j][8] * __local_disp1__[i][2])); */
-				/* 	__body_i_6__ = __body_i_6__ + 1;; */
-				/* } */
-				/* __loop_i_6__ = __loop_i_6__ + 1; */
-				/* __local_disp0__[i][0] += sum0; */
-				/* __local_disp0__[i][1] += sum1; */
-				/* __local_disp0__[i][2] += sum2;; */
 			}
 		}
-
-
-
-
 
 		/*
 		 * EXECUTOR
@@ -758,53 +708,26 @@ int main(int argc,char **argv)
 		setup_executor();;;
 		for (iter = 1; iter <= timesteps; ) {
 
-
-
-
-
 			if (myTeam == 0){
 
 				/*
 				 * LOOP 0
 				 */
-
-
-
-
-
 				__body_0__ = 0;
 				for (i = 0; i < __nlocal_0__; ++i) {
 					for (j = 0; j < 3; j++) {
 						__local_disp0__[i][j] = 0.0;;
 					};
 
-
-
-
-
-					pipe_comm(pipeId0, i);
-
-
-
-
-
+					pipe_comm(0, i);
 				}
-
-
-
-
-
 			}
 
 			if (myTeam == 1){
 
-			/*
-			 * LOOP 1
-			 */
-
-
-
-
+				/*
+				 * LOOP 1
+				 */
 
 				__body_1__ = 0;
 				__loop_i_6__ = 0;
@@ -812,15 +735,7 @@ int main(int argc,char **argv)
 				init_write_ghosts(1);
 				for (i = 0; i < __nlocal_1__; ++i) {
 
-
-
-
-
-					pipe_get(pipeId1, i);
-
-
-
-
+					pipe_get(1, i);
 
 					sum0 = (((__local_K__[__i_K_i_1_[i]][0] * __local_disp1__[i][0]) + (__local_K__[__i_K_i_1_[i]][1] * __local_disp1__[i][1])) + (__local_K__[__i_K_i_1_[i]][2] * __local_disp1__[i][2]));
 					sum1 = (((__local_K__[__i_K_i_1_[i]][3] * __local_disp1__[i][0]) + (__local_K__[__i_K_i_1_[i]][4] * __local_disp1__[i][1])) + (__local_K__[__i_K_i_1_[i]][5] * __local_disp1__[i][2]));
@@ -840,29 +755,12 @@ int main(int argc,char **argv)
 					__local_disp0__[i][1] += sum1;
 					__local_disp0__[i][2] += sum2;;
 				}
-
-
-
-
-
 			}
-
-
-
-
 
 			communicate_writes(1);
 			time = (iter * Exc_dt);
 
-
-
-
-
 			pipe_endExternalIter();
-
-
-
-
 
 			/*
 			 * LOOP 3
