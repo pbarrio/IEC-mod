@@ -83,8 +83,6 @@ extern void free_2d_float(float**);
 extern void pipe_comm(int loop, int iter);
 extern void pipe_get(int loop, int iter);
 extern void pipe_endExternalIter();
-extern int pipe_registerLoop();
-extern void pipe_registerIteration(int loop, int iteration);
 
 
 #endif

@@ -107,6 +107,7 @@ private:
 	/* Node level communicator */
 	std::deque<global_comm*> all_comm; 
 
+	/// Indirection arrays are tracked here
 	std::deque<access_data*> all_access_data;
 
 	//   inspector(int,int,int,int,int,int,int,int*,int*,int*);

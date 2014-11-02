@@ -612,13 +612,7 @@ int main(int argc,char **argv)
 
 		// Loop 0
 		for (i = 0; i < ARCHnodes; i++) {
-
-
-
-			DETECTAR AQUI QUE DATOS SE USAN EN QUE PROCESADORES
-				(P. EJ. ESTE BUCLE TIENE QUE RECORRERLO TEAM 0 Y 1 PARA VER
-				 A QUIEN TIENE QUE ENVIAR Y DE QUIEN TIENE QUE RECIBIR)
-			if (get_vertex_home(0,i) == idInMyTeam) {
+			if (get_vertex_home(0,i) == __myid__) {
 				__body_0__ = __body_0__ + 1;;
 			}
 			else ;;
@@ -694,13 +688,6 @@ int main(int argc,char **argv)
 		populate_local_array(2,__local_K__[0],K[0], 9 );
 		renumber_access_array(2,__body_1__,__i_K_i_1_);
 		renumber_offset_array(2,__loop_i_6__,__o_K_j_3_,__lb_j_i_6__);
-
-		if (myTeam == 1){
-
-			// LOOP 1
-			for (i = 0; i < __nlocal_1__; ++i) {
-			}
-		}
 
 		/*
 		 * EXECUTOR
