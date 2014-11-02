@@ -1308,6 +1308,21 @@ void inspector::print_hypergraph(FILE* outfile)
  * NEW FUNCTIONS FOR PIPELINING
  */
 
+void inspector::pipe_mark_finished(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter){
+
+	printf("mark_finished has to be implemented\n");
+}
+
+void inspector::pipe_mark_needed(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter){
+
+	printf("mark_needed has to be implemented\n");
+}
+
+void inspector::pipe_match_finished_needed(unsigned int team){
+
+	printf("match function has to be implemented\n");
+}
+
 void inspector::pipe_comm(int loop, int iter){
 
 	// Get the "pipe communication" corresponding to this iteration and allocate send buffer

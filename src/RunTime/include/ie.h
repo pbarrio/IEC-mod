@@ -80,6 +80,9 @@ extern void free_2d_float(float**);
 /*
  * NEW FUNCTIONS FOR PIPELINING
  */
+extern void pipe_mark_finished(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter);
+extern void pipe_mark_needed(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter);
+extern void pipe_match_finished_needed(unsigned int team);
 extern void pipe_comm(int loop, int iter);
 extern void pipe_get(int loop, int iter);
 extern void pipe_endExternalIter();

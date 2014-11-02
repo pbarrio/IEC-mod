@@ -428,6 +428,7 @@ int main(int argc,char **argv)
 	int data_num_count[3] = { ARCHnodes , ARCHnodes ,  ARCHmatrixlen };
 	int ro_mask[3] = {0,1, 1};
 
+	/* Number of loop groups is 2, not 1 */
 	/* create_inspector(__proc_id__,__nprocs__,1,3,2,2,iter_num_count,data_num_count,ro_mask); */
 	create_inspector(__proc_id__,__nprocs__,2,3,2,2,iter_num_count,data_num_count,ro_mask);
 
@@ -646,34 +647,45 @@ int main(int argc,char **argv)
 		__body_1__ = 0;
 		__loop_i_6__ = 0;
 		__body_i_6__ = 0;
-		for (i = 0; i < ARCHnodes; i++) {
-			if (get_vertex_home(0,i) == __myid__) {
-				__body_0__ = __body_0__ + 1;;
-			}
-			else ;;
-		}
-		for (i = 0; i < ARCHnodes; i++) {
-			if (get_vertex_home(0,i) == __myid__) {{
-					Anext = get_elem(1,i);
-					__i_K_i_1_[__body_1__] = Anext;
-					__lb_j_i_6__[__loop_i_6__] = (get_elem(1,i) + 1);
-					__ub_j_i_6__[__loop_i_6__] = get_elem(1,i + 1);
-					for (j = (get_elem(1,i) + 1); j < get_elem(1,i + 1); j++) {{
-							col = get_elem(0,j);
-							if (j == (get_elem(1,i) + 1)) 
-								__o_K_j_3_[__loop_i_6__] = j;
-							else ;
-							__i_disp1_j_4_[__body_i_6__] = col;
-							__i_disp0_j_5_[__body_i_6__] = col;;
-						}
-						__body_i_6__ = __body_i_6__ + 1;;
-					}
-					__loop_i_6__ = __loop_i_6__ + 1;;
+
+		if ((myTeam == 0) || (myTeam == 1)){
+			for (i = 0; i < ARCHnodes; i++) {
+				if (get_vertex_home(0,i) == __myid__) {
+					__body_0__ = __body_0__ + 1;;
+					pipe_mark_finished(0, i, 0, i); // arrayID[arrayPos] finished in loop,iter
 				}
-				__body_1__ = __body_1__ + 1;;
+				else ;;
 			}
-			else ;;
 		}
+
+		if ((myTeam == 0) || (myTeam == 1)){
+			for (i = 0; i < ARCHnodes; i++) {
+				if (get_vertex_home(0,i) == __myid__) {{
+						Anext = get_elem(1,i);
+						__i_K_i_1_[__body_1__] = Anext;
+						__lb_j_i_6__[__loop_i_6__] = (get_elem(1,i) + 1);
+						__ub_j_i_6__[__loop_i_6__] = get_elem(1,i + 1);
+						for (j = (get_elem(1,i) + 1); j < get_elem(1,i + 1); j++) {{
+								col = get_elem(0,j);
+								if (j == (get_elem(1,i) + 1)) 
+									__o_K_j_3_[__loop_i_6__] = j;
+								else ;
+								__i_disp1_j_4_[__body_i_6__] = col;
+								__i_disp0_j_5_[__body_i_6__] = col;;
+								pipe_mark_needed(0, col, 1, i); // arrayID[arrayPos] needed in loop,iter
+							}
+							__body_i_6__ = __body_i_6__ + 1;;
+						}
+						__loop_i_6__ = __loop_i_6__ + 1;;
+					}
+					__body_1__ = __body_1__ + 1;;
+				}
+				else ;;
+			}
+		}
+
+		pipe_match_finished_needed(myTeam);
+
 		int __localsize_disp0__ = get_local_size(0);
 		double **__local_disp0__ = malloc_2d_double(__localsize_disp0__, 3 );
 		populate_local_array(0,__local_disp0__[0],disp0[0], 3 );

@@ -260,14 +260,13 @@ public:
 	}
 
 
-
-
-
-
 	/*
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
 
+	void pipe_mark_finished(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter);
+	void pipe_mark_needed(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter);
+	void pipe_match_finished_needed(unsigned int team);
 	void pipe_comm(int loop, int iter);
 	void pipe_getAndUnblock(int loop, int iter);
 
