@@ -649,17 +649,20 @@ int main(int argc,char **argv)
 		__body_i_6__ = 0;
 
 		if ((myTeam == 0) || (myTeam == 1)){
+
 			for (i = 0; i < ARCHnodes; i++) {
+
 				if (get_vertex_home(0,i) == __myid__) {
 					__body_0__ = __body_0__ + 1;;
-					pipe_mark_finished(0, i, 0, i); // arrayID[arrayPos] finished in loop,iter
 				}
 				else ;;
 			}
 		}
 
 		if ((myTeam == 0) || (myTeam == 1)){
+
 			for (i = 0; i < ARCHnodes; i++) {
+
 				if (get_vertex_home(0,i) == __myid__) {{
 						Anext = get_elem(1,i);
 						__i_K_i_1_[__body_1__] = Anext;
@@ -672,7 +675,6 @@ int main(int argc,char **argv)
 								else ;
 								__i_disp1_j_4_[__body_i_6__] = col;
 								__i_disp0_j_5_[__body_i_6__] = col;;
-								pipe_mark_needed(0, col, 1, i); // arrayID[arrayPos] needed in loop,iter
 							}
 							__body_i_6__ = __body_i_6__ + 1;;
 						}
@@ -683,8 +685,6 @@ int main(int argc,char **argv)
 				else ;;
 			}
 		}
-
-		pipe_match_finished_needed(myTeam);
 
 		int __localsize_disp0__ = get_local_size(0);
 		double **__local_disp0__ = malloc_2d_double(__localsize_disp0__, 3 );

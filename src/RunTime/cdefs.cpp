@@ -552,33 +552,6 @@ extern "C" {
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
 
-	void pipe_mark_finished(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter){
-
-		inspector::instance()->pipe_mark_finished(arrayId, arrayPos, loopId, iter);
-	}
-
-	void pipe_mark_needed(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter){
-
-		inspector::instance()->pipe_mark_needed(arrayId, arrayPos, loopId, iter);
-	}
-
-	void pipe_match_finished_needed(unsigned int team){
-
-		inspector::instance()->pipe_match_finished_needed(team);
-	}
-
-	void pipe_comm(int loop, int iter){
-
-		inspector::instance()->pipe_comm(loop, iter);
-	}
-
-
-	void pipe_get(int loop, int iter){
-
-		inspector::instance()->pipe_getAndUnblock(loop, iter);
-	}
-
-
 	void pipe_endExternalIter(){
 
 		inspector::instance()->pipe_endExternalIter();

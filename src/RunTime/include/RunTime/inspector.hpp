@@ -64,36 +64,6 @@ private:
 	///All arrays specified in pragma
 	std::deque<global_data*> all_data;
 
-	/*
-	 * MAIN DATA STRUCTURES FOR PIPELINE AND PREFETCHING
-	 *
-	 * "consumers" track the processes that require data from this one.
-	 * "producers" track the processes that send data to this one.
-	 *
-	 * Last -> Marks the last use of the data. Pointer to the data + size.
-	 * Comm -> Communication (group of Last uses) assigned to one process (consumer or producer).
-	 * ProcToCommMap -> maps each process to the corresponding communication.
-	 * IterComms -> for each loop iteration, the related processor-communications.
-	 * LoopComms -> for each loop, the related iteration-processor-communications.
-	 */
-	typedef struct {
-		void* ptr;
-		int size;
-	} Last;
-	typedef struct {
-		int totalSize;
-		std::vector<Last> data;
-	} Comm;
-	typedef std::map<int, Comm> ProcToCommMap;
-	typedef struct {
-		int totalSize;
-		ProcToCommMap procToCommMap;
-	} ProcComms;
-	typedef std::map<int, ProcComms> IterComms;
-	typedef std::map<int, IterComms> LoopComms;
-	LoopComms consumers;
-	LoopComms producers;
-
 	///All loops specified as parallel
 	std::deque<global_loop*> all_loops;
 
@@ -263,12 +233,6 @@ public:
 	/*
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
-
-	void pipe_mark_finished(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter);
-	void pipe_mark_needed(unsigned int arrayId, unsigned int arrayPos, unsigned int loopId, unsigned int iter);
-	void pipe_match_finished_needed(unsigned int team);
-	void pipe_comm(int loop, int iter);
-	void pipe_getAndUnblock(int loop, int iter);
 
 	inline void pipe_endExternalIter(){
 
