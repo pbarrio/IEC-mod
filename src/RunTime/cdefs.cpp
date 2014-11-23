@@ -52,9 +52,10 @@ extern "C" {
 	}
 
 
-	void create_inspector(int md, int np, int team, int pid_team, int teamsize /*, int nt*/, int nloops, int ndata, int nc, int nac, int* nic, int* ndc, int* ro){
+	void create_inspector(int md, int np, int team, int pid_team, int teamsize /*, int nt*/, int nloops, int nloops_src, int nloops_dest, int ndata, int nc, int nac, int* nic, int* ndc, int* ro){
+
 		inspector_start = rtclock();
-		inspector* new_inspector = inspector::instance(md, np, team, pid_team, teamsize, /*nt,*/nloops,ndata,nc,nac,nic,ndc,ro);
+		inspector* new_inspector = inspector::instance(md, np, team, pid_team, teamsize, /*nt,*/nloops, nloops_src, nloops_dest, ndata, nc, nac, nic, ndc, ro);
 // 		scalar_holder = new double[nt];
 		scalar_holder = new double[1];
 #ifndef NDEBUG
@@ -64,8 +65,8 @@ extern "C" {
 #endif
 	}
 
-	void create_inspector_(int* md, int* np, int team, int pid_team, int teamsize/*, int* nt*/, int* niters, int* ndata, int* nc, int *nac, int *nic, int* ndc, int* ro){
-		create_inspector(*md, *np, team, pid_team, teamsize/*,*nt*/,*niters,*ndata,*nc,*nac,nic,ndc,ro);
+	void create_inspector_(int* md, int* np, int team, int pid_team, int teamsize/*, int* nt*/, int* nloops, int* nloops_src, int* nloops_dest, int* ndata, int* nc, int *nac, int *nic, int* ndc, int* ro){
+		create_inspector(*md, *np, team, pid_team, teamsize/*,*nt*/, *nloops, *nloops_src, *nloops_dest, *ndata, *nc, *nac, nic, ndc, ro);
 	}
 
 

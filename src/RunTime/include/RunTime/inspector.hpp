@@ -78,8 +78,9 @@ private:
 
 	//   inspector(int,int,int,int,int,int,int,int*,int*,int*);
 	inspector(int pid, int np, int team, int pid_team, int teamsize
-	          /*, int nt*/, int nl, int nd, int nc, int nad,
-	          int* iter_num_count, int* data_num_count, int* ro);
+	          /*, int nt*/, int nl, int nl_src, int nl_dest, int nd,
+	          int nc, int nad, int* iter_num_count,
+	          int* data_num_count, int* ro);
   
 	///Singleton inspector object. There will be one inspector per process
 	static inspector* singleton_inspector;
@@ -98,9 +99,14 @@ private:
 public:
 	~inspector();
 
-	static inspector* instance(int md, int np, int team, int pid_team, int teamsize, /*int nt,*/ int a,int b, int c, int d, int* inc, int* dnc, int* ro){
+	static inspector* instance(int pid, int np, int team, int pid_team,
+	                           int teamsize, int nl_mine, int nl_src,
+	                           int nl_dest, int nd, int nc, int nad,
+	                           int* iter_num_count,
+	                           int* data_num_count, int* ro){
+
 		if( singleton_inspector == NULL )
-			singleton_inspector = new inspector(md, np, team, pid_team, teamsize,/*nt,*/a, b, c, d, inc, dnc, ro);
+			singleton_inspector = new inspector(pid, np, team, pid_team, teamsize, nl_mine, nl_src, nl_dest, nd, nc, nad, iter_num_count, data_num_count, ro);
 		return singleton_inspector;
 	}
     
