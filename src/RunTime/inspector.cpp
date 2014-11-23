@@ -65,13 +65,13 @@ char* global_comm::write_recv_signal = NULL;
  * \param nl_src Number of loops that send us data (producers)
  * \param nl_dest Number of loops that receive data from us (consumers)
  * \param nd Number of direct access arrays
- * \param nc
- * \param nad
+ * \param nc Number of... communicators?
+ * \param nad Number of access data. What is access data?
  * \param iter_num_count Array of iteration limits (must be of size nl)
  * \param data_num_count Array of direct array sizes (must be of size nd)
  * \param ro Array of read-only flags for the direct arrays (must be of size nd)
  */
-inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, int nt*/, int nl, int nl_src, int nl_dest, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
+inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, int nt*/, int nl_src, int nl_dest, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
 	proc_id(pid),
 	team_num(team),
 	id_in_team(pid_team),
@@ -79,7 +79,7 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 	nprocs(np),
 	// 	nthreads(nt),
 	pins_size(-1),
-	iter_num_offset(new int[nl+1]),
+	iter_num_offset(new int[1 + nl_src + nl_dest + 1]), // The first '1' is for my loop
 	data_num_offset(new int[nd+1])
 {
 
@@ -97,13 +97,35 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 		return;
 	//--- }
 
-	printf("Nprocs:%d\n",nprocs);
-	fflush(stdout);
+ 	// Loop computed by me
+	int iLoop = 0;
+	iter_num_offset[iLoop] = 0;
+	global_loop* new_loop =
+		new global_loop(iLoop, iter_num_count[iLoop], iter_num_offset[iLoop]);
+	all_loops.push_back(new_loop);
+	my_loop = new_loop;
+	iter_num_offset[iLoop + 1] = iter_num_offset[iLoop] + iter_num_count[iLoop];
+
+	// Loops that give us data ("source" loops)
 	iter_num_offset[0] = 0;
-	for( int i = 0 ; i < nl ; i++ ){
-		global_loop* new_loop = new global_loop(i,iter_num_count[i],iter_num_offset[i]);
+	for (int iLoop = 1 ; iLoop < nl_src ; ++iLoop){
+
+		global_loop* new_loop =
+			new global_loop(iLoop, iter_num_count[iLoop], iter_num_offset[iLoop]);
 		all_loops.push_back(new_loop);
-		iter_num_offset[i+1] = iter_num_offset[i] + iter_num_count[i];
+		producer_loops.push_back(new_loop);
+		iter_num_offset[iLoop + 1] = iter_num_offset[iLoop] + iter_num_count[iLoop];
+	}
+
+	// Loops that wait for our data
+	iter_num_offset[0] = 0;
+	for (; iLoop < nl_src + nl_dest ; ++iLoop){
+
+		global_loop* new_loop =
+			new global_loop(iLoop, iter_num_count[iLoop], iter_num_offset[iLoop]);
+		all_loops.push_back(new_loop);
+		consumer_loops.push_back(new_loop);
+		iter_num_offset[iLoop + 1] = iter_num_offset[iLoop] + iter_num_count[iLoop];
 	}
 
 	data_num_offset[0] = 0;

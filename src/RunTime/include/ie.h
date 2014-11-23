@@ -39,7 +39,7 @@ enum partition_type{
   PARTITION_BLOCK
 };
 
-extern void create_inspector(int md, int np, int team, int pid_team, int teamsize/*, int* nt*/, int nloops, int nloops_src, int nloops_dest, int ndata, int nc, int nac, int *nic, int* ndc, int* ro);
+extern void create_inspector(int md, int np, int team, int pid_team, int teamsize/*, int* nt*/, int nloops_src, int nloops_dest, int ndata, int nc, int nac, int *nic, int* ndc, int* ro);
 extern void set_access_array_param(int,int,int,int*);
 extern int done_graph_gen();
 extern int is_known(int,int);
