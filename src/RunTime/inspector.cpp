@@ -58,7 +58,12 @@ char* global_comm::write_recv_signal = NULL;
  *
  * \param pid Process identifier in the distributed program
  * \param np Number of processes in the distributed program
- * \param nl Number of loop groups
+ * \param team Identifier of this processor's team
+ * \param pid_team Identifier of this processor private to the team
+ * \param teamsize Size (in number of processors) of each team
+ * \param nl Number of loops
+ * \param nl_src Number of loops that send us data (producers)
+ * \param nl_dest Number of loops that receive data from us (consumers)
  * \param nd Number of direct access arrays
  * \param nc
  * \param nad
@@ -66,8 +71,11 @@ char* global_comm::write_recv_signal = NULL;
  * \param data_num_count Array of direct array sizes (must be of size nd)
  * \param ro Array of read-only flags for the direct arrays (must be of size nd)
  */
-inspector::inspector(int pid, int np/*, int nt*/, int nl, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
+inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, int nt*/, int nl, int nl_src, int nl_dest, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
 	proc_id(pid),
+	team_num(team),
+	id_in_team(pid_team),
+	team_size(teamsize),
 	nprocs(np),
 	// 	nthreads(nt),
 	pins_size(-1),

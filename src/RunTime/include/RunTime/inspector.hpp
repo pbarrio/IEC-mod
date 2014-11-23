@@ -52,11 +52,7 @@ class inspector{
   
 private:
   
-	const int proc_id;
-
-	const int nprocs;
-  
-	//   const int nthreads;
+	const int proc_id, nprocs, team_num, id_in_team, team_size;
 
 	///Used by the partitioner
 	int pins_size;
@@ -81,7 +77,9 @@ private:
 	std::deque<access_data*> all_access_data;
 
 	//   inspector(int,int,int,int,int,int,int,int*,int*,int*);
-	inspector(int,int,int,int,int,int,int*,int*,int*);
+	inspector(int pid, int np, int team, int pid_team, int teamsize
+	          /*, int nt*/, int nl, int nd, int nc, int nad,
+	          int* iter_num_count, int* data_num_count, int* ro);
   
 	///Singleton inspector object. There will be one inspector per process
 	static inspector* singleton_inspector;
@@ -99,10 +97,10 @@ private:
 
 public:
 	~inspector();
-  
-	static inspector* instance(int md, int np, /*int nt,*/ int a,int b, int c, int d, int* inc, int* dnc, int* ro){
+
+	static inspector* instance(int md, int np, int team, int pid_team, int teamsize, /*int nt,*/ int a,int b, int c, int d, int* inc, int* dnc, int* ro){
 		if( singleton_inspector == NULL )
-			singleton_inspector = new inspector(md,np,/*nt,*/a,b,c,d,inc,dnc,ro);
+			singleton_inspector = new inspector(md, np, team, pid_team, teamsize,/*nt,*/a, b, c, d, inc, dnc, ro);
 		return singleton_inspector;
 	}
     
