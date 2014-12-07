@@ -67,10 +67,10 @@ private:
 	global_loop* my_loop;
 
 	/// Loops that give us data (we are consumers of them)
-	std::deque<global_loop*> producer_loops;
+	std::map<int, global_loop*> producer_loops;
 
 	/// Loops that wait for our data (we are producers for them)
-	std::deque<global_loop*> consumer_loops;
+	std::map<int, global_loop*> consumer_loops;
 
 	///All solvers
 	std::deque<petsc_solve*> all_solvers;
@@ -87,8 +87,7 @@ private:
 
 	//   inspector(int,int,int,int,int,int,int,int*,int*,int*);
 	inspector(int pid, int np, int team, int pid_team, int teamsize
-	          /*, int nt*/, int nl_src, int nl_dest, int nd,
-	          int nc, int nad, int* iter_num_count,
+	          /*, int nt*/, int nl, int nd, int nc, int nad, int* iter_num_count,
 	          int* data_num_count, int* ro);
   
 	///Singleton inspector object. There will be one inspector per process
@@ -108,14 +107,14 @@ private:
 public:
 	~inspector();
 
-	static inspector* instance(int pid, int np, int team, int pid_team,
-	                           int teamsize, int nl_src,
-	                           int nl_dest, int nd, int nc, int nad,
-	                           int* iter_num_count,
-	                           int* data_num_count, int* ro){
+	static inspector* instance(int pid, int np, int team, int pid_team, int teamsize,
+	                           int nl, int nd, int nc, int nad,
+	                           int* iter_num_count, int* data_num_count, int* ro){
 
 		if( singleton_inspector == NULL )
-			singleton_inspector = new inspector(pid, np, team, pid_team, teamsize, nl_src, nl_dest, nd, nc, nad, iter_num_count, data_num_count, ro);
+			singleton_inspector =
+				new inspector(pid, np, team, pid_team, teamsize, nl, nd, nc, nad,
+				              iter_num_count, data_num_count, ro);
 		return singleton_inspector;
 	}
     

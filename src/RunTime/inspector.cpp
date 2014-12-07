@@ -62,16 +62,14 @@ char* global_comm::write_recv_signal = NULL;
  * \param pid_team Identifier of this processor private to the team
  * \param teamsize Size (in number of processors) of each team
  * \param nl Number of loops
- * \param nl_src Number of loops that send us data (producers)
- * \param nl_dest Number of loops that receive data from us (consumers)
  * \param nd Number of direct access arrays
  * \param nc Number of... communicators?
- * \param nad Number of access data. What is access data?
+ * \param nad Number of indirection arrays.
  * \param iter_num_count Array of iteration limits (must be of size nl)
  * \param data_num_count Array of direct array sizes (must be of size nd)
  * \param ro Array of read-only flags for the direct arrays (must be of size nd)
  */
-inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, int nt*/, int nl_src, int nl_dest, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
+inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, int nt*/, int nl, int nd, int nc, int nad, int* iter_num_count, int* data_num_count, int* ro):
 	proc_id(pid),
 	team_num(team),
 	id_in_team(pid_team),
@@ -79,7 +77,8 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 	nprocs(np),
 	// 	nthreads(nt),
 	pins_size(-1),
-	iter_num_offset(new int[1 + nl_src + nl_dest + 1]), // The first '1' is for my loop
+	my_loop(NULL),
+	iter_num_offset(new int[nl + 1]), // The first '1' is for my loop
 	data_num_offset(new int[nd+1])
 {
 
@@ -97,34 +96,13 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 		return;
 	//--- }
 
- 	// Loop computed by me
-	int iLoop = 0;
-	iter_num_offset[iLoop] = 0;
-	global_loop* new_loop =
-		new global_loop(iLoop, iter_num_count[iLoop], iter_num_offset[iLoop]);
-	all_loops.push_back(new_loop);
-	my_loop = new_loop;
-	iter_num_offset[iLoop + 1] = iter_num_offset[iLoop] + iter_num_count[iLoop];
-
-	// Loops that give us data ("source" loops)
+	// Create all loops
 	iter_num_offset[0] = 0;
-	for (int iLoop = 1 ; iLoop < nl_src ; ++iLoop){
+	for (int iLoop = 0 ; iLoop < nl ; ++iLoop){
 
 		global_loop* new_loop =
 			new global_loop(iLoop, iter_num_count[iLoop], iter_num_offset[iLoop]);
 		all_loops.push_back(new_loop);
-		producer_loops.push_back(new_loop);
-		iter_num_offset[iLoop + 1] = iter_num_offset[iLoop] + iter_num_count[iLoop];
-	}
-
-	// Loops that wait for our data
-	iter_num_offset[0] = 0;
-	for (; iLoop < nl_src + nl_dest ; ++iLoop){
-
-		global_loop* new_loop =
-			new global_loop(iLoop, iter_num_count[iLoop], iter_num_offset[iLoop]);
-		all_loops.push_back(new_loop);
-		consumer_loops.push_back(new_loop);
 		iter_num_offset[iLoop + 1] = iter_num_offset[iLoop] + iter_num_count[iLoop];
 	}
 
@@ -333,14 +311,26 @@ bool inspector::DoneGraphGeneration(){
 /**
  * \brief Adds a vertex to the iteration/data hypergraph
  *
- * \param iter_num The vertex will be added to this loop group
- * \param iter_value The vertex represents this iteration number
+ * This function also classifies the loop as a "producer", "consumer",
+ * or executed loop. The executed loop is the one that will be executed by this
+ * process, while other loops are executed by other processes and will either
+ * supply data to this process (producer) or wait for data to be communicated by
+ * this process (consumers).
+ *
+ * \param iter_num The vertex will be added to this loop.
+ * \param iter_value The vertex represents this iteration number.
  */
 void inspector::AddVertex(int iter_num, int iter_value)
 {
 	assert(iter_num < all_loops.size());
 
 	global_loop* curr_loop = all_loops[iter_num];
+	if (iter_num == team_num)
+		my_loop = curr_loop;
+	else if (iter_num < team_num)
+		producer_loops[iter_num] = curr_loop;
+	else if (iter_num > team_num)
+		consumer_loops[iter_num] = curr_loop;
 
 	curr_vertex = curr_loop->iter_vertex[iter_value];
 }
