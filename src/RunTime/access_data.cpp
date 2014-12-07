@@ -28,10 +28,12 @@ using namespace std;
  * \param teamID ID of this processor in the team
  * \param teamSize Size of the team
  */
-access_data::access_data(int mn, int md, int np):
+access_data::access_data(int mn, int md, int np, int teamID, int teamSize):
   my_num(mn),
   myid(md),
-  nprocs(np)
+  nprocs(np),
+  myTeamID(teamID),
+  myTeamSize(teamSize)
 {}
 
 
@@ -46,9 +48,9 @@ void access_data::SetParams(int as, int st, int* oa)
   stride = st;
   orig_array = oa;
   assert(stride == 1);
-  int split = array_size / nprocs;
-  local_start_index = split * myid;
-  local_end_index =  ( myid == nprocs - 1 ? array_size : split*(myid+1));
+  int split = array_size / myTeamSize;
+  local_start_index = split * myTeamID;
+  local_end_index =  ( myTeamID == myTeamSize - 1 ? array_size : split * (myTeamID + 1));
 #ifdef USE_HSQPHASH
   have_set = new qphash(401);
 #endif

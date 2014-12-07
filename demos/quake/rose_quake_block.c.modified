@@ -432,9 +432,9 @@ int main(int argc,char **argv)
 
 	// Set parameters for the indirection arrays (0 = ARCHmatrixcol, 1 = ARCHmatrixindex)
 	int __size_ARCHmatrixcol__ =  ARCHmatrixlen ;
-	set_access_array_param(0, ARCHmatrixlen , 1 ,__size_ARCHmatrixcol__ / __nprocs__ * __proc_id__ + ARCHmatrixcol);
+	set_access_array_param(0, ARCHmatrixlen, 1, __size_ARCHmatrixcol__ / teamSize * idInMyTeam + ARCHmatrixcol);
 	int __size_ARCHmatrixindex__ =  ARCHnodes + 1 ;
-	set_access_array_param(1, ARCHnodes + 1 , 1 ,__size_ARCHmatrixindex__ / __nprocs__ * __proc_id__ + ARCHmatrixindex);
+	set_access_array_param(1, ARCHnodes + 1, 1, __size_ARCHmatrixindex__ / teamSize * idInMyTeam + ARCHmatrixindex);
 
 	// Set stride for data arrays. The stride is taken directly from the pragma.
 	set_array_stride(0, 3); // disp0?
@@ -442,20 +442,20 @@ int main(int argc,char **argv)
 	set_array_stride(2, 9); // K
 
 	// Initial limits for loop 0
-	int __local_block_0_start__ = (ARCHnodes - 0) / __nprocs__ * __proc_id__ + 0;
+	int __local_block_0_start__ = (ARCHnodes - 0) / teamSize * idInMyTeam + 0;
 	int __local_block_0_end__;
-	if (__proc_id__ != __nprocs__ - 1) 
-		__local_block_0_end__ = (ARCHnodes - 0) / __nprocs__ * (__proc_id__ + 1) + 0;
+	if (__proc_id__ != __nprocs__ - 1)
+		__local_block_0_end__ = (ARCHnodes - 0) / teamSize * (idInMyTeam + 1) + 0;
 	else 
 		__local_block_0_end__ = ARCHnodes;
 	int *__0_status__ = (int *)(malloc(sizeof(int ) * (__local_block_0_end__ - __local_block_0_start__)));
 	memset(__0_status__,0,sizeof(int ) * (__local_block_0_end__ - __local_block_0_start__));
 
 	// Initial limits for loop 1
-	int __local_block_1_start__ = (ARCHnodes - 0) / __nprocs__ * __proc_id__ + 0;
+	int __local_block_1_start__ = (ARCHnodes - 0) / teamSize * idInMyTeam + 0;
 	int __local_block_1_end__;
 	if (__proc_id__ != __nprocs__ - 1) 
-		__local_block_1_end__ = (ARCHnodes - 0) / __nprocs__ * (__proc_id__ + 1) + 0;
+		__local_block_1_end__ = (ARCHnodes - 0) / teamSize * (idInMyTeam + 1) + 0;
 	else 
 		__local_block_1_end__ = ARCHnodes;
 	int *__1_status__ = (int *)(malloc(sizeof(int ) * (__local_block_1_end__ - __local_block_1_start__)));

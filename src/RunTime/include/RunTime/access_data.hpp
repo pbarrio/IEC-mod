@@ -49,8 +49,8 @@ class access_data{
   int* orig_array;
 
  public:
-  
-  access_data(int,int,int);
+
+  access_data(int mn, int md, int np, int teamID, int teamSize);
 
   ~access_data();
 

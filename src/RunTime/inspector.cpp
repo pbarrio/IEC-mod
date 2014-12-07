@@ -123,7 +123,8 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 
 	// The access data are the indirection arrays.
 	for( int i = 0 ; i < nad ; i++ ){
-		access_data* new_access_data = new access_data(i,proc_id,nprocs);
+		access_data* new_access_data =
+			new access_data(i, proc_id, nprocs, pid_team, teamsize);
 		all_access_data.push_back(new_access_data);
 	}
 
