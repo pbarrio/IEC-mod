@@ -38,19 +38,14 @@ class access_data{
   std::set<int> dont_have_set;
 
   int array_size;
-  
   const int nprocs;
-  
   const int myid;
-
   const int my_num;
-
+  const int myTeamID;
+  const int myTeamSize;
   int local_start_index;
-
   int local_end_index;
-
   int stride;
-
   int* orig_array;
 
  public:

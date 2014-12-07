@@ -21,6 +21,13 @@
 
 using namespace std;
 
+/**
+ * \param mn ID for this indirection array
+ * \param md ID of this process
+ * \param np Number of processors
+ * \param teamID ID of this processor in the team
+ * \param teamSize Size of the team
+ */
 access_data::access_data(int mn, int md, int np):
   my_num(mn),
   myid(md),
@@ -28,6 +35,11 @@ access_data::access_data(int mn, int md, int np):
 {}
 
 
+/**
+ * \param as Size of the entire original array
+ * \param st Stride
+ * \param oa Pointer to the start of the array piece assigned to this process.
+ */
 void access_data::SetParams(int as, int st, int* oa)
 {
   array_size = as;
@@ -43,7 +55,7 @@ void access_data::SetParams(int as, int st, int* oa)
 }
 
 
-access_data::~access_data()
+access_data::~access_data() 
 {
 #ifdef USE_HSQPHASH
   delete have_set;
@@ -53,12 +65,26 @@ access_data::~access_data()
   dont_have_set.clear();
 }
 
-
+/**
+ * \brief Checks if this process knows the value of the array position.
+ *
+ * This process has two possibilities to know the value of this array position.
+ * The first is that the position falls within the array chunk initially assigned
+ * to this process (between local_start_index and local_end_index). The second is
+ * that another process has shared that information with the current process.
+ *
+ * \param index Position in the indirection array
+ * \return true if the process knows the value, false otherwise
+ */
 bool access_data::HaveIndex(int index)
 {
   bool does_have = false;
+
+  // Do I have the information from the beginning?
   if( index >= local_start_index && index < local_end_index )
     does_have = true; //value = orig_array[index-local_start_index];
+
+  // Did I receive the information from another process?
   else{
 #ifdef USE_HSQPHASH
     int value = have_set->return_key_val(index);
@@ -79,6 +105,18 @@ bool access_data::HaveIndex(int index)
   return does_have;
 }
 
+
+/**
+ * \brief Get the value of a position in an indirection array
+ *
+ * If the position is owned by this process from the very beginning, return it
+ * immediately. If not, it should have been communicated to us by another process,
+ * and we can find it in the "have_set" map.
+ *
+ * \param index Position of the array
+ *
+ * \return int Value of the position
+ */
 int access_data::GetIndex(int index) const
 {
   int value = -1;

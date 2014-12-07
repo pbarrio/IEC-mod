@@ -435,9 +435,11 @@ int main(int argc,char **argv)
 	set_access_array_param(0, ARCHmatrixlen , 1 ,__size_ARCHmatrixcol__ / __nprocs__ * __proc_id__ + ARCHmatrixcol);
 	int __size_ARCHmatrixindex__ =  ARCHnodes + 1 ;
 	set_access_array_param(1, ARCHnodes + 1 , 1 ,__size_ARCHmatrixindex__ / __nprocs__ * __proc_id__ + ARCHmatrixindex);
-	set_array_stride(0, 3 );
-	set_array_stride(1, 3 );
-	set_array_stride(2, 9 );
+
+	// Set stride for data arrays. The stride is taken directly from the pragma.
+	set_array_stride(0, 3); // disp0?
+	set_array_stride(1, 3); // disp1?
+	set_array_stride(2, 9); // K
 
 	// Initial limits for loop 0
 	int __local_block_0_start__ = (ARCHnodes - 0) / __nprocs__ * __proc_id__ + 0;
@@ -459,6 +461,7 @@ int main(int argc,char **argv)
 	int *__1_status__ = (int *)(malloc(sizeof(int ) * (__local_block_1_end__ - __local_block_1_start__)));
 	memset(__1_status__,0,sizeof(int ) * (__local_block_1_end__ - __local_block_1_start__));
 
+
 	/*
 	 * INSPECTOR
 	 */
@@ -467,6 +470,8 @@ int main(int argc,char **argv)
 	int __shadow_0__ = 0;
 	int __shadow_1__ = 0;
 	do {
+
+		// Loop 0
 		for (i = __local_block_0_start__; i < __local_block_0_end__; i++) 
 			if (__0_status__[i - __local_block_0_start__] == 0) {
 				__0_status__[i - __local_block_0_start__] = 1;
@@ -474,6 +479,8 @@ int main(int argc,char **argv)
 				add_pin_to_net(0,i,1,1);;
 			}
 			else ;
+
+		// Loop 1
 		__shadow_0__ = 0;
 		__shadow_1__ = 0;
 		for (i = __local_block_1_start__; i < __local_block_1_end__; i++) 
@@ -489,9 +496,9 @@ int main(int argc,char **argv)
 						__1_status__[i - __local_block_1_start__] = 0;
 						__shadow_0__ = 0;
 					}
-					if (__shadow_0__ != 0) 
+					if (__shadow_0__ != 0)
 						add_pin_to_net(2,Anext,0,0);
-					else 
+					else
 						__1_status__[i - __local_block_1_start__] = 0;
 					add_pin_to_net(1,i,1,1);
 					if (is_known(1,i) && is_known(1,i + 1)) 

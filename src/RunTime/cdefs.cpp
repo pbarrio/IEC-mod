@@ -81,6 +81,14 @@ extern "C" {
 	}
   
 
+	/**
+	 * \brief Ask if we have the value of a position in an indirection array.
+	 *
+	 * \param an ID of the indirection array
+	 * \param indx Position of the array that we are looking for.
+	 *
+	 * \return 0 if value not found, 1 if found
+	 */
 	int is_known(int an, int indx){
 		if( inspector::instance()->HaveIndex(an,indx) )
 			return 1;
@@ -92,6 +100,15 @@ extern "C" {
 		*val = is_known(*an,*indx);
 	}
 
+
+	/**
+	 * \brief Get value of a position in an indirection array.
+	 *
+	 * \param an ID of the indirection array
+	 * \param index Position in the array
+	 *
+	 * \return Value
+	 */
 	int get_elem(int an, int index){
 		return inspector::instance()->GetIndex(an,index);
 	}
@@ -110,7 +127,11 @@ extern "C" {
 	void done_graph_gen_(int* val){
 		*val = done_graph_gen();
 	}
-  
+
+	/**
+	 * \param iter_num Loop identifier
+	 * \param iter_value Iteration number
+	 */
 	void add_vertex(int iter_num, int iter_value) {
 		inspector* my_inspect = inspector::instance();
 		my_inspect->AddVertex(iter_num,iter_value);
@@ -122,10 +143,15 @@ extern "C" {
 		my_inspect->AddVertex(*iter_num,*iter_value);
 	}
 
-
-	void add_pin_to_net(int data_num, int index, int id, int isploop) {
+	/**
+	 * \param data_num Identifier of the data array
+	 * \param index Position in the array
+	 * \param isdirect=0 if addressing is affine; !=0 if it depends on indirection array.
+	 * \param isploop !=0 if the access comes from a partitionable loop
+	 */
+	void add_pin_to_net(int data_num, int index, int isdirect, int isploop) {
 		inspector* my_inspect = inspector::instance();
-		my_inspect->AddNet(data_num,index,id,isploop);
+		my_inspect->AddNet(data_num,index,isdirect,isploop);
 	}
 
 

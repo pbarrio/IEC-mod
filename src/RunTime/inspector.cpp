@@ -75,7 +75,6 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 	id_in_team(pid_team),
 	team_size(teamsize),
 	nprocs(np),
-	// 	nthreads(nt),
 	pins_size(-1),
 	my_loop(NULL),
 	iter_num_offset(new int[nl + 1]), // The first '1' is for my loop
@@ -83,7 +82,6 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 {
 
 	// Create new communicator associated to the inspector. This avoids having to use MPI_COMM_WORLD.
-	//--- Pablo{
 	MPI_Group worldGroup;
 	MPI_Group iecGroup;
 	int ranges[1][3] = {{0, np-1, 1}};
@@ -94,7 +92,6 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 
 	if (pid >= np)
 		return;
-	//--- }
 
 	// Create all loops
 	iter_num_offset[0] = 0;
@@ -106,6 +103,7 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 		iter_num_offset[iLoop + 1] = iter_num_offset[iLoop] + iter_num_count[iLoop];
 	}
 
+	// Data arrays (excludes indirection arrays)
 	data_num_offset[0] = 0;
 	for( int i = 0 ; i < nd ; i++ ){
 		global_data* new_data;
@@ -114,7 +112,7 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 		else
 			new_data = new global_data_double(i,data_num_count[i],data_num_offset[i],false);
 		all_data.push_back(new_data);
-    
+
 		data_num_offset[i+1] = data_num_offset[i] + data_num_count[i];
 	}
 
@@ -123,13 +121,12 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize/*, in
 		all_comm.push_back(new_comm);
 	}
 
+	// The access data are the indirection arrays.
 	for( int i = 0 ; i < nad ; i++ ){
 		access_data* new_access_data = new access_data(i,proc_id,nprocs);
 		all_access_data.push_back(new_access_data);
 	}
 
-	// 	send_info = new set<int>*[nprocs*nthreads*2];
-	// 	for( int i = 0; i < nprocs*nthreads*2 ; i++ )
 	send_info = new set<int>*[nprocs*2];
 	for( int i = 0; i < nprocs*2 ; i++ )
 		send_info[i] = new set<int>;
@@ -347,14 +344,13 @@ void inspector::AddVertex(int iter_num, int iter_value)
 void inspector::AddNet(int data_num, int index, int is_direct, int is_ploop)
 {
 	assert(data_num < all_data.size());
-	global_data* curr_data = all_data[data_num];
 
 	///Get the current net
 	net* net_num = all_data[data_num]->data_net_info[index];
 
 	pin_info new_pin(curr_vertex,is_direct != 0 ? true : false);
 
-	///If access is from a partitionable loops and is direct access
+	/// If access is from a partitionable loop and is direct access
 	if( is_ploop && is_direct ){
 		///The compile time analysis should ensure that there are not other "direct accesses" to this array. The direct_vertex field should be NULL or the same vertex as the curr_vertex
 		assert(net_num->direct_vertex == NULL || net_num->direct_vertex == curr_vertex);
@@ -364,7 +360,7 @@ void inspector::AddNet(int data_num, int index, int is_direct, int is_ploop)
 	///Check for the pin already existing in the set
 	set<pin_info,pin_comparator>::iterator it = net_num->pins.find(new_pin);
 	if( it != net_num->pins.end() ){
-		///If it is not a direct access, and current access is direct, promote it to directo access.
+		/// If it is not a direct access, and current access is direct, promote it to direct access.
 		if( is_direct && !(*it).is_direct ){
 			net_num->pins.erase(*it);
 			net_num->pins.insert(new_pin);

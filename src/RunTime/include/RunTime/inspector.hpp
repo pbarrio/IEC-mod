@@ -57,7 +57,7 @@ private:
 	///Used by the partitioner
 	int pins_size;
 
-	///All arrays specified in pragma
+	///All arrays in pragma, except for indirection arrays.
 	std::deque<global_data*> all_data;
 
 	///All loops specified as parallel
@@ -185,14 +185,39 @@ public:
   
 	void CommunicateWrites(/*int,*/int);
 
+
+	/**
+	 * \param a Identifier of the indirection array
+	 * \param b Size of the array
+	 * \param c Stride
+	 * \param d Pointer to the start of the array piece assigned to this process
+	 */
 	inline void SetAccessArrayParam(int a,int b,int c ,int* d){
 		all_access_data[a]->SetParams(b,c,d);
 	}
 
+	/**
+	 * \brief Ask an indirection array if it knows one of its values.
+	 *
+	 * The value can be unknown if it's owned by another process. Remember that
+	 * indirection arrays are partitioned among all the processes in a team.
+	 *
+	 * \param an ID of the indirection array.
+	 * \param indx Position of the array to look for.
+	 */
 	inline bool HaveIndex(int an, int indx){
 		return all_access_data[an]->HaveIndex(indx);
 	}
 
+
+	/**
+	 * \brief Get value of a position in an indirection array.
+	 *
+	 * \param an ID of the indirection array
+	 * \param indx Position in the array
+	 *
+	 * \return int Value
+	 */
 	inline int GetIndex(int an, int indx) const{
 		return all_access_data[an]->GetIndex(indx);
 	}
