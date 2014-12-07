@@ -728,8 +728,6 @@ int main(int argc,char **argv)
 					for (j = 0; j < 3; j++) {
 						__local_disp0__[i][j] = 0.0;;
 					};
-
-					pipe_comm(0, i);
 				}
 			}
 
@@ -744,8 +742,6 @@ int main(int argc,char **argv)
 				__body_i_6__ = 0;
 				init_write_ghosts(1);
 				for (i = 0; i < __nlocal_1__; ++i) {
-
-					pipe_get(1, i);
 
 					sum0 = (((__local_K__[__i_K_i_1_[i]][0] * __local_disp1__[i][0]) + (__local_K__[__i_K_i_1_[i]][1] * __local_disp1__[i][1])) + (__local_K__[__i_K_i_1_[i]][2] * __local_disp1__[i][2]));
 					sum1 = (((__local_K__[__i_K_i_1_[i]][3] * __local_disp1__[i][0]) + (__local_K__[__i_K_i_1_[i]][4] * __local_disp1__[i][1])) + (__local_K__[__i_K_i_1_[i]][5] * __local_disp1__[i][2]));
