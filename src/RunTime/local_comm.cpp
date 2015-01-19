@@ -23,31 +23,29 @@
 
 using namespace std;
 
-local_comm::local_comm(int mn, int np/*, int nt*/, int pid/*, int tid*/):
+local_comm::local_comm(int mn, int np, int pid):
 	my_num(mn),
 	nprocs(np),
-	//   nthreads(nt),
 	proc_id(pid),
-	//   thread_id(tid),
-	myid(pid/**nt+tid*/),
-	read_send_offset(new int[np/**nt*/]),
-	read_recv_offset(new int[np/**nt*/]),
-	write_send_offset(new int[np/**nt*/]),
-	write_recv_offset(new int[np/**nt*/]),
-	read_send_count(new int[np/**nt*/]),
-	read_recv_count(new int[np/**nt*/]),
-	write_send_count(new int[np/**nt*/]),
-	write_recv_count(new int[np/**nt*/]),
-	offset_array(new int[np/**nt*/])
+	myid(pid),
+	read_send_offset(new int[np]),
+	read_recv_offset(new int[np]),
+	write_send_offset(new int[np]),
+	write_recv_offset(new int[np]),
+	read_send_count(new int[np]),
+	read_recv_count(new int[np]),
+	write_send_count(new int[np]),
+	write_recv_count(new int[np]),
+	offset_array(new int[np])
 { 
-	memset(read_send_count,0,sizeof(int)*nprocs/**nthreads*/);
-	memset(read_send_offset,0,sizeof(int)*nprocs/**nthreads*/);
-	memset(read_recv_count,0,sizeof(int)*nprocs/**nthreads*/);
-	memset(read_recv_offset,0,sizeof(int)*nprocs/**nthreads*/);
-	memset(write_send_count,0,sizeof(int)*nprocs/**nthreads*/);
-	memset(write_send_offset,0,sizeof(int)*nprocs/**nthreads*/);
-	memset(write_recv_count,0,sizeof(int)*nprocs/**nthreads*/);
-	memset(write_recv_offset,0,sizeof(int)*nprocs/**nthreads*/);
+	memset(read_send_count,0,sizeof(int)*nprocs);
+	memset(read_send_offset,0,sizeof(int)*nprocs);
+	memset(read_recv_count,0,sizeof(int)*nprocs);
+	memset(read_recv_offset,0,sizeof(int)*nprocs);
+	memset(write_send_count,0,sizeof(int)*nprocs);
+	memset(write_send_offset,0,sizeof(int)*nprocs);
+	memset(write_recv_count,0,sizeof(int)*nprocs);
+	memset(write_recv_offset,0,sizeof(int)*nprocs);
 #ifdef COMM_TIME
 	read_comm_time = 0.0;
 	write_comm_time = 0.0;
@@ -80,7 +78,9 @@ local_comm::~local_comm()
 	delete[] offset_array;
 }
 
-
+/**
+ * \brief Unused in quake
+ */
 int local_comm::GetReadSendCount(const int dest, const int curr_offset)
 {
 	assert(read_send_count[dest] == 0);
@@ -90,7 +90,7 @@ int local_comm::GetReadSendCount(const int dest, const int curr_offset)
 		send_count += (*it)->GetOwnedCount(dest);
 	read_send_count[dest] = send_count;
   
-	if( dest/* / nthreads*/ == proc_id )
+	if( dest == proc_id )
 		return 0;
 	else
 		return send_count;
@@ -105,12 +105,24 @@ int local_comm::GetReadRecvCount(const int source, const int curr_offset )
 		recv_count += (*it)->GetGhostsCount(source);
 	read_recv_count[source] = recv_count;
 
-	if( source /*/ nthreads*/ == proc_id )
+	if( source == proc_id )
 		return 0;
 	else
 		return recv_count;
 }
 
+/**
+ * \brief Calculate size of the ghosts to be sent to one process
+ *
+ * The modified ghosts (those that belong to a "write" array)
+ * must be sent back to their owners for aggregation of results.
+ * This function also updates "write_send_offset", which tracks the
+ * starting position of the ghosts for each destination process
+ * inside the array (bad design... bad luck!).
+ *
+ * \param dest Destination process (owner of the ghosts)
+ * \param curr_offset Size of the array so far -> start of this batch
+ */
 int local_comm::GetWriteSendCount(const int dest, const int curr_offset)
 {
 	assert(write_send_count[dest] == 0);
@@ -121,7 +133,7 @@ int local_comm::GetWriteSendCount(const int dest, const int curr_offset)
 	}
 	write_send_count[dest] = send_count;
 
-	if( dest /*/ nthreads*/ == proc_id )
+	if( dest == proc_id )
 		return 0;
 	else
 		return send_count;
@@ -137,38 +149,57 @@ int local_comm::GetWriteRecvCount(const int source, const int curr_offset)
 		recv_count += (*it)->GetOwnedCount(source);
 	write_recv_count[source] = recv_count;
 
-	if( source /*/ nthreads*/ == proc_id )
+	if( source == proc_id )
 		return 0;
 	else
 		return recv_count;
 }
 
 
+/**
+ * \brief Populate send buffer with data owned by this processor
+ *
+ * This data will be communicated to other processes
+ * that use this data.
+ *
+ * \param send_buffer The buffer to be populated.
+ * \param buffer_size 
+ */
 void local_comm::PopulateReadSendBuffer(char* send_buffer, int buffer_size)
 {
-	for( int i = 0 ; i < nprocs/**nthreads*/ ; i++ )
+	for( int i = 0 ; i < nprocs ; i++ )
 		offset_array[i]  = read_send_offset[i];
 
 	for( vector<local_data*>::iterator it = read_arrays.begin() ; it  != read_arrays.end() ; it++){
 		(*it)->SendOwnedData(send_buffer,offset_array);
 	}
 #ifndef NDEBUG
-	for( int i = 0 ; i < nprocs/* * nthreads*/ ; i++ )
+	for( int i = 0 ; i < nprocs ; i++ )
 		assert(read_send_offset[i] <= buffer_size );
 #endif
 }
 
 
+/**
+ * \brief Move ghosts received in a receive buffer to the local copy
+ *
+ * This is data that we need to perform our computations, but that
+ * we don't own. It has been previously communicated by their owner
+ * processes to us.
+ *
+ * \param recv_buffer The receive buffer to be copied to our local data
+ * \param buffer_size
+ */
 void local_comm::ExtractReadRecvBuffer(char* recv_buffer, int buffer_size)
 {
-	for( int i = 0 ; i < nprocs/**nthreads*/ ; i++ )
+	for( int i = 0 ; i < nprocs ; i++ )
 		offset_array[i]  = read_recv_offset[i];
 
 	for( vector<local_data*>::iterator it = read_arrays.begin() ; it  != read_arrays.end() ; it++){
 		(*it)->RecvGhostData(recv_buffer,offset_array);
 	}
 #ifndef NDEBUG
-	for( int i = 0 ; i < nprocs/* * nthreads*/ ; i++ ){
+	for( int i = 0 ; i < nprocs ; i++ ){
 		assert(read_recv_offset[i] <= buffer_size );
 	}
 #endif
@@ -177,16 +208,18 @@ void local_comm::ExtractReadRecvBuffer(char* recv_buffer, int buffer_size)
 
 
 /**
- * \brief Populates a send buffer with all the data that must be sent to other processes
+ * \brief Write ghosts from all local data to a send buffer.
  *
- * \param send_buffer
+ * This data must be communicated to their owners so that they
+ * can update the data and broadcast it to other user processors.
+ *
+ * \param send_buffer The send buffer to be populated
  */
 void local_comm::PopulateWriteSendBuffer(char* send_buffer)
 {
-	// offset_array must be filled in with the positions of the send buffer where each
-	// ghost must reside
-	for (int i = 0 ; i < nprocs/**nthreads*/ ; i++)
-		offset_array[i]  = write_send_offset[i];
+
+	for (int i = 0 ; i < nprocs ; i++)
+		offset_array[i] = write_send_offset[i];
 
 	for (vector<local_data*>::iterator it = write_arrays.begin() ; it  != write_arrays.end() ; it++){
 		(*it)->SendGhostData(send_buffer,offset_array);
@@ -194,9 +227,18 @@ void local_comm::PopulateWriteSendBuffer(char* send_buffer)
 }
 
 
+/**
+ * \brief Get received data owned by us in order to update local copy
+ *
+ * Since we are the owners of all that data, our copy is the important 
+ * one!
+ *
+ * \param send_buffer The receive buffer where preliminary results
+ *        are located
+ */
 void local_comm::ExtractWriteRecvBuffer(char* recv_buffer)
 {
-	for( int i = 0 ; i < nprocs/**nthreads*/ ; i++ )
+	for( int i = 0 ; i < nprocs ; i++ )
 		offset_array[i]  = write_recv_offset[i];
 
 	for( vector<local_data*>::iterator it = write_arrays.begin() ; it  != write_arrays.end() ; it++){
@@ -207,9 +249,10 @@ void local_comm::ExtractWriteRecvBuffer(char* recv_buffer)
 
 void local_comm::InitWriteGhosts()
 {
-	for( vector<local_data*>::iterator it = write_arrays.begin() ; it  != write_arrays.end() ; it++){
+	for (vector<local_data*>::iterator it = write_arrays.begin();
+	     it != write_arrays.end(); it++)
+
 		(*it)->InitWriteGhosts();
-	}
 }
 
 void local_comm::print_comm(FILE* comm_file)
@@ -217,25 +260,30 @@ void local_comm::print_comm(FILE* comm_file)
 #ifndef NDEBUG
 	assert(comm_file);
 	fprintf(comm_file,"Local Communicator %d\n",my_num);
+
 	if( read_arrays.size() != 0 ) {
+
 		fprintf(comm_file,"Read Arrays:");
-		for( vector<local_data*>::iterator it = read_arrays.begin() ; it != read_arrays.end() ; it++ )
+		for (vector<local_data*>::iterator it = read_arrays.begin();
+		     it != read_arrays.end(); it++ )
+
 			fprintf(comm_file," %d",(*it)->GetMyNum());
+
 		fprintf(comm_file,"\n");
 		fprintf(comm_file,"\tReadSendCount :");
-		for(int i = 0 ; i < nprocs/* * nthreads*/ ; i++ )
+		for(int i = 0 ; i < nprocs ; i++ )
 			fprintf(comm_file," %d",read_send_count[i]);
 		fprintf(comm_file,"\n");
 		fprintf(comm_file,"\tReadSendOffset :");
-		for(int i = 0 ; i < nprocs/* * nthreads */; i++ )
+		for(int i = 0 ; i < nprocs; i++ )
 			fprintf(comm_file," %d",read_send_offset[i]);
 		fprintf(comm_file,"\n");
 		fprintf(comm_file,"\tReadRecvCount :");
-		for(int i = 0 ; i < nprocs/* * nthreads */; i++ )
+		for(int i = 0 ; i < nprocs; i++ )
 			fprintf(comm_file," %d",read_recv_count[i]);
 		fprintf(comm_file,"\n");
 		fprintf(comm_file,"\tReadRecvOffset :");
-		for(int i = 0 ; i < nprocs/* * nthreads */; i++ )
+		for(int i = 0 ; i < nprocs; i++ )
 			fprintf(comm_file," %d",read_recv_offset[i]);
 		fprintf(comm_file,"\n");
 	}
@@ -245,19 +293,19 @@ void local_comm::print_comm(FILE* comm_file)
 			fprintf(comm_file," %d",(*it)->GetMyNum());
 		fprintf(comm_file,"\n");
 		fprintf(comm_file,"\tWriteSendCount :");
-		for(int i = 0 ; i < nprocs/* * nthreads */; i++ )
+		for(int i = 0 ; i < nprocs; i++ )
 			fprintf(comm_file," %d",write_send_count[i]);
 		fprintf(comm_file,"\n");
 		fprintf(comm_file,"\tWriteSendOffset :");
-		for(int i = 0 ; i < nprocs/* * nthreads */; i++ )
+		for(int i = 0 ; i < nprocs; i++ )
 			fprintf(comm_file," %d",write_send_offset[i]);
 		fprintf(comm_file,"\n");
 		fprintf(comm_file,"\tWriteRecvCount :");
-		for(int i = 0 ; i < nprocs/* * nthreads */; i++ )
+		for(int i = 0 ; i < nprocs; i++ )
 			fprintf(comm_file," %d",write_recv_count[i]);
 		fprintf(comm_file,"\n");
 		fprintf(comm_file,"\tWriteRecvOffset :");
-		for(int i = 0 ; i < nprocs/* * nthreads */; i++ )
+		for(int i = 0 ; i < nprocs; i++ )
 			fprintf(comm_file," %d",write_recv_offset[i]);
 		fprintf(comm_file,"\n");
 	}

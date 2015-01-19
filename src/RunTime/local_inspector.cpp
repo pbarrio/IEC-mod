@@ -20,21 +20,31 @@
 
 using namespace std;
 
+/**
+ * \brief Inspector bits specific to each thread
+ *
+ * I should change this to one local inspector per pipeline workgroup
+ */
 local_inspector** local_inspector::all_local_inspectors = NULL;
 
-local_inspector::local_inspector(int np, /*int nt,*/ int pid/*, int tid*/, int nc):
+/**
+ * /brief Constructor
+ *
+ * /param np Number of processes
+ * /param pid This process' id
+ * /param nc Number of communicators (one per loop, get rid of it).
+ */
+local_inspector::local_inspector(int np, int pid, int nc):
 	nprocs(np),
-	//   nthreads(nt),
 	proc_id(pid),
-	//   thread_id(tid),
-	myid(pid/**nt+tid*/)
+	myid(pid)
 { 
 #ifndef NDEBUG
 	printf("GID:%d,Local_Inspector:%p\n",myid,this);
 	fflush(stdout);
 #endif
 	for( int i = 0 ; i < nc ; i++ ){
-		local_comm* new_comm = new local_comm(i,np/*,nt*/,pid/*,tid*/);
+		local_comm* new_comm = new local_comm(i, np, pid);
 		all_comm.push_back(new_comm);
 	}
 #ifndef NDEBUG
@@ -64,5 +74,3 @@ void local_inspector::PopulateGlobalArrays()
 	for( deque<local_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ )
 		(*it)->PopulateGlobalArray();
 }
-
-

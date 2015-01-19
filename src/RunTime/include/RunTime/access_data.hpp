@@ -35,6 +35,8 @@ class access_data{
 #else
   std::map<int,int> have_set;
 #endif
+
+  /// List of positions in this indirection array that we don't have
   std::set<int> dont_have_set;
 
   int array_size;

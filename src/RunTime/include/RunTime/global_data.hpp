@@ -24,21 +24,31 @@
 
 class inspector;
 
+/**
+ * \brief An array of data used in the code's computations.
+ *
+ * Indirection arrays are explicitly excluded.
+ */
 class global_data{
 
  protected:
 
-  const int my_num;
+  /// The identifier assigned to this global_data.
+  const int id;
 
+  /// All the nets, one for each position of this global array.
   net**  data_net_info;
 
+  /// Size of the original array
   const int orig_array_size;
 
-  //Stride of the array in bytes
+  /// Size of each element of the array in bytes (e.g. for int. stride_size=4)
   int stride_size;
 
+  /// True if the array is read-only in the original code
   const bool is_read_only;
 
+  /// Unimportant for the quake benchmark
   bool is_constrained;
   
  public:
@@ -50,6 +60,9 @@ class global_data{
 
   virtual int get_stride_size() const=0;
 
+  /**
+   * \brief Unimportant for the quake benchmark
+   */
   inline void SetConstraint() { is_constrained = true; }
 
   friend class inspector;

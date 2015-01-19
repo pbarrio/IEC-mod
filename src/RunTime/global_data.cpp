@@ -23,7 +23,7 @@
 using namespace std;
 
 global_data::global_data(int mn, int oas, bool iro):
-  my_num(mn),
+  id(mn),
   orig_array_size(oas),
   is_read_only(iro)
 { 
@@ -41,6 +41,15 @@ global_data::~global_data()
   }
 }
 
+
+/**
+ * \brief Constructor
+ *
+ * \param mn Identifier for this data
+ * \param oas Size of the original array
+ * \param of Offset: address of the first elem if we put all global data in a single buffer in ID order.
+ * \param iro True if read-only array
+ */
 global_data_double::global_data_double(int mn, int oas, int of, bool iro):
   global_data(mn,oas,iro)
 {

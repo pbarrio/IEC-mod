@@ -21,23 +21,30 @@
 
 #include <cstdio>
 #include <cassert>
-// #include "myset_ie.hpp"
 #include "RunTime/hypergraph.hpp"
 
 int binary_search(int * const, const int , const int );
 
 
+/**
+ * \brief Local handler of a global array (global_data)
+ *
+ * I *think* that all "local_*" classes were introduced to allow
+ * OpenMP threads. Now that we don't have threads, it might be
+ * possible to get rid of them.
+ */
 class local_data{
 
 protected:
-  
+
+	/// Number of parts in which this array will be divided
 	const int nparts;
-  
+
+	/// Identifier of this local data
 	const int myid;
 
+	/// The id of this process
 	const int proc_id;
-
-	// const int nthreads;
 
 	const int stride;
 
@@ -57,7 +64,7 @@ protected:
 
 	std::set<int> indirect_access;
 
-	long /*int*/ direct_access_size;
+	long direct_access_size;
  
 	int* direct_access_array;
 
@@ -66,11 +73,13 @@ protected:
 	int* indirect_access_array;
 
 	int* const ghosts_offset;
-  
+
+	/// Indices to the positions of this local data owned by other processes.
 	int* ghosts;
 
 	int* const owned_offset;
   
+	/// Indices to the positions of this local data owned by this process.
 	int* owned;
 
 	int* l_to_g;
@@ -81,7 +90,11 @@ protected:
 
 public:
 
-	local_data(int,int,int,int/*,int*/,int,const net**,int,bool,bool);
+	std::set<int> *global_ghosts;
+
+	std::set<int> *global_owned;
+
+	local_data(int,int,int,int,int,const net**,int,bool,bool);
 
 	virtual ~local_data();
 
@@ -110,10 +123,6 @@ public:
 	void GenerateOwned();
 
 	void SetupLocalArray();
-
-	std::set<int> * global_ghosts;
-  
-	std::set<int> * global_owned;
 
 	virtual void SendOwnedData(char*,int*)=0;
 
@@ -152,11 +161,12 @@ private:
 
 	double* orig_array;
 
+	/// Contains the local copy of the array
 	double* local_array;
 
 public:
 
-	local_data_double(int,int, int,int/*,int*/,int, const net** const, int, bool, bool);
+	local_data_double(int, int, int, int, int, const net** const, int, bool, bool);
   
 	~local_data_double();
   

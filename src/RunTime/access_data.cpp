@@ -140,6 +140,12 @@ int access_data::GetIndex(int index) const
 }
 
 
+/**
+ * \brief Calculates how much data to receive from each other process
+ *
+ * \param n_elems After the function, the i-th position of this array must contain the #elems to receive from process i
+ * \param buffer_stride Equal to the number of indirection arrays 
+ */
 void access_data::GetSendCounts(int *n_elems, int buffer_stride) const
 {
   int split = array_size / nprocs;
@@ -170,7 +176,6 @@ void access_data::GetRequestedValue(int* buffer, int buffer_size, int * curr_off
   int split = array_size / nprocs;
   for( int j = 0 ; j < nprocs ; j++ )
     for( int i = 0  ; i < send_n_elems[j*n_elems_stride + my_num] ; i++ ){
-      //printf("ID = %d, Buffer[i] = %d, split = %d, my_num = %d\n",myid,buffer[curr_offset[j]],split,my_num);
       assert(buffer[curr_offset[j]] >= myid*split);
 #ifndef NDEBUG
       int max_index = (myid == nprocs -1 ? array_size : (myid+1)*split);
@@ -178,7 +183,6 @@ void access_data::GetRequestedValue(int* buffer, int buffer_size, int * curr_off
 #endif
       int access_index = buffer[curr_offset[j]]- myid*split;
       buffer[curr_offset[j]] =  orig_array[access_index*stride];
-      //printf("ID = %d, Buffer[i] = %d, access = %d , my_num = %d\n",myid,buffer[curr_offset[j]],access_index,my_num);
       curr_offset[j]++;
     }
 }
@@ -193,7 +197,7 @@ void access_data::AddToHaveSet(int* buffer, int buffer_size, int* curr_offset)
       if( owner_process > nprocs - 1 ) owner_process = nprocs - 1;
       int value = buffer[curr_offset[owner_process]++];
 #ifdef USE_HSQPHASH
-      have_set->hash_insert_only((*it),value);
+	  have_set->hash_insert_only((*it),value);
 #else
       have_set.insert(pair<int,int>((*it),value));
 #endif

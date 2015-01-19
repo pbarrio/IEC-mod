@@ -59,6 +59,18 @@ double vertex::clear_adjvertex()
   return ret_val;
 }
 
+
+/**
+ * \brief Constructor
+ *
+ * Every position of an array has a corresponding net.
+ * Hence, a net is defined by the array ID + index.
+ *
+ * \param dn ID of the array
+ * \param di Index of the array position
+ * \param wt ??? Looks like it's initialized to the size of the data (e.g. int = 4)
+ * \param mn ID of the net
+ */
 net::net(short dn, int di, short wt, int mn):
   data_num(dn),
   data_index(di),

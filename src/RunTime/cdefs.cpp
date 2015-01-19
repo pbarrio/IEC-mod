@@ -38,9 +38,12 @@ extern "C" {
 		ARMCI_Init();
 	}
 
+
 	void armci_finalize_(){
+
 		ARMCI_Finalize();
 	}
+
 
 	double rtclock() { 
 		struct timezone Tzp; 
@@ -52,23 +55,28 @@ extern "C" {
 	}
 
 
-	void create_inspector(int md, int np, int team, int pid_team, int teamsize /*, int nt*/, int nloops, int ndata, int nc, int nac, int* nic, int* ndc, int* ro){
+	void create_inspector(int md, int np, int team, int pid_team, int teamsize,
+	                      int nloops, int ndata, int nc, int nac, int* nic,
+	                      int* ndc, int* ro){
 
 		inspector_start = rtclock();
 		inspector* new_inspector =
-			inspector::instance(md, np, team, pid_team, teamsize, /*nt,*/
-			                    nloops, ndata, nc, nac, nic, ndc, ro);
-// 		scalar_holder = new double[nt];
+			inspector::instance(md, np, team, pid_team, teamsize, nloops, ndata,
+			                    nc, nac, nic, ndc, ro);
 		scalar_holder = new double[1];
 #ifndef NDEBUG
-		fprintf(stdout,"PID:%d,Creating inspector:%p\n",md,new_inspector);
+		fprintf(stdout, "PID:%d,Creating inspector:%p\n", md, new_inspector);
 		fflush(stdout);
-// 		MPI_Barrier(MPI_COMM_WORLD);
 #endif
 	}
 
-	void create_inspector_(int* md, int* np, int team, int pid_team, int teamsize/*, int* nt*/, int* nloops, int* ndata, int* nc, int *nac, int *nic, int* ndc, int* ro){
-		create_inspector(*md, *np, team, pid_team, teamsize/*,*nt*/, *nloops, *ndata, *nc, *nac, nic, ndc, ro);
+
+	void create_inspector_(int* md, int* np, int team, int pid_team,
+	                       int teamsize, int* nloops, int* ndata, int* nc,
+	                       int *nac, int *nic, int* ndc, int* ro){
+
+		create_inspector(*md, *np, team, pid_team, teamsize, *nloops, *ndata,
+		                 *nc, *nac, nic, ndc, ro);
 	}
 
 
@@ -129,6 +137,8 @@ extern "C" {
 	}
 
 	/**
+	 * \brief Add a vertex corresponding to a loop iteration.
+	 *
 	 * \param iter_num Loop identifier
 	 * \param iter_value Iteration number
 	 */
@@ -144,10 +154,18 @@ extern "C" {
 	}
 
 	/**
+	 * \brief Connect a vertex to a net.
+	 *
+	 * Vertices are loop iterations, nets represent data.
+	 * When we detect that some data is used in an iteration,
+	 * we must connect the iteration vertex to the data net.
+	 * This allows us to know which processes will use which data,
+	 * since each vertex will be mapped to a single process.
+	 *
 	 * \param data_num Identifier of the data array
 	 * \param index Position in the array
-	 * \param isdirect=0 if addressing is affine; !=0 if it depends on indirection array.
-	 * \param isploop !=0 if the access comes from a partitionable loop
+	 * \param isdirect !=0 if addressing is affine; =0 if it depends on indirection array.
+	 * \param isploop !=0 if the access comes from a partitionable loop. What is a p. loop?
 	 */
 	void add_pin_to_net(int data_num, int index, int isdirect, int isploop) {
 		inspector* my_inspect = inspector::instance();
@@ -214,7 +232,6 @@ extern "C" {
 		inspector::instance()->SetStride(*an,*st);
 	}
 
-
 	int get_vertex_home(int in ,int iv){
 		return inspector::instance()->GetVertexHome(in,iv);
 	}
@@ -224,11 +241,8 @@ extern "C" {
 		*out = inspector::instance()->GetVertexHome(*in,*iv);
 	}
 
-	int get_local_size(/*int thread_id,*/ int an){
-// 		if( thread_id == 0 ){
+	int get_local_size(int an){
 			data_access_info = inspector::instance()->GetLocalAccesses(an);
-// 		}
-// #pragma omp barrier
 
 		int * proc_recv_buffer = data_access_info.recvbuffer;
 		int * proc_recv_displ = data_access_info.recvdispl;
@@ -236,226 +250,187 @@ extern "C" {
 		local_inspector* curr_local_inspector = local_inspector::instance(/*thread_id*/);
 		int nprocs = inspector::instance()->GetNProcs();
 		for( int j = 0 ; j < nprocs ; j++ ){
-// 			curr_local_inspector->InsertDirectAccess(an,proc_recv_buffer+proc_recv_displ[thread_id*nprocs*2+j*2],proc_recv_count[thread_id*nprocs*2+j*2]);
-// 			curr_local_inspector->InsertIndirectAccess(an,proc_recv_buffer+proc_recv_displ[thread_id*nprocs*2+j*2+1],proc_recv_count[thread_id*nprocs*2+j*2+1]);
 			curr_local_inspector->InsertDirectAccess(an,proc_recv_buffer+proc_recv_displ[j*2],proc_recv_count[j*2]);
 			curr_local_inspector->InsertIndirectAccess(an,proc_recv_buffer+proc_recv_displ[j*2+1],proc_recv_count[j*2+1]);
 		}
-// #pragma omp barrier
-// 		if( thread_id == 0 ){
 			delete[] data_access_info.recvbuffer;
 			delete[] data_access_info.recvcount;
 			delete[] data_access_info.recvdispl;
-// 		}
 		curr_local_inspector->SetupLocalArray(an);
 		return curr_local_inspector->GetLocalDataSize(an);
 	}
 
 
-	void get_local_size_(/*int* thread_id,*/ int* an, int* out){
-		*out = get_local_size(/**thread_id,*/*an);
-	}
-  
-	void communicate_reads_for(/*int thread_id,*/ int in, int an){
-		local_inspector::instance(/*thread_id*/)->AddReadArray(in,an);
+	void get_local_size_(int* an, int* out){
+		*out = get_local_size(*an);
 	}
 
-
-	void communicate_reads_for_(/*int *thread_id,*/ int *in, int *an){
-		local_inspector::instance(/**thread_id*/)->AddReadArray(*in,*an);
+	/**
+	 * \brief Unused in quake
+	 */
+	void communicate_reads_for(int in, int an){
+		local_inspector::instance()->AddReadArray(in,an);
 	}
 
-	void communicate_writes_for(/*int thread_id,*/ int in, int an){
-		local_inspector::instance(/*thread_id*/)->AddWriteArray(in,an);
+	/**
+	 * \brief Unused in quake
+	 */
+	void communicate_reads_for_(int *in, int *an){
+		local_inspector::instance()->AddReadArray(*in,*an);
 	}
 
-	void communicate_writes_for_(/*int *thread_id,*/ int *in, int *an){
-		local_inspector::instance(/**thread_id*/)->AddWriteArray(*in,*an);
+	void communicate_writes_for(int in, int an){
+		local_inspector::instance()->AddWriteArray(in,an);
 	}
 
-	void add_index_from_proc(/*int thread_id,*/ int data_num, int index, int access_type){
-		local_inspector::instance(/*thread_id*/)->AddIndexAccessed(data_num,index,access_type);
+	void communicate_writes_for_(int *in, int *an){
+		local_inspector::instance()->AddWriteArray(*in,*an);
 	}
 
-	void add_index_from_proc_(/*int *thread_id,*/ int *data_num, int *index, int *access_type){
-		local_inspector::instance(/**thread_id*/)->AddIndexAccessed(*data_num,*index,*access_type);
+	void add_index_from_proc(int data_num, int index, int access_type){
+		local_inspector::instance()->AddIndexAccessed(data_num,index,access_type);
 	}
 
-
-	void populate_local_array(/*int thread_id,*/ int an, double*lb, double*oa, int st){
-		local_inspector::instance(/*thread_id*/)->PopulateLocalArray(an,lb,oa,st);
-	}
-
-	void populate_local_array_(/*int *thread_id,*/ int *an, double*lb, double*oa, int *st){
-		local_inspector::instance(/**thread_id*/)->PopulateLocalArray(*an,lb,oa,*st);
+	void add_index_from_proc_(int *data_num, int *index, int *access_type){
+		local_inspector::instance()->AddIndexAccessed(*data_num,*index,*access_type);
 	}
 
 
-	void renumber_access_array(/*int thread_id,*/ int an, int as, int* aa){
-		local_inspector::instance(/*thread_id*/)->RenumberAccessArray(an,as,aa);
+	void populate_local_array(int an, double*lb, double*oa, int st){
+		local_inspector::instance()->PopulateLocalArray(an,lb,oa,st);
 	}
 
-	void renumber_access_array_(/*int *thread_id,*/ int *an, int *as, int* aa){
-		local_inspector::instance(/**thread_id*/)->RenumberAccessArray(*an,*as,aa);
+	void populate_local_array_(int *an, double*lb, double*oa, int *st){
+		local_inspector::instance()->PopulateLocalArray(*an,lb,oa,*st);
 	}
 
-	void renumber_offset_array(/*int thread_id,*/ int an, int as, int* aa, int* la){
-		local_inspector::instance(/*thread_id*/)->RenumberOffsetArray(an,as,aa,la);
+
+	void renumber_access_array(int an, int as, int* aa){
+		local_inspector::instance()->RenumberAccessArray(an,as,aa);
 	}
 
-	void renumber_offset_array_(/*int *thread_id,*/ int *an, int *as, int* aa, int* la){
-		local_inspector::instance(/**thread_id*/)->RenumberOffsetArray(*an,*as,aa,la);
+	void renumber_access_array_(int *an, int *as, int* aa){
+		local_inspector::instance()->RenumberAccessArray(*an,*as,aa);
 	}
 
-	void setup_executor(/*int thread_id*/){
-// #ifndef NDEBUG
-// 		printf("ID = %d, Going to call setup executor (%p)\n",thread_id,local_inspector::instance(thread_id));
-// 		fflush(stdout);
-// #endif
-		local_inspector::instance(/*thread_id*/)->GenerateGhosts();
+	void renumber_offset_array(int an, int as, int* aa, int* la){
+		local_inspector::instance()->RenumberOffsetArray(an,as,aa,la);
+	}
+
+	void renumber_offset_array_(int *an, int *as, int* aa, int* la){
+		local_inspector::instance()->RenumberOffsetArray(*an,*as,aa,la);
+	}
+
+	/**
+	 * \brief Start executor
+	 *
+	 * This function must run immediately before the start of the computations.
+	 */
+	void setup_executor(){
+		local_inspector::instance()->GenerateGhosts();
     
 #ifndef NDEBUG
 		printf("LocalGhostsDone\n");
 		fflush(stdout);
 #endif
 
-// #pragma omp barrier
-    
-// 		if( thread_id == 0 ){
-			inspector::instance()->CommunicateGhosts();
+		inspector::instance()->CommunicateGhosts();
 #ifndef NDEBUG
-			printf("Global ghosts done\n");
-			fflush(stdout);
+		printf("Global ghosts done\n");
+		fflush(stdout);
 #endif
-// 		}
-// #pragma omp barrier
 
-			local_inspector::instance(/*thread_id*/)->GenerateOwned();
+		local_inspector::instance()->GenerateOwned();
 
+		inspector::instance()->GetBufferSize();
+		inspector_stop = rtclock();
+		if( inspector::instance()->get_proc_id() == 0 )
+			fprintf(stderr,"[IEC]:InspectorTime:%lf\n",inspector_stop-inspector_start);
 
-// #pragma omp barrier
-
-// 		if( thread_id == 0 ){
-			inspector::instance()->GetBufferSize();
-			inspector_stop = rtclock();
-			if( inspector::instance()->get_proc_id() == 0 )
-				fprintf(stderr,"[IEC]:InspectorTime:%lf\n",inspector_stop-inspector_start);
-// 		}
-
-// #pragma omp barrier
-
-// 		if( thread_id == 0 ){
-			executor_start = rtclock();
-// 		}
+		executor_start = rtclock();
 	}
 
   
-	void setup_executor_(/*int * thread_id*/){
-		setup_executor(/**thread_id*/);
+	void setup_executor_(){
+		setup_executor();
 	}
 
-	void communicate_reads(/*int tid, */int cn){
-		inspector::instance()->CommunicateReads(/*tid,*/cn);
+	void communicate_reads(int cn){
+		inspector::instance()->CommunicateReads(cn);
 	}
 
-	void communicate_reads_(/*int *tid,*/ int *cn){
-		inspector::instance()->CommunicateReads(/**tid,*/*cn);
-	}
-
-
-	void communicate_writes(/*int tid,*/ int cn){
-		inspector::instance()->CommunicateWrites(/*tid,*/cn);
+	void communicate_reads_(int *cn){
+		inspector::instance()->CommunicateReads(*cn);
 	}
 
 
-	void communicate_writes_(/*int *tid,*/ int *cn){
-		inspector::instance()->CommunicateWrites(/**tid,*/*cn);
+	void communicate_writes(int cn){
+		inspector::instance()->CommunicateWrites(cn);
 	}
 
-	void init_write_ghosts(/*int tid,*/ int cn){
-		local_inspector::instance(/*tid*/)->InitWriteGhosts(cn);
+
+	void communicate_writes_(int *cn){
+		inspector::instance()->CommunicateWrites(*cn);
 	}
 
-	void init_write_ghosts_(/*int *tid,*/ int *cn){
-		local_inspector::instance(/**tid*/)->InitWriteGhosts(*cn);
+	void init_write_ghosts(int cn){
+		local_inspector::instance()->InitWriteGhosts(cn);
 	}
 
-// 	void reduce_scalar(int thread_id, double *val){
-// 		scalar_holder[thread_id] = *val;
+	void init_write_ghosts_(int *cn){
+		local_inspector::instance()->InitWriteGhosts(*cn);
+	}
 	void reduce_scalar(double *val){
 		scalar_holder[0] = *val;
-// #pragma omp barrier
-
-// #pragma omp master
-// 		{
-// 			int nthreads = inspector::instance()->GetNThreads();
-// 			final_val = 0.0;
-// 			for( int i =0  ; i < nthreads ; i++ )
-// 				final_val += scalar_holder[i];
-      
-// 			MPI_Allreduce(MPI_IN_PLACE,&final_val,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-// 		}
 		final_val = scalar_holder[0];      
 		MPI_Allreduce(MPI_IN_PLACE,&final_val,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
 
-// #pragma omp barrier
 		*val = final_val;
 	}
 
-// 	void reduce_scalar_(int* thread_id, double* val){
-// 		reduce_scalar(*thread_id,val);
-// 	}
 	void reduce_scalar_(double* val){
 		reduce_scalar(val);
 	}
 
-	void populate_global_arrays(/*int tid*/){
-// 		if( tid == 0 ){
+	void populate_global_arrays(){
 			executor_stop = rtclock();
 			if( inspector::instance()->get_proc_id() == 0 )
 				fprintf(stderr,"[IEC]:ExecutorTime:%lf\n",executor_stop-executor_start);
-// 		}
  
-			local_inspector::instance(/*tid*/)->PopulateGlobalArrays();
+			local_inspector::instance()->PopulateGlobalArrays();
 	}
 
-	void populate_global_arrays_(/*int *tid*/){
-		local_inspector::instance(/**tid*/)->PopulateGlobalArrays();
+	void populate_global_arrays_(){
+		local_inspector::instance()->PopulateGlobalArrays();
 	}
 
 
-	void delete_inspector(/*int tid*/){
+	void delete_inspector(){
 
-// 		delete local_inspector::instance(/*tid*/);
 		local_inspector* li = local_inspector::instance();
 		if (li)
 			delete li;
 
-// #pragma omp barrier
-
-// #pragma omp master
 		{
 			delete inspector::instance();
 			delete[] scalar_holder;
 		}
 
-// #pragma omp barrier
 	}
 
-	void delete_inspector_(/*int* tid*/){
-		delete_inspector(/**tid*/);
+	void delete_inspector_(){
+		delete_inspector();
 	}
 
-	void print_data(/*int thread_id*/){
+	void print_data(){
 #ifndef NDEBUG
-		local_inspector::instance(/*thread_id*/)->print_data();
-// 		if( thread_id == 0 )
+		local_inspector::instance()->print_data();
 			inspector::instance()->print_comm();
 #endif
 	}
 
-	void print_data_(/*int* thread_id*/){
-		print_data(/**thread_id*/);
+	void print_data_(){
+		print_data();
 	}
 
 
@@ -547,10 +522,18 @@ extern "C" {
 		*lr =  inspector::instance()->GetLocalRows(*sn/*,*tid*/);
 	}
 
+
+	/**
+	 * \brief Unused in quake
+	 */
 	void set_constraint(int an){
 		inspector::instance()->SetConstraint(an);
 	}
 
+
+	/**
+	 * \brief Unused in quake
+	 */
 	void set_constraint_(int *an){
 		inspector::instance()->SetConstraint(*an);
 	}

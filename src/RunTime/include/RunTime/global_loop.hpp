@@ -41,7 +41,10 @@ class global_loop{
   global_loop(int,int,int);
 
   ~global_loop();
-  
+
+  /**
+   * \param iter_value Iteration of the loop
+   */
   inline int GetVertexHome(int iter_value) const{
     return iter_vertex[iter_value]->home;
   }

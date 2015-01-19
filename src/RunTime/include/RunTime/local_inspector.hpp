@@ -25,20 +25,27 @@
 
 #include "RunTime/local_data.hpp"
 #include "RunTime/local_comm.hpp"
+
 class inspector;
 
+/**
+ * \brief Local inspector to one of the threads.
+ *
+ * I *think* that all "local_*" classes were introduced to allow
+ * OpenMP threads. Now that we don't have them, it might be
+ * possible to get rid of them.
+ */
 class local_inspector{
 
 private:
-  
+
+	/// Number of processes
 	const int nprocs;
-  
-	//   const int nthreads;
 
+	/// Id of the current process
 	const int proc_id;
-  
-	//   const int thread_id;
 
+	/// Identifier of this inspector
 	const int myid;
 
 #ifndef NDEBUG
@@ -49,9 +56,10 @@ private:
   
 	std::deque<local_data*> all_data;
 
+	/// All local comunicators
 	std::deque<local_comm*> all_comm;
 
-	local_inspector(int/*,int*/,int/*,int*/,int);
+	local_inspector(int, int, int);
 
 	static local_inspector** all_local_inspectors;
 
@@ -59,8 +67,7 @@ public:
   
 	~local_inspector();
   
-	static local_inspector* instance(/*int tid*/){
-// 		return all_local_inspectors[tid];
+	static local_inspector* instance(){
 		if (all_local_inspectors && all_local_inspectors[0])
 			return all_local_inspectors[0];
 		else
@@ -74,12 +81,25 @@ public:
 	inline int GetLocalDataSize(int dn) const{
 		return all_data[dn]->GetLocalSize();
 	}
-  
+
+	/**
+	 * \brief Add local array corresponding to a global_data
+	 *
+	 * \param mn ID of the global_data
+	 * \param stride_size Size of a position (e.g. int = 4)
+	 * \param ddni Nets for all the positions of the global data
+	 * \param oas Size of the original array
+	 * \param iro True if the array is read-only
+	 * \param ic Unused in the quake benchmark
+	 */
 	inline void AddLocalData(int mn, int stride_size, const net** ddni, int oas, bool iro, bool ic){
-		local_data* new_data = new local_data_double(mn, nprocs/**nthreads*/, myid, proc_id/*,nthreads*/, stride_size, ddni, oas, iro, ic);
+		local_data* new_data = new local_data_double(mn, nprocs, myid, proc_id, stride_size, ddni, oas, iro, ic);
 		all_data.push_back(new_data);
 	}
 
+	/**
+	 * \brief Unused in quake
+	 */
 	inline void AddReadArray(int in, int an){
 		all_comm[in]->read_arrays.push_back(all_data[an]);
 	}

@@ -41,16 +41,28 @@ int binary_search( int* const array, const int n, const int value)
 		return -1;
 	else
 		return mid;
-}  
+}
 
 
-local_data::local_data(int mn, int np, int md, int pid/*, int nt*/, int st, const net** dni, int oas, bool iro, bool ic):
+/**
+ * \brief Constructor
+ *
+ * \param mn Identifier of the global array
+ * \param np Number of parts in which the original array is split for communications
+ * \param md Identifier of the local communicator
+ * \param pid Identifier of the current process
+ * \param st Size of each position in the array (e.g. int = 4 bytes)
+ * \param dni Nets corresponding to all the positions in the array
+ * \param oas Size of the original array
+ * \param iro True if the data is read-only
+ * \param ic Unused in quake
+ */
+local_data::local_data(int mn, int np, int md, int pid, int st, const net** dni, int oas, bool iro, bool ic):
 	my_num(mn),
 	nparts(np),
 	myid(md),
 	stride(st),
 	proc_id(pid),
-	// nthreads(nt),
 	data_net_info(dni),
 	orig_array_size(oas),
 	ghosts_offset(new int[np+1]),
@@ -59,6 +71,7 @@ local_data::local_data(int mn, int np, int md, int pid/*, int nt*/, int st, cons
 	is_read_only(iro),
 	is_constrained(ic)
 {
+
 	ghosts = NULL;
 	owned = NULL;
 	l_to_g = NULL;
@@ -175,16 +188,23 @@ void local_data::RenumberOffsetArray(int array_size, int* offset_array, int* low
 }
 
 
+/**
+ * \brief Calculate the ghosts of this local data on this process
+ *
+ * A ghost is a position in a local data that is owned by another process.
+ * Therefore, if we want to use it locally, it must be communicated by the
+ * owner first.
+ */
 void local_data::GenerateGhosts()
 {
 	assert(local_array_size == -1);
 	if( !is_read_only ){
 		assert(data_net_info);
+
+		// Various initializations
 		global_ghosts = new set<int>[nparts];
 		global_owned = new set<int>[nparts];
-
 		local_array_size = direct_access_size + indirect_access_size;
-
 		assert(l_to_g == NULL);
 		l_to_g = new int[local_array_size];
 		for( int i = 0 ; i < local_array_size ; i++ )
@@ -210,6 +230,7 @@ void local_data::GenerateGhosts()
 			else
 				global_ghosts[curr_net->home].insert(curr_index);
 		}
+
 		if( is_constrained ){
 			block_owned_offset = 0;
 			for( int i = 0 ; i < local_array_size ; i++ )
@@ -314,11 +335,6 @@ void local_data_double::PopulateLocalArray(double* local_base, double* orig, int
 	orig_array = orig;
 	local_array = local_base;
 
-#ifndef NDEBUG
-	// printf("GID:%d,Array:%d,LocalArray:%p,GlobalArray:%p\n",myid,my_num,local_array,orig_array);
-	// fflush(stdout);
-#endif
-
 	int counter = 0 ;
     
 	if( stride != 1 ){
@@ -343,10 +359,20 @@ void local_data_double::PopulateLocalArray(double* local_base, double* orig, int
 }
 
 
-void local_data_double::SendOwnedData(char* send_buffer, int* curr_offset)
-{
+/**
+ * \brief Populate send buffer with the data owned by this processor
+ *
+ * This data will be communicated to other user processes.
+ *
+ * \param send_buffer The buffer to be populated.
+ * \param offset Array containing the start address, in the send
+ *        buffer, of the chunk going to each user process.
+ */
+void local_data_double::SendOwnedData(char* send_buffer,
+                                      const int* offset){
+
 	for( int i = 0 ; i < nparts ; i++ )
-		if( i /*/ nthreads*/ != proc_id ){
+		if( i != proc_id ){
 			double* buffer = reinterpret_cast<double*>(send_buffer+curr_offset[i]);
 			int counter = 0;
 			if( stride == 1 )
@@ -362,10 +388,22 @@ void local_data_double::SendOwnedData(char* send_buffer, int* curr_offset)
 		}
 }
 
-void local_data_double::RecvGhostData(char* recv_buffer, int* curr_offset)
-{
+
+/**
+ * \brief Write ghosts from a receive buffer to the local data.
+ *
+ * Updated data owned by other processes is received in the receive
+ * buffer and copied to the local data.
+ *
+ * \param recv_buffer The receive buffer to be copied to our local data
+ * \param offset Array containing the start address, in the receive
+ *        buffer, of the chunk coming from each owner process.
+ */
+void local_data_double::RecvGhostData(char* recv_buffer,
+                                      const int* offset){
+
 	for( int i = 0 ; i < nparts ; i++ )
-		if( i /*/ nthreads*/ != proc_id ){
+		if( i != proc_id ){
 			double* buffer = reinterpret_cast<double*>(recv_buffer+curr_offset[i]);
 			int counter = 0;
 			if( stride == 1 )
@@ -382,10 +420,23 @@ void local_data_double::RecvGhostData(char* recv_buffer, int* curr_offset)
 }
 
 
+/**
+ * \brief Write ghosts to a send buffer.
+ *
+ * After this function, the send buffer contains the positions of this
+ * local data owned by other processess but computed (maybe partially)
+ * by this process. This data must be communicated to their owners so
+ * that these can update the data and broadcast it to other user
+ * processors.
+ *
+ * \param send_buffer The send buffer to be populated
+ * \param curr_offset 
+ */
 void local_data_double::SendGhostData(char* send_buffer, int* curr_offset)
 {
+	// For all the parts of this local data, each of which is owned by one process...
 	for( int i = 0 ; i < nparts ; i++ )
-		if( i /*/ nthreads*/ != proc_id ){
+		if( i != proc_id ){
 			double* buffer = reinterpret_cast<double*>(send_buffer+curr_offset[i]);
 			int counter = 0;
 			if( stride == 1 )
@@ -401,10 +452,21 @@ void local_data_double::SendGhostData(char* send_buffer, int* curr_offset)
 		}
 }
 
+/**
+ * \brief Get received data that we own and update our copy
+ *
+ * Other processes must communicate us any change that they make to
+ * any data owned by us, so that we can aggregate all the partial
+ * results from other processes. This function copies the received
+ * buffer to our local copy, which is the important one.
+ *
+ * \param send_buffer The receive buffer where preliminary results are located.
+ * \param curr_offset 
+ */
 void local_data_double::RecvOwnedData(char* recv_buffer, int* curr_offset)
 {
 	for( int i = 0 ; i < nparts ; i++ )
-		if( i /*/ nthreads*/ != proc_id ){
+		if( i != proc_id ){
 			double* buffer = reinterpret_cast<double*>(recv_buffer+curr_offset[i]);
 			int counter = 0;
 			if( stride == 1 )

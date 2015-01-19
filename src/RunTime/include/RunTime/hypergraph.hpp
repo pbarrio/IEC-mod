@@ -28,13 +28,15 @@
 #include "DataStructures/kshash.hpp"
 #endif
 
-/** Class to represent the vertex of a hypergraph
+/** 
+ * \brief A vertex in the hypergraph
+ *
+ * Each vertex represents one iteration of a loop
  */
 struct vertex{
   const short iter_num;
   const int iter_value;
   const int my_num;
-  //static int n_vertex;
   short home;
   vertex(short,int,int);
   ~vertex();
@@ -65,10 +67,22 @@ struct pin_comparator{
   }
 };
 
+/**
+ * \brief A net in the hypergraph
+ *
+ * Each net represents one position of an array.
+ */
 struct net{
+
+  /// Identifier of the array
   const short data_num;
+
+  /// Index of the data (relative to the array) that this net represents
   const int data_index;
+
+  /// Unique net identifier
   const int my_num;
+
   short home;
   std::set<pin_info,pin_comparator> pins;
   short weight;

@@ -29,28 +29,42 @@ class local_data;
 class local_comm{
   
 private:
+
+	/// Read-only arrays in the target code
 	std::vector<local_data*> read_arrays;
   
+	/// Writable arrays in the target code
 	std::vector<local_data*> write_arrays;
-  
-// 	const int thread_id;
-  
+
 	const int proc_id;
 
-// 	const int nthreads;
-  
 	const int nprocs;
 
 	const int myid;
 
 	const int my_num;
   
+	/*
+	 * read =  data that we use.
+	 * write = data that we modify after computations.
+	 * ghost = data that we do not own
+	 * owned = data that we own
+	 */
+
+	/// Start index in the send buffer, for each client process,
+	/// of the OWNED data sent FROM THIS process.
 	int* const read_send_offset;
   
+	/// Start index in the recv buffer, for each owner process,
+	/// of the GHOST data sent TO THIS process.
 	int* const read_recv_offset;
   
+	/// Start index in the send buffer, for each owner process,
+	/// of the GHOST to be sent FROM THIS process.
 	int* const write_send_offset;
   
+	/// Start index in the recv buffer, for each client process,
+	/// of the updated OWNED data sent TO THIS process.
 	int* const write_recv_offset;
 
 	int* const read_send_count;
@@ -60,15 +74,14 @@ private:
 	int* const write_send_count;
   
 	int* const write_recv_count;
-
-	int* const offset_array;
   
 public:
   
-	local_comm(int,int/*,int*/,int/*,int*/);
+	local_comm(int,int,int);
   
 	~local_comm();
 
+	///Unused in quake
 	int GetReadSendCount(const int, const int);
 
 	int GetReadRecvCount(const int, const int);

@@ -45,7 +45,8 @@ struct ret_data_access{
 	int* recvcount;
 	int* recvdispl;
 	ret_data_access() : recvbuffer(NULL),recvdispl(NULL),recvcount(NULL) { }
-	ret_data_access(int* a, int* b , int * c) : recvbuffer(a), recvcount(b), recvdispl(c) { }
+	ret_data_access(int* a, int* b , int * c) :
+		recvbuffer(a), recvcount(b), recvdispl(c) {}
 };
 
 class inspector{
@@ -79,21 +80,21 @@ private:
 
 	int* const data_num_offset;
 
-	/* Node level communicator */
+	/// Node level communicator
 	std::deque<global_comm*> all_comm; 
 
 	/// Indirection arrays are tracked here
 	std::deque<access_data*> all_access_data;
 
-	//   inspector(int,int,int,int,int,int,int,int*,int*,int*);
-	inspector(int pid, int np, int team, int pid_team, int teamsize
-	          /*, int nt*/, int nl, int nd, int nc, int nad, int* iter_num_count,
+	inspector(int pid, int np, int team, int pid_team, int teamsize,
+	          int nl, int nd, int nc, int nad, int* iter_num_count,
 	          int* data_num_count, int* ro);
   
-	///Singleton inspector object. There will be one inspector per process
+	///Singleton inspector object. There is one inspector per process.
 	static inspector* singleton_inspector;
 
-	///For a given iteration, the vertex value is set first, all subsequent calls to add nets uses the curr_vertex value
+	///For a given iteration, the vertex value is set first, all subsequent
+	///calls to add nets uses the curr_vertex value
 	vertex* curr_vertex;
 
 	void AfterPartition();
@@ -107,9 +108,10 @@ private:
 public:
 	~inspector();
 
-	static inspector* instance(int pid, int np, int team, int pid_team, int teamsize,
-	                           int nl, int nd, int nc, int nad,
-	                           int* iter_num_count, int* data_num_count, int* ro){
+	static inspector* instance(int pid, int np, int team, int pid_team,
+	                           int teamsize, int nl, int nd, int nc, int nad,
+	                           int* iter_num_count, int* data_num_count,
+	                           int* ro){
 
 		if( singleton_inspector == NULL )
 			singleton_inspector =
@@ -125,13 +127,11 @@ public:
 
 	inline int get_proc_id() const{return proc_id;}
 
-	inline int GetVertexHome(int iter_num, int iter_value) const{
-		return all_loops[iter_num]->GetVertexHome(iter_value);
+	inline int GetVertexHome(int loop_id, int iter) const{
+		return all_loops[loop_id]->GetVertexHome(iter);
 	}
 
 	inline int GetNProcs() const { return nprocs; }
-
-// 	inline int GetNThreads() const{ return nthreads; }
 
 	inline void SetStride(int an, int st){
 		all_data[an]->SetStride(st);
@@ -181,9 +181,9 @@ public:
 
 	void GetBufferSize();
 
-	void CommunicateReads(/*int,*/int);
+	void CommunicateReads(int);
   
-	void CommunicateWrites(/*int,*/int);
+	void CommunicateWrites(int);
 
 
 	/**
@@ -242,11 +242,14 @@ public:
 		all_solvers[sn]->RenumberGlobalRows(oa,as);
 	}
 
-	inline int GetLocalRows(int sn/*, int tid*/) const{
+	inline int GetLocalRows(int sn) const{
 		assert(sn==0);
-		return all_solvers[sn]->GetLocalRows(/*tid*/);
+		return all_solvers[sn]->GetLocalRows();
 	}
 
+	/**
+	 * \brief Unimportant for the quake benchmark
+	 */
 	void SetConstraint(int an) {
 		all_data[an]->SetConstraint();
 	}
