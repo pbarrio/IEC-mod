@@ -13,6 +13,9 @@ Makefile
 link.txt
 progress.marks
 
+/CMakeFiles/2.8.12.2/*
+/demos/CMakeFiles/2.8.12.2/*
+/demos/CMakeFiles/Progress/*
 /CMakeFiles/CMakeDetermineCompilerABI_C.bin
 /CMakeFiles/CMakeDetermineCompilerABI_CXX.bin
 /CMakeFiles/CompilerIdC/CMakeCCompilerId.c
@@ -26,6 +29,8 @@ progress.marks
 /demos/CMakeFiles/CompilerIdCXX/CMakeCXXCompilerId.cpp
 /demos/CMakeFiles/Makefile2
 /demos/CMakeFiles/TargetDirectories.txt
+/doxygen/html
+/doxygen/latex
 /install_manifest.txt
 /src/CompileTime/iec
 /src/CompileTime/iec-0.1
