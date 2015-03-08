@@ -148,10 +148,10 @@ int access_data::GetIndex(int index) const
  */
 void access_data::GetSendCounts(int *n_elems, int buffer_stride) const
 {
-  int split = array_size / nprocs;
+  int split = array_size / myTeamSize;
   for( set<int>::iterator it = dont_have_set.begin() ; it != dont_have_set.end() ; it++ ){
     int owner_process = (*it) / split;
-    if( owner_process > nprocs - 1 ) owner_process = nprocs - 1;
+    if( owner_process > myTeamSize - 1 ) owner_process = myTeamSize - 1;
     assert(owner_process != myid );
     n_elems[owner_process*buffer_stride+my_num]++;
   }
@@ -160,11 +160,11 @@ void access_data::GetSendCounts(int *n_elems, int buffer_stride) const
 
 void access_data::PopulateBuffer(int * buffer, int buffer_size, int* curr_offset) const
 {
-  int split = array_size / nprocs ; 
+  int split = array_size / myTeamSize ; 
   //if( buffer )
     for( set<int>::const_iterator it = dont_have_set.begin() ; it != dont_have_set.end() ; it++ ){
       int owner_process = (*it) / split;
-      if( owner_process > nprocs - 1 ) owner_process = nprocs - 1;
+      if( owner_process > myTeamSize - 1 ) owner_process = myTeamSize - 1;
       buffer[curr_offset[owner_process]++] = *it;
       assert(curr_offset[owner_process] <= buffer_size );
     }
@@ -173,12 +173,12 @@ void access_data::PopulateBuffer(int * buffer, int buffer_size, int* curr_offset
 
 void access_data::GetRequestedValue(int* buffer, int buffer_size, int * curr_offset, int * send_n_elems, int n_elems_stride) const
 {
-  int split = array_size / nprocs;
-  for( int j = 0 ; j < nprocs ; j++ )
+  int split = array_size / myTeamSize;
+  for( int j = 0 ; j < myTeamSize ; j++ )
     for( int i = 0  ; i < send_n_elems[j*n_elems_stride + my_num] ; i++ ){
       assert(buffer[curr_offset[j]] >= myid*split);
 #ifndef NDEBUG
-      int max_index = (myid == nprocs -1 ? array_size : (myid+1)*split);
+      int max_index = (myid == myTeamSize -1 ? array_size : (myid+1)*split);
       assert(buffer[curr_offset[j]] < max_index );
 #endif
       int access_index = buffer[curr_offset[j]]- myid*split;
@@ -190,12 +190,11 @@ void access_data::GetRequestedValue(int* buffer, int buffer_size, int * curr_off
 
 void access_data::AddToHaveSet(int* buffer, int buffer_size, int* curr_offset)
 {
-  int split = array_size/nprocs;
-  //if( buffer)
-    for( set<int>::iterator it = dont_have_set.begin() ; it != dont_have_set.end() ; it++ ){
-      int owner_process = (*it) / split;
-      if( owner_process > nprocs - 1 ) owner_process = nprocs - 1;
-      int value = buffer[curr_offset[owner_process]++];
+  int split = array_size / myTeamSize;
+  for( set<int>::iterator it = dont_have_set.begin() ; it != dont_have_set.end() ; it++ ){
+	  int owner_process = (*it) / split;
+	  if( owner_process > myTeamSize - 1 ) owner_process = myTeamSize - 1;
+	  int value = buffer[curr_offset[owner_process]++];
 #ifdef USE_HSQPHASH
 	  have_set->hash_insert_only((*it),value);
 #else

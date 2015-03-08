@@ -470,7 +470,7 @@ int main(int argc,char **argv)
 	// Initial limits for loop 1
 	int __local_block_1_start__ = (ARCHnodes - 0) / teamSize * idInMyTeam + 0;
 	int __local_block_1_end__;
-	if (__proc_id__ != __nprocs__ - 1) 
+	if (idInMyTeam != teamSize - 1)
 		__local_block_1_end__ = (ARCHnodes - 0) / teamSize * (idInMyTeam + 1) + 0;
 	else 
 		__local_block_1_end__ = ARCHnodes;

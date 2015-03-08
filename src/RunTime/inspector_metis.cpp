@@ -125,72 +125,72 @@ int remove_duplicates(int* const array, const int size, int* const mirror_array)
 
 void inspector::MetisReplicateHypergraph()
 {
-	if (nprocs < 2)
+	if (team_size < 2)
 		return;
 
 	const int num_nets = data_num_offset[all_data.size()];
 
 	//First Step , broadcast the number of pins a process has for each net
   
-	int sendcount[nprocs],senddispl[nprocs+1],recvcount[nprocs],recvdispl[nprocs+1];
+	int sendcount[team_size],senddispl[team_size + 1],recvcount[team_size],recvdispl[team_size + 1];
 
 	int num_local_nets = 0;
-	for( int i = 0 ; i < nprocs ; i++) {
+	for( int i = 0 ; i < team_size ; i++) {
 		sendcount[i] = 0;
 		recvcount[i] = 0;
 	}
     
 	for( int i = 0 ; i < all_data.size() ; i++ ){
 		int curr_size = data_num_offset[i+1] - data_num_offset[i];
-		int split = curr_size / nprocs;
-		num_local_nets += ( proc_id == nprocs - 1 ? curr_size - split * proc_id : split );
-		for( int j = 0 ; j < nprocs ; j++ ){
-			sendcount[j] += (j == proc_id ? 0 : ( j == nprocs - 1 ? curr_size - split * j : split ) );
+		int split = curr_size / team_size;
+		num_local_nets += ( proc_id == team_size - 1 ? curr_size - split * proc_id : split );
+		for( int j = 0 ; j < team_size ; j++ ){
+			sendcount[j] += (j == proc_id ? 0 : ( j == team_size - 1 ? curr_size - split * j : split ) );
 		}
 	}
     
 	senddispl[0] = 0; recvdispl[0] = 0;
-	for( int i =0 ; i < nprocs ; i++ ){
+	for( int i =0 ; i < team_size ; i++ ){
 		senddispl[i+1] = senddispl[i] + sendcount[i];
 		recvcount[i] = ( i == proc_id ? 0 : num_local_nets ) ;
 		recvdispl[i+1] = recvdispl[i] + recvcount[i];
 	}
 
-	int* const net_send_npins = new int[senddispl[nprocs]];
-	int* const net_recv_npins = new int[recvdispl[nprocs]];
+	int* const net_send_npins = new int[senddispl[team_size]];
+	int* const net_recv_npins = new int[recvdispl[team_size]];
 	net** const local_nets = new net*[num_local_nets];
   
-	int curr_displ[nprocs];
-	for( int i= 0; i < nprocs ; i++ )
+	int curr_displ[team_size];
+	for( int i= 0; i < team_size ; i++ )
 		curr_displ[i] = senddispl[i];
 
 	int local_count = 0;
 	for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ ){
 		// if( !(*it)->is_read_only ){
 		int curr_array_size = (*it)->orig_array_size ;
-		int curr_split = curr_array_size / nprocs;
+		int curr_split = curr_array_size / team_size;
 		int my_start = curr_split * proc_id;
-		int my_end = ( proc_id == nprocs - 1 ? curr_array_size : my_start + curr_split );
+		int my_end = ( proc_id == team_size - 1 ? curr_array_size : my_start + curr_split );
 		for( int j = 0,curr_proc = 0 ; j < curr_array_size ; j++){
 			if( j < my_start || j >= my_end )
 				net_send_npins[curr_displ[curr_proc]++] = (*it)->data_net_info[j]->pins.size()*2+1;
 			else
 				local_nets[local_count++] = (*it)->data_net_info[j];
 			if( (j+1)%curr_split == 0 )
-				curr_proc = ( curr_proc >= nprocs - 1 ? nprocs - 1 : curr_proc+1 );
+				curr_proc = ( curr_proc >= team_size - 1 ? team_size - 1 : curr_proc+1 );
 		}
 	}
 #ifndef NDEBUG
-	for( int i = 0; i < nprocs ; i++ )
+	for( int i = 0; i < team_size ; i++ )
 		assert(curr_displ[i] == senddispl[i+1]);
 	assert(local_count == num_local_nets);
 #endif
   
 	MPI_Alltoallv(net_send_npins,sendcount,senddispl,MPI_INT,net_recv_npins,recvcount,recvdispl,MPI_INT,global_comm::global_iec_communicator);
-	int send_pins_count[nprocs],send_pins_displ[nprocs+1],recv_pins_count[nprocs],recv_pins_displ[nprocs+1];
+	int send_pins_count[team_size],send_pins_displ[team_size + 1],recv_pins_count[team_size],recv_pins_displ[team_size + 1];
   
 	recv_pins_displ[0] = 0; send_pins_displ[0] = 0;
-	for( int i =0 ; i < nprocs ; i++ ){
+	for( int i =0 ; i < team_size ; i++ ){
 		send_pins_count[i] = 0;
 		for( int j = senddispl[i] ; j < senddispl[i+1] ; j++ )
 			send_pins_count[i] += net_send_npins[j];
@@ -203,17 +203,17 @@ void inspector::MetisReplicateHypergraph()
 
 	//Second Step : Send the pins of net to the respective process.
 
-	int* const send_pins = new int[send_pins_displ[nprocs]];
-	int* const recv_pins = new int[recv_pins_displ[nprocs]];
+	int* const send_pins = new int[send_pins_displ[team_size]];
+	int* const recv_pins = new int[recv_pins_displ[team_size]];
 
-	for( int i = 0 ; i < nprocs ; i++ )
+	for( int i = 0 ; i < team_size ; i++ )
 		curr_displ[i] = send_pins_displ[i];
 
 	for( deque<global_data*>::iterator it = all_data.begin() ; it != all_data.end() ; it++ ){
 		int curr_array_size = (*it)->orig_array_size ;
-		int curr_split = curr_array_size / nprocs;
+		int curr_split = curr_array_size / team_size;
 		int my_start = curr_split * proc_id;
-		int my_end = ( proc_id == nprocs - 1 ? curr_array_size : my_start + curr_split );
+		int my_end = ( proc_id == team_size - 1 ? curr_array_size : my_start + curr_split );
 		for( int j = 0 , curr_proc = 0 ; j < curr_array_size ; j++ ){
 			if( j < my_start || j >= my_end ){
 				net* curr_net = (*it)->data_net_info[j];
@@ -229,22 +229,22 @@ void inspector::MetisReplicateHypergraph()
 				}
 			}
 			if( (j+1)%curr_split == 0 )
-				curr_proc = ( curr_proc >= nprocs - 1 ? nprocs - 1 : curr_proc + 1);
+				curr_proc = ( curr_proc >= team_size - 1 ? team_size - 1 : curr_proc + 1);
 		}
 	}
 #ifndef NDEBUG
-	for( int i = 0; i < nprocs ; i++ )
+	for( int i = 0; i < team_size ; i++ )
 		assert(curr_displ[i] == send_pins_displ[i+1]);
 #endif
 
 	MPI_Alltoallv(send_pins,send_pins_count,send_pins_displ,MPI_INT,recv_pins,recv_pins_count,recv_pins_displ,MPI_INT,global_comm::global_iec_communicator);
     
-	int vcount[nprocs];
-	for( int i =0 ; i < nprocs ; i++ )
+	int vcount[team_size];
+	for( int i =0 ; i < team_size ; i++ )
 		vcount[i] = recv_pins_displ[i];
 	for( int i = 0 ; i < num_local_nets ; i++ ){
 		net* curr_net = local_nets[i];
-		for( int j = 0 ; j < nprocs ; j++ )
+		for( int j = 0 ; j < team_size ; j++ )
 			if( j != proc_id ){
 				int num_pins = net_recv_npins[recvdispl[j]+i]-1;
 				for( int l = 0 ; l < num_pins ; l+=2 ){
@@ -334,7 +334,7 @@ void inspector::BlockPartition()
 {
   MetisReplicateHypergraph();
 
-  int nparts = nprocs /** nthreads*/;
+  int nparts = team_size /** nthreads*/;
   
   for( deque<global_loop*>::iterator it = all_loops.begin() ; it!= all_loops.end() ; it++ ){
     int numiters = (*it)->num_iters;

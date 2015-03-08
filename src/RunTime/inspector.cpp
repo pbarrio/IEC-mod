@@ -231,10 +231,10 @@ void inspector::GetDontHave()
 {
 	int stride = all_access_data.size(); // Number of indirection arrays
 	int* get_n_elems = new int[team_size * stride];
-	int* get_n_elems = new int[nprocs*stride];
-	int* send_n_elems = new int[nprocs*stride];
+	int* send_n_elems = new int[team_size * stride];
 
-	for( int i = 0 ; i < nprocs * stride ; i++ )
+	/// Get the number of elements to get from other processes
+	for( int i = 0 ; i < team_size * stride ; i++ )
 		get_n_elems[i] = 0;
 	for( deque<access_data*>::iterator it = all_access_data.begin() ; it != all_access_data.end() ; it++ )
 		(*it)->GetSendCounts(get_n_elems,stride);
@@ -243,14 +243,15 @@ void inspector::GetDontHave()
 	MPI_Alltoall(get_n_elems, stride, MPI_INT, send_n_elems, stride, MPI_INT,
 	             global_comm::global_iec_communicator);
 
-	int send_count[nprocs];
-	int recv_count[nprocs];
-	int send_offset[nprocs+1];
-	int recv_offset[nprocs+1];
-  
-	///Compute the size of message sent and recieved by each process
+	int send_count[team_size];
+	int recv_count[team_size];
+	int send_offset[team_size + 1];
+	int recv_offset[team_size + 1];
+
+	///Compute the size of message sent and received by each process
 	send_offset[0] = 0; recv_offset[0] = 0;
-	for( int i =0 ; i < nprocs ; i++ ){
+	for( int i =0 ; i < team_size ; i++ ){
+
 		send_count[i] = 0; recv_count[i] = 0;
 		for( int j = 0 ; j < stride ; j++ ){
 			send_count[i] += get_n_elems[i*stride+j];
@@ -262,44 +263,56 @@ void inspector::GetDontHave()
 
 	int *sendbuf,*recvbuf;
 #ifndef NDEBUG
-	printf("ID = %d, SendBufferSize = %d, recvbuffersize = %d\n",proc_id,send_offset[nprocs],recv_offset[nprocs]);
+	printf("ID = %d, SendBufferSize = %d, recvbuffersize = %d\n",proc_id,send_offset[team_size],recv_offset[team_size]);
 #endif
 	///Allocate send buffer
-	if( send_offset[nprocs] > 0 )
-		sendbuf = new int[send_offset[nprocs]];
+	if( send_offset[team_size] > 0 )
+		sendbuf = new int[send_offset[team_size]];
 	else
 		sendbuf = NULL;
 
 	///Allocate recv buffer
-	if( recv_offset[nprocs] > 0 )
-		recvbuf = new int[recv_offset[nprocs]];
+	if( recv_offset[team_size] > 0 )
+		recvbuf = new int[recv_offset[team_size]];
 	else
 		recvbuf = NULL;
 
-	///Populate the buffer with the indices requested by each process
-	int* curr_offset = new int[nprocs];
-	for( int i =0 ; i < nprocs ; i++ )
+	///Populate the sendbuffer with the indices requested by other processes
+	int* curr_offset = new int[team_size];
+	for( int i =0 ; i < team_size ; i++ )
 		curr_offset[i] = send_offset[i];
-	for( deque<access_data*>::iterator it = all_access_data.begin() ; it != all_access_data.end() ; it++ )
-		(*it)->PopulateBuffer(sendbuf,send_offset[nprocs],curr_offset);
+	for (deque<access_data*>::iterator it = all_access_data.begin();
+	     it != all_access_data.end(); it++)
 
-	MPI_Alltoallv(sendbuf,send_count,send_offset,MPI_INT,recvbuf,recv_count,recv_offset,MPI_INT,global_comm::global_iec_communicator);
+		(*it)->PopulateBuffer(sendbuf,send_offset[team_size],curr_offset);
+
+	MPI_Alltoallv(sendbuf, send_count, send_offset, MPI_INT, recvbuf,
+	              recv_count, recv_offset, MPI_INT,
+	              global_comm::global_iec_communicator);
   
-	///Populate the buffer with the values of all requested indices
-	for( int i = 0; i < nprocs ; i++ )
+	/// Populate the recvbuffer with the values of all indices requested
+	/// by this process.
+	for( int i = 0; i < team_size ; i++ )
 		curr_offset[i] = recv_offset[i];
-	for( deque<access_data*>::iterator it = all_access_data.begin() ; it != all_access_data.end() ; it++ )
-		(*it)->GetRequestedValue(recvbuf,recv_offset[nprocs],curr_offset,send_n_elems,stride);
+
+	for (deque<access_data*>::iterator it = all_access_data.begin();
+	     it != all_access_data.end() ; it++ )
+
+		(*it)->GetRequestedValue(recvbuf, recv_offset[team_size], curr_offset,
+		                         send_n_elems, stride);
   
 	MPI_Alltoallv(recvbuf, recv_count, recv_offset, MPI_INT, sendbuf,
 	              send_count, send_offset, MPI_INT,
 	              global_comm::global_iec_communicator);
   
 	///Add to set of elements that are known on each process
-	for( int i =0 ; i < nprocs ; i++ )
+	for( int i =0 ; i < team_size ; i++ )
 		curr_offset[i] = send_offset[i];
-	for( deque<access_data*>::iterator it = all_access_data.begin() ; it != all_access_data.end() ; it++ )
-		(*it)->AddToHaveSet(sendbuf,send_offset[nprocs],curr_offset);
+
+	for (deque<access_data*>::iterator it = all_access_data.begin();
+	     it != all_access_data.end(); it++)
+
+		(*it)->AddToHaveSet(sendbuf,send_offset[team_size],curr_offset);
 
 	delete[] get_n_elems;
 	delete[] send_n_elems;
