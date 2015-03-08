@@ -363,15 +363,17 @@ extern "C" {
 		inspector::instance()->CommunicateReads(*cn);
 	}
 
-
-	void communicate_writes(int cn){
-		inspector::instance()->CommunicateWrites(cn);
+	void communicate_to_next(){
+		inspector::instance()->CommunicateToNext();
 	}
 
+	// void communicate_writes(int cn){
+	// 	inspector::instance()->CommunicateWrites(cn);
+	// }
 
-	void communicate_writes_(int *cn){
-		inspector::instance()->CommunicateWrites(*cn);
-	}
+	// void communicate_writes_(int *cn){
+	// 	inspector::instance()->CommunicateWrites(*cn);
+	// }
 
 	void init_write_ghosts(int cn){
 		local_inspector::instance()->InitWriteGhosts(cn);

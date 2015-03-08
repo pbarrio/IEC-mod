@@ -90,9 +90,9 @@ public:
 
 	int GetWriteRecvCount(const int, const int);
   
-	void PopulateReadSendBuffer(char*,int);
+	void PopulateReadSendBuffer(char*);
   
-	void ExtractReadRecvBuffer(char*,int);
+	void ExtractReadRecvBuffer(char*);
 
 	void PopulateWriteSendBuffer(char*);
   

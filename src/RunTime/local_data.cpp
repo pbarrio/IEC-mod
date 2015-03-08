@@ -373,7 +373,10 @@ void local_data_double::SendOwnedData(char* send_buffer,
 
 	for( int i = 0 ; i < nparts ; i++ )
 		if( i != proc_id ){
-			double* buffer = reinterpret_cast<double*>(send_buffer+curr_offset[i]);
+
+			int curr_offset = offset[i];
+			double* buffer =
+				reinterpret_cast<double*>(send_buffer + curr_offset);
 			int counter = 0;
 			if( stride == 1 )
 				for( int j = owned_offset[i] ; j < owned_offset[i+1] ; j++ , counter++){
@@ -384,7 +387,7 @@ void local_data_double::SendOwnedData(char* send_buffer,
 					for( int k = 0 ; k < stride ; k++ )
 						buffer[counter*stride+k] = local_array[owned[j]*stride+k];
 				}
-			curr_offset[i] += counter*stride*sizeof(double);
+			curr_offset += counter * stride * sizeof(double);
 		}
 }
 
@@ -404,7 +407,10 @@ void local_data_double::RecvGhostData(char* recv_buffer,
 
 	for( int i = 0 ; i < nparts ; i++ )
 		if( i != proc_id ){
-			double* buffer = reinterpret_cast<double*>(recv_buffer+curr_offset[i]);
+
+			int curr_offset = offset[i];
+			double* buffer =
+				reinterpret_cast<double*>(recv_buffer + curr_offset);
 			int counter = 0;
 			if( stride == 1 )
 				for( int j = ghosts_offset[i] ; j < ghosts_offset[i+1] ; j++ , counter++){
@@ -415,7 +421,7 @@ void local_data_double::RecvGhostData(char* recv_buffer,
 					for( int k = 0 ; k < stride ; k++ )
 						local_array[ghosts[j]*stride+k] = buffer[counter*stride+k];
 				}
-			curr_offset[i] += counter*stride*sizeof(double);
+			curr_offset += counter * stride * sizeof(double);
 		}
 }
 
@@ -430,14 +436,20 @@ void local_data_double::RecvGhostData(char* recv_buffer,
  * processors.
  *
  * \param send_buffer The send buffer to be populated
- * \param curr_offset 
+ * \param offset Contains the start position of the ghosts to be
+ *        sent to each owner process
  */
-void local_data_double::SendGhostData(char* send_buffer, int* curr_offset)
-{
-	// For all the parts of this local data, each of which is owned by one process...
+void local_data_double::SendGhostData(char* send_buffer,
+                                      const int* offset){
+
+	// For all the parts of this local data, each of which is owned
+	// by one process...
 	for( int i = 0 ; i < nparts ; i++ )
 		if( i != proc_id ){
-			double* buffer = reinterpret_cast<double*>(send_buffer+curr_offset[i]);
+
+			int curr_offset = offset[i];
+			double* buffer =
+				reinterpret_cast<double*>(send_buffer + curr_offset);
 			int counter = 0;
 			if( stride == 1 )
 				for( int j = ghosts_offset[i] ; j < ghosts_offset[i+1] ; j++ , counter++){
@@ -448,7 +460,7 @@ void local_data_double::SendGhostData(char* send_buffer, int* curr_offset)
 					for( int k = 0 ; k < stride ; k++ )
 						buffer[counter*stride+k] = local_array[ghosts[j]*stride+k];
 				}
-			curr_offset[i] += counter*stride*sizeof(double);
+			curr_offset += counter * stride * sizeof(double);
 		}
 }
 
@@ -460,14 +472,21 @@ void local_data_double::SendGhostData(char* send_buffer, int* curr_offset)
  * results from other processes. This function copies the received
  * buffer to our local copy, which is the important one.
  *
- * \param send_buffer The receive buffer where preliminary results are located.
- * \param curr_offset 
+ * \param send_buffer The receive buffer where preliminary results
+ *        are located.
+ * \param offset Array containing the start address, in the receive
+ *        buffer, of the chunk coming from each process that used
+ *        our data.
  */
-void local_data_double::RecvOwnedData(char* recv_buffer, int* curr_offset)
-{
+void local_data_double::RecvOwnedData(char* recv_buffer,
+                                      const int* offset){
+
 	for( int i = 0 ; i < nparts ; i++ )
 		if( i != proc_id ){
-			double* buffer = reinterpret_cast<double*>(recv_buffer+curr_offset[i]);
+
+			int curr_offset = offset[i];
+			double* buffer =
+				reinterpret_cast<double*>(recv_buffer + curr_offset);
 			int counter = 0;
 			if( stride == 1 )
 				for( int j = owned_offset[i] ; j < owned_offset[i+1] ; j++ , counter++){
@@ -478,7 +497,7 @@ void local_data_double::RecvOwnedData(char* recv_buffer, int* curr_offset)
 					for( int k = 0 ; k < stride ; k++ )
 						local_array[owned[j]*stride+k] += buffer[counter*stride+k];
 				}
-			curr_offset[i] += counter*stride*sizeof(double);
+			curr_offset += counter * stride * sizeof(double);
 		}
 }
 

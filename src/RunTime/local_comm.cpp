@@ -35,8 +35,7 @@ local_comm::local_comm(int mn, int np, int pid):
 	read_send_count(new int[np]),
 	read_recv_count(new int[np]),
 	write_send_count(new int[np]),
-	write_recv_count(new int[np]),
-	offset_array(new int[np])
+	write_recv_count(new int[np])
 { 
 	memset(read_send_count,0,sizeof(int)*nprocs);
 	memset(read_send_offset,0,sizeof(int)*nprocs);
@@ -75,7 +74,6 @@ local_comm::~local_comm()
 	delete[] read_recv_count;
 	delete[] write_send_count;
 	delete[] write_recv_count;
-	delete[] offset_array;
 }
 
 /**
@@ -165,18 +163,12 @@ int local_comm::GetWriteRecvCount(const int source, const int curr_offset)
  * \param send_buffer The buffer to be populated.
  * \param buffer_size 
  */
-void local_comm::PopulateReadSendBuffer(char* send_buffer, int buffer_size)
-{
-	for( int i = 0 ; i < nprocs ; i++ )
-		offset_array[i]  = read_send_offset[i];
+void local_comm::PopulateReadSendBuffer(char* send_buffer){
 
-	for( vector<local_data*>::iterator it = read_arrays.begin() ; it  != read_arrays.end() ; it++){
-		(*it)->SendOwnedData(send_buffer,offset_array);
-	}
-#ifndef NDEBUG
-	for( int i = 0 ; i < nprocs ; i++ )
-		assert(read_send_offset[i] <= buffer_size );
-#endif
+	for( vector<local_data*>::iterator it = read_arrays.begin();
+	     it != read_arrays.end() ; it++)
+
+		(*it)->SendOwnedData(send_buffer, read_send_offset);
 }
 
 
@@ -188,22 +180,13 @@ void local_comm::PopulateReadSendBuffer(char* send_buffer, int buffer_size)
  * processes to us.
  *
  * \param recv_buffer The receive buffer to be copied to our local data
- * \param buffer_size
  */
-void local_comm::ExtractReadRecvBuffer(char* recv_buffer, int buffer_size)
-{
-	for( int i = 0 ; i < nprocs ; i++ )
-		offset_array[i]  = read_recv_offset[i];
+void local_comm::ExtractReadRecvBuffer(char* recv_buffer){
 
-	for( vector<local_data*>::iterator it = read_arrays.begin() ; it  != read_arrays.end() ; it++){
-		(*it)->RecvGhostData(recv_buffer,offset_array);
-	}
-#ifndef NDEBUG
-	for( int i = 0 ; i < nprocs ; i++ ){
-		assert(read_recv_offset[i] <= buffer_size );
-	}
-#endif
+	for( vector<local_data*>::iterator it = read_arrays.begin();
+	     it  != read_arrays.end() ; it++)
 
+		(*it)->RecvGhostData(recv_buffer, read_recv_offset);
 }
 
 
@@ -215,15 +198,12 @@ void local_comm::ExtractReadRecvBuffer(char* recv_buffer, int buffer_size)
  *
  * \param send_buffer The send buffer to be populated
  */
-void local_comm::PopulateWriteSendBuffer(char* send_buffer)
-{
+void local_comm::PopulateWriteSendBuffer(char* send_buffer){
 
-	for (int i = 0 ; i < nprocs ; i++)
-		offset_array[i] = write_send_offset[i];
+	for (vector<local_data*>::iterator it = write_arrays.begin();
+	     it != write_arrays.end(); it++)
 
-	for (vector<local_data*>::iterator it = write_arrays.begin() ; it  != write_arrays.end() ; it++){
-		(*it)->SendGhostData(send_buffer,offset_array);
-	}
+		(*it)->SendGhostData(send_buffer, write_send_offset);
 }
 
 
@@ -236,14 +216,12 @@ void local_comm::PopulateWriteSendBuffer(char* send_buffer)
  * \param send_buffer The receive buffer where preliminary results
  *        are located
  */
-void local_comm::ExtractWriteRecvBuffer(char* recv_buffer)
-{
-	for( int i = 0 ; i < nprocs ; i++ )
-		offset_array[i]  = write_recv_offset[i];
+void local_comm::ExtractWriteRecvBuffer(char* recv_buffer){
 
-	for( vector<local_data*>::iterator it = write_arrays.begin() ; it  != write_arrays.end() ; it++){
-		(*it)->RecvOwnedData(recv_buffer,offset_array);
-	}
+	for( vector<local_data*>::iterator it = write_arrays.begin();
+	     it  != write_arrays.end() ; it++)
+
+		(*it)->RecvOwnedData(recv_buffer, write_recv_offset);
 }
 
 

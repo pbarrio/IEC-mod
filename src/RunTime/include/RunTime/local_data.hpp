@@ -124,13 +124,13 @@ public:
 
 	void SetupLocalArray();
 
-	virtual void SendOwnedData(char*,int*)=0;
+	virtual void SendOwnedData(char*, const int*) = 0;
 
-	virtual void RecvGhostData(char*,int*)=0;
+	virtual void RecvGhostData(char*, const int*) = 0;
 
-	virtual void SendGhostData(char*,int*)=0;
+	virtual void SendGhostData(char*, const int*) = 0;
 
-	virtual void RecvOwnedData(char*,int*)=0;
+	virtual void RecvOwnedData(char*, const int*) = 0;
 
 	virtual void PopulateLocalGhosts(local_data*,int)=0;
 
@@ -186,13 +186,13 @@ public:
 		return (owned_offset[dest+1]-owned_offset[dest])*stride*sizeof(double);
 	}
 
-	void SendOwnedData(char*,int*);
+	void SendOwnedData(char*, const int*);
 
-	void RecvGhostData(char*,int*);
+	void RecvGhostData(char*, const int*);
 
-	void SendGhostData(char*,int*);
+	void SendGhostData(char*, const int*);
 
-	void RecvOwnedData(char*,int*);
+	void RecvOwnedData(char*, const int*);
   
 	void InitWriteGhosts();
 

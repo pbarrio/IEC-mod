@@ -1221,7 +1221,7 @@ void inspector::CommunicateReads(int comm_num)
 		            global_comm::read_send_end_status);
 
 	if( global_comm::max_recv_size > 0 )
-		curr_local_comm->ExtractReadRecvBuffer(global_comm::recv_buffer,global_comm::max_recv_size);
+		curr_local_comm->ExtractReadRecvBuffer(global_comm::recv_buffer);
 
 #ifdef COMM_TIME
 	stop_t = rtclock();
