@@ -502,8 +502,10 @@ int main(int argc,char **argv)
 		for (i = __local_block_1_start__; i < __local_block_1_end__; i++) 
 			if (__1_status__[i - __local_block_1_start__] == 0) {
 				__1_status__[i - __local_block_1_start__] = 1;
-				add_vertex(0,i);
+
+				add_vertex(1,i);
 				{
+
 					if (is_known(1,i)) {
 						Anext = get_elem(1,i);
 						__shadow_0__ = 1;
@@ -748,7 +750,9 @@ int main(int argc,char **argv)
 					for (j = 0; j < 3; j++) {
 						__local_disp0__[i][j] = 0.0;;
 					};
+
 				}
+				communicate_to_next(1);
 			}
 
 			if (myTeam == 1){
@@ -756,6 +760,8 @@ int main(int argc,char **argv)
 				/*
 				 * LOOP 1
 				 */
+
+				get_from_previous(0);
 
 				__body_1__ = 0;
 				__loop_i_6__ = 0;
@@ -849,7 +855,6 @@ int main(int argc,char **argv)
 				}
 			}
 
-			communicate_writes(1);
 			time = (iter * Exc_dt);
 
 			pipe_endExternalIter();
