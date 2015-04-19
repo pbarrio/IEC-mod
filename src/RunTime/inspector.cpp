@@ -1245,15 +1245,9 @@ void inspector::CommunicateReads(int comm_num)
 
 
 /**
- * \brief Sends and receives RW data.
- *
- * Send updated ghosts to their owners, and receive owned data updated by other
- * processes. I may need to make it more lightweight: it syncs before sending
- * (try a more loosely-coupled communication scheme).
- *
- * \param comm_num Number of communicator
+ * \brief Sends data to consumer processors.
  */
-void inspector::CommunicateWrites(int comm_num){
+void inspector::CommunicateToNext(){
 
 #ifdef COMM_TIME
 	double start_t = rtclock();
@@ -1262,35 +1256,35 @@ void inspector::CommunicateWrites(int comm_num){
 	// There used to be one local inspector per thread.
 	// Now we don't use threads, so we use only local inspector 0.
 	local_comm* curr_local_comm =
-		local_inspector::all_local_inspectors[0]->all_comm[comm_num];
+		local_inspector::all_local_inspectors[0]->all_comm[0];
 
-	// Fills in the buffer to send updated ghosts to their owners
-	if( global_comm::max_send_size > 0 )
-		curr_local_comm->PopulateWriteSendBuffer(global_comm::send_buffer);
+	// Fills in the buffer to send updated ghosts to their owners.
+	curr_local_comm->PopulateWriteSendBuffer(global_comm::send_buffer);
 
-	// Sync with the receivers and senders
-	for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_recv ; i++ )
+	// Send "ready to receive" signal to the processes that will send us
+	// updated data that we own.
+	for( int i = 0 ; i < all_comm[0]->nprocs_write_recv ; i++ )
 		MPI_Isend(global_comm::write_recv_signal, 1, MPI_CHAR,
-		          all_comm[comm_num]->proc_id_write_recv[i], comm_num,
+		          all_comm[0]->proc_id_write_recv[i], 0,
 		          global_comm::global_iec_communicator,
 		          global_comm::write_recv_start_request + i);
 
 	// Wait for "ready to receive" signal from the processes that will receive
 	// our updated ghosts.
-	for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_send ; i++ )
+	for( int i = 0 ; i < all_comm[0]->nprocs_write_send ; i++ )
 		MPI_Recv(global_comm::write_send_signal + i, 1, MPI_CHAR,
-		         all_comm[comm_num]->proc_id_write_send[i], comm_num,
+		         all_comm[0]->proc_id_write_send[i], 0,
 		         global_comm::global_iec_communicator,
 		         global_comm::write_send_start_status+i);
 
-	if( all_comm[comm_num]->nprocs_write_recv > 0 )
-		MPI_Waitall(all_comm[comm_num]->nprocs_write_recv,
+	if( all_comm[0]->nprocs_write_recv > 0 )
+		MPI_Waitall(all_comm[0]->nprocs_write_recv,
 		            global_comm::write_recv_start_request,
 		            global_comm::write_recv_start_status);
 
 	// We put our updated ghosts in other processes' memory.
 	if( global_comm::max_send_size > 0 ){
-		global_comm* curr_communicator = all_comm[comm_num];
+		global_comm* curr_communicator = all_comm[0];
 		int count;
 		for(int i = 0; i < team_size; i++){
 
@@ -1311,21 +1305,21 @@ void inspector::CommunicateWrites(int comm_num){
 	ARMCI_AllFence();
 
 	// Tell the receivers of our ghosts that we finished sending.
-	for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_send ; i++ )
+	for( int i = 0 ; i < all_comm[0]->nprocs_write_send ; i++ )
 		MPI_Isend(global_comm::write_send_signal, 1, MPI_CHAR,
-		          all_comm[comm_num]->proc_id_write_send[i], comm_num,
+		          all_comm[0]->proc_id_write_send[i], 0,
 		          global_comm::global_iec_communicator,
 		          global_comm::write_send_end_request + i);
 
 	// Wait for senders of our owned data to notify us about send completion.
-	for( int i = 0 ; i < all_comm[comm_num]->nprocs_write_recv ; i++ )
+	for( int i = 0 ; i < all_comm[0]->nprocs_write_recv ; i++ )
 		MPI_Recv(global_comm::write_recv_signal + i, 1, MPI_CHAR,
-		         all_comm[comm_num]->proc_id_write_recv[i], comm_num,
+		         all_comm[0]->proc_id_write_recv[i], 0,
 		         global_comm::global_iec_communicator,
 		         global_comm::write_recv_end_status + i);
 
-	if( all_comm[comm_num]->nprocs_write_send > 0 )
-		MPI_Waitall(all_comm[comm_num]->nprocs_write_send,
+	if( all_comm[0]->nprocs_write_send > 0 )
+		MPI_Waitall(all_comm[0]->nprocs_write_send,
 		            global_comm::write_send_end_request,
 		            global_comm::write_send_end_status);
 

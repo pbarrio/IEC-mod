@@ -183,7 +183,7 @@ public:
 
 	void CommunicateReads(int);
   
-	void CommunicateWrites(int);
+	void CommunicateToNext();
 
 
 	/**
