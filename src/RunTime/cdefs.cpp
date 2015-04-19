@@ -242,20 +242,28 @@ extern "C" {
 	}
 
 	int get_local_size(int an){
-			data_access_info = inspector::instance()->GetLocalAccesses(an);
+
+		data_access_info = inspector::instance()->GetLocalAccesses(an);
 
 		int * proc_recv_buffer = data_access_info.recvbuffer;
 		int * proc_recv_displ = data_access_info.recvdispl;
 		int * proc_recv_count = data_access_info.recvcount;
-		local_inspector* curr_local_inspector = local_inspector::instance(/*thread_id*/);
+		local_inspector* curr_local_inspector = local_inspector::instance();
 		int nprocs = inspector::instance()->GetNProcs();
 		for( int j = 0 ; j < nprocs ; j++ ){
-			curr_local_inspector->InsertDirectAccess(an,proc_recv_buffer+proc_recv_displ[j*2],proc_recv_count[j*2]);
-			curr_local_inspector->InsertIndirectAccess(an,proc_recv_buffer+proc_recv_displ[j*2+1],proc_recv_count[j*2+1]);
+			curr_local_inspector->
+				InsertDirectAccess(an,
+				                   proc_recv_buffer + proc_recv_displ[j * 2],
+				                   proc_recv_count[j * 2]);
+			curr_local_inspector->
+				InsertIndirectAccess(an,
+				                     proc_recv_buffer + proc_recv_displ[j * 2 + 1],
+				                     proc_recv_count[j*2+1]);
 		}
-			delete[] data_access_info.recvbuffer;
-			delete[] data_access_info.recvcount;
-			delete[] data_access_info.recvdispl;
+
+		delete[] data_access_info.recvbuffer;
+		delete[] data_access_info.recvcount;
+		delete[] data_access_info.recvdispl;
 		curr_local_inspector->SetupLocalArray(an);
 		return curr_local_inspector->GetLocalDataSize(an);
 	}
@@ -288,11 +296,13 @@ extern "C" {
 	}
 
 	void add_index_from_proc(int data_num, int index, int access_type){
-		local_inspector::instance()->AddIndexAccessed(data_num,index,access_type);
+		local_inspector::instance()->
+			AddIndexAccessed(data_num,index,access_type);
 	}
 
 	void add_index_from_proc_(int *data_num, int *index, int *access_type){
-		local_inspector::instance()->AddIndexAccessed(*data_num,*index,*access_type);
+		local_inspector::instance()->
+			AddIndexAccessed(*data_num,*index,*access_type);
 	}
 
 
