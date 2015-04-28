@@ -62,7 +62,7 @@ public:
 //   inline int GetLocalRows(int tid) const { return nlocal[tid]; }
   inline int GetLocalRows() const { return nlocal[0]; }
   
-  friend class inspector;
+  friend class Inspector;
 };
 
 

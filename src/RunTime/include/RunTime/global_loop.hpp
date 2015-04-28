@@ -34,7 +34,6 @@ class global_loop{
   const int num_iters;
 
   int nproc_local;
-  //int* home_info;
 
  public:
   
@@ -49,7 +48,7 @@ class global_loop{
     return iter_vertex[iter_value]->home;
   }
 
-  friend class inspector;
+  friend class Inspector;
   
 };
 

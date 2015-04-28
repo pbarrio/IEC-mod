@@ -91,7 +91,7 @@ class access_data{
   void print_access(FILE*);
 #endif
 
-  friend class inspector;
+  friend class Inspector;
 };  
 
 

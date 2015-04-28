@@ -150,8 +150,7 @@ public:
 
 	virtual void SetLocalArray(void*)=0;
 
-	friend class inspector;
-
+	friend class Inspector;
 };
 
 
@@ -209,8 +208,7 @@ public:
 
 	void print_data(FILE*);
   
-	friend class inspector;
-
+	friend class Inspector;
 };
 
 

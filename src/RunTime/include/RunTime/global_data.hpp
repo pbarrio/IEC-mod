@@ -65,7 +65,7 @@ class global_data{
    */
   inline void SetConstraint() { is_constrained = true; }
 
-  friend class inspector;
+  friend class Inspector;
 };
 
 class global_data_double: public global_data{

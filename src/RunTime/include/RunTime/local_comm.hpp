@@ -108,9 +108,7 @@ public:
 	double read_time1,write_time1,read_time2,write_time2,read_time3,write_time3;
 #endif
   
-	friend class local_inspector;
-
-	friend class inspector;
+	friend class Inspector;
 };
 
 

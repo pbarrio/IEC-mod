@@ -19,11 +19,10 @@ set(RUNTIME_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/global_data.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/global_loop.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/hypergraph.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/inspector.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Inspector.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/inspector_metis.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/local_comm.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/local_data.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/local_inspector.cpp
 	)
 
 

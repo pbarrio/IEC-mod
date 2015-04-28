@@ -48,7 +48,7 @@ int binary_search( int* const array, const int n, const int value)
  * \brief Constructor
  *
  * \param mn Identifier of the global array
- * \param np Number of parts in which the original array is split for communications
+ * \param np The original array is split into these many parts for comms
  * \param md Identifier of the local communicator
  * \param pid Identifier of the current process
  * \param st Size of each position in the array (e.g. int = 4 bytes)
@@ -57,7 +57,8 @@ int binary_search( int* const array, const int n, const int value)
  * \param iro True if the data is read-only
  * \param ic Unused in quake
  */
-local_data::local_data(int mn, int np, int md, int pid, int st, const net** dni, int oas, bool iro, bool ic):
+local_data::local_data(int mn, int np, int md, int pid, int st, const net** dni,
+                       int oas, bool iro, bool ic):
 	my_num(mn),
 	nparts(np),
 	myid(md),
@@ -317,9 +318,11 @@ void local_data::print_data(FILE* data_file)
 }
 
 
-local_data_double::local_data_double(int mn, int np, int md, int pid/*, int nt*/, int st, const net** dni, int oas, bool iro, bool ic):
-	local_data(mn,np,md,pid/*,nt*/,st/sizeof(double),dni,oas,iro,ic)
-{
+local_data_double::local_data_double(int mn, int np, int md, int pid, int st,
+                                     const net** dni, int oas, bool iro,
+                                     bool ic):
+	local_data(mn, np, md, pid, st / sizeof(double), dni, oas, iro, ic){
+
 	orig_array = NULL;
 	local_array = NULL;
 } 

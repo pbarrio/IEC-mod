@@ -5,8 +5,7 @@ set(RUNTIME_INCLUDES
 	${CMAKE_CURRENT_SOURCE_DIR}/global_data.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/global_loop.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/hypergraph.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/inspector.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Inspector.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/local_comm.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/local_data.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/local_inspector.hpp
 	PARENT_SCOPE)

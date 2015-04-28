@@ -16,7 +16,7 @@
  * @file: inspector.cpp
  * @author: Mahesh Ravishankar <ravishan@cse.ohio-state.edu>
  */
-#include "RunTime/inspector.hpp"
+#include "RunTime/Inspector.hpp"
 #include "armci.h"
 #include "mpi.h"
 #include "omp.h"
@@ -24,7 +24,7 @@
 
 using namespace std;
 
-inspector* inspector::singleton_inspector = NULL;
+Inspector* Inspector::singleton_inspector = NULL;
 char** global_comm::put_buffer = NULL;
 char* global_comm::send_buffer = NULL;
 char* global_comm::recv_buffer = NULL;
@@ -58,7 +58,7 @@ char* global_comm::write_recv_signal = NULL;
  *
  * \param pid Process identifier in the distributed program
  * \param np Number of processes in the distributed program
- * \param team Identifier of this processor's team
+ * \param team Identifier of this process' team
  * \param pid_team Identifier of this processor private to the team
  * \param teamsize Size (in number of processors) of each team
  * \param nl Number of loops
@@ -69,7 +69,7 @@ char* global_comm::write_recv_signal = NULL;
  * \param data_num_count Array of direct array sizes (must be of size nd)
  * \param ro Array of read-only flags for the direct arrays (must be of size nd)
  */
-inspector::inspector(int pid, int np, int team, int pid_team, int teamsize,
+Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
                      int nl, int nd, int nc, int nad, int* iter_num_count,
                      int* data_num_count, int* ro):
 	proc_id(pid),
@@ -150,7 +150,7 @@ inspector::inspector(int pid, int np, int team, int pid_team, int teamsize,
 }
 
 
-inspector::~inspector(){
+Inspector::~Inspector(){
 
 	for (deque<global_loop*>::iterator it = all_loops.begin();
 	     it != all_loops.end() ; it++)
@@ -181,7 +181,6 @@ inspector::~inspector(){
 
 	all_access_data.clear();
   
-	delete[] local_inspector::all_local_inspectors;
 	if( global_comm::max_send_size > 0 )
 		ARMCI_Free_local(global_comm::send_buffer);
 	if (global_comm::put_buffer){
@@ -227,7 +226,7 @@ inspector::~inspector(){
 }
 
 
-void inspector::GetDontHave()
+void Inspector::GetDontHave()
 {
 	int stride = all_access_data.size(); // Number of indirection arrays
 	int* get_n_elems = new int[team_size * stride];
@@ -324,7 +323,7 @@ void inspector::GetDontHave()
 }
 
 
-bool inspector::DoneGraphGeneration(){
+bool Inspector::DoneGraphGeneration(){
 	int n_dont = 0;
 	for( int i =0 ; i < all_access_data.size() ; i++ )
 		n_dont += all_access_data[i]->dont_have_set.size();
@@ -359,7 +358,7 @@ bool inspector::DoneGraphGeneration(){
  * \param iter_num The vertex will be added to this loop.
  * \param iter_value The vertex represents this iteration number.
  */
-void inspector::AddVertex(int iter_num, int iter_value)
+void Inspector::AddVertex(int iter_num, int iter_value)
 {
 	assert(iter_num < all_loops.size());
 
@@ -384,7 +383,7 @@ void inspector::AddVertex(int iter_num, int iter_value)
  * \param is_direct !=0 if addressing is affine; =0 if it depends on indirection array.
  * \param is_ploop !=0 if the access comes from a partitionable loop
  */
-void inspector::AddNet(int data_num, int index, int is_direct, int is_ploop)
+void Inspector::AddNet(int data_num, int index, int is_direct, int is_ploop)
 {
 	assert(data_num < all_data.size());
 
@@ -416,7 +415,7 @@ void inspector::AddNet(int data_num, int index, int is_direct, int is_ploop)
 	}
 }
 
-void inspector::AddUnknown(int solver_num, int array_num, int index, int row_num)
+void Inspector::AddUnknown(int solver_num, int array_num, int index, int row_num)
 {
 	assert(array_num < all_data.size() && solver_num < all_solvers.size() );
 	assert(index < all_data[array_num]->orig_array_size);
@@ -425,7 +424,7 @@ void inspector::AddUnknown(int solver_num, int array_num, int index, int row_num
 	all_solvers[solver_num]->orig_net[row_num] = curr_net;
 }
 
-void inspector::PatohPrePartition()
+void Inspector::PatohPrePartition()
 {
 	if( nprocs > 1 ) {
 		const int ia_size = data_num_offset[all_data.size()];
@@ -534,7 +533,7 @@ void inspector::PatohPrePartition()
 	}
 }
 
-void inspector::PatohPartition()
+void Inspector::PatohPartition()
 {
 	PatohPrePartition();
 
@@ -638,7 +637,7 @@ void inspector::PatohPartition()
 
 }
 
-void inspector::PatohAfterPartition()
+void Inspector::PatohAfterPartition()
 {
 	//Decide homes for the nets
 	int possible[nprocs];
@@ -709,7 +708,7 @@ void inspector::PatohAfterPartition()
  * Previously, there was one local inspector per thread in the process.
  * Now, there is only one thread.
  */
-void inspector::AfterPartition(){
+void Inspector::AfterPartition(){
 
 	/// What are exactly the solvers?
 	for (deque<petsc_solve*>::iterator it = all_solvers.begin();
@@ -773,15 +772,8 @@ void inspector::AfterPartition(){
 		(*it)->FindNewRowNumbers();
 	}
 
-	/// Setup the local inspectors (as many as number of threads).
-	/// TODO: Change into one local inspector per "loop" process in the chain
-	/// of pipelined loops?
-	local_inspector::all_local_inspectors = new local_inspector*[1];
-	local_inspector::all_local_inspectors[0] =
-		new local_inspector(nprocs, proc_id, all_comm.size());
-
 	/// Take all global data and intialize the corresponding local data
-	/// in the local inspector.
+	// It might be possible to get rid of this
 	for (deque<global_data*>::iterator it = all_data.begin();
 	     it != all_data.end() ; it++ ){
 
@@ -793,17 +785,13 @@ void inspector::AfterPartition(){
 		assert( (*it)->data_net_info != NULL );
 		const net** data_net_info =
 			const_cast<const net**>((*it)->data_net_info);
-		local_inspector::all_local_inspectors[0]->AddLocalData(array_id,
-		                                                       stride_size,
-		                                                       data_net_info,
-		                                                       orig_array_size,
-		                                                       read_only_flag,
-		                                                       is_constrained);
+		add_local_data(array_id, stride_size, data_net_info, orig_array_size,
+		               read_only_flag, is_constrained);
 	}
 }
 
 
-ret_data_access inspector::GetLocalAccesses(int array_num)
+ret_data_access Inspector::GetLocalAccesses(int array_num)
 {
 	const global_data* curr_array = all_data[array_num];
 	net** curr_nets = curr_array->data_net_info;
@@ -918,7 +906,7 @@ ret_data_access inspector::GetLocalAccesses(int array_num)
 
 
 
-void inspector::GetBufferSize()
+void Inspector::GetBufferSize()
 {
 	global_comm::max_send_size = 0;
 	global_comm::max_recv_size = 0;
@@ -932,22 +920,31 @@ void inspector::GetBufferSize()
 		int send_read_count = 0, recv_read_count = 0;
 		int send_write_count = 0, recv_write_count = 0;
     
-		curr_global_comm->read_send_offset[0] = 0, curr_global_comm->read_recv_offset[0] = 0;
-		curr_global_comm->write_send_offset[0] = 0, curr_global_comm->write_recv_offset[0] = 0;
+		curr_global_comm->read_send_offset[0] = 0;
+		curr_global_comm->read_recv_offset[0] = 0;
+		curr_global_comm->write_send_offset[0] = 0;
+		curr_global_comm->write_recv_offset[0] = 0;
+
 		for( int i = 0 ; i < nprocs ; i++ ){
-      
-			local_comm* local_recv_comm = local_inspector::all_local_inspectors[0]->all_comm[iter_num];
-			local_comm* local_send_comm = local_inspector::all_local_inspectors[0]->all_comm[iter_num];
-			send_read_count += local_send_comm->GetReadSendCount(i,send_read_count);
-			recv_read_count += local_recv_comm->GetReadRecvCount(i,recv_read_count);
-			send_write_count += local_send_comm->GetWriteSendCount(i,send_write_count);
-			recv_write_count += local_recv_comm->GetWriteRecvCount(i,recv_write_count);
-			curr_global_comm->read_send_count[i] = send_read_count - curr_global_comm->read_send_offset[i];
+
+			local_comm* local_recv_comm = all_local_comm[iter_num];
+			local_comm* local_send_comm = all_local_comm[iter_num];
+			send_read_count +=
+				local_send_comm->GetReadSendCount(i,send_read_count);
+			recv_read_count +=
+				local_recv_comm->GetReadRecvCount(i,recv_read_count);
+			send_write_count +=
+				local_send_comm->GetWriteSendCount(i,send_write_count);
+			recv_write_count +=
+				local_recv_comm->GetWriteRecvCount(i,recv_write_count);
+			curr_global_comm->read_send_count[i] =
+				send_read_count - curr_global_comm->read_send_offset[i];
 			curr_global_comm->read_send_offset[i+1] = send_read_count;
-			curr_global_comm->read_recv_count[i] = recv_read_count - curr_global_comm->read_recv_offset[i];
+			curr_global_comm->read_recv_count[i] =
+				recv_read_count - curr_global_comm->read_recv_offset[i];
 			curr_global_comm->read_recv_offset[i+1] = recv_read_count;
-      
-			curr_global_comm->write_send_count[i] = send_write_count - curr_global_comm->write_send_offset[i];
+			curr_global_comm->write_send_count[i] =
+				send_write_count - curr_global_comm->write_send_offset[i];
 			curr_global_comm->write_send_offset[i+1] = send_write_count;
 			curr_global_comm->write_recv_count[i] = recv_write_count - curr_global_comm->write_recv_offset[i];
 			curr_global_comm->write_recv_offset[i+1] = recv_write_count;
@@ -1053,7 +1050,7 @@ void inspector::GetBufferSize()
 }
 
 
-void inspector::CommunicateGhosts()
+void Inspector::CommunicateGhosts()
 {
 	int sendcount[nprocs],senddispl[nprocs+1];
 	int recvcount[nprocs],recvdispl[nprocs+1];
@@ -1072,15 +1069,17 @@ void inspector::CommunicateGhosts()
 		recvcount[i] = 0;
 	}
   
-	for( int i = 0 ; i < nprocs ; i++ ){
+	for (int i = 0; i < nprocs; i++){
+
 		int dest_proc = i;
-		local_inspector* source_inspector = local_inspector::instance();
-		int d=0;
-		for( deque<local_data*>::iterator it = source_inspector->all_data.begin() ; it != source_inspector->all_data.end() ; it++ )
+		int d = 0;
+		for (deque<local_data*>::iterator it = all_local_data.begin();
+		     it != all_local_data.end(); it++)
+
 			if( !(*it)->is_read_only ){
 				int nghosts = (*it)->global_ghosts[dest_proc].size();
 
-				sendghosts_count[dest_proc*n_data+d] = nghosts;
+				sendghosts_count[dest_proc * n_data + d] = nghosts;
 				sendcount[i] += nghosts;
 				d++;
 			}
@@ -1090,11 +1089,10 @@ void inspector::CommunicateGhosts()
 		senddispl[i+1] = senddispl[i] + sendcount[i];
   
 	int* recvghosts_count = new int[nprocs*n_data];
-
-	MPI_Alltoall(sendghosts_count,n_data,MPI_INT,recvghosts_count,n_data,MPI_INT,global_comm::global_iec_communicator);
+	MPI_Alltoall(sendghosts_count, n_data, MPI_INT, recvghosts_count, n_data,
+	             MPI_INT, global_comm::global_iec_communicator);
 
 	for( int i = 0 ; i < nprocs ; i++ ){
-		local_inspector* recv_inspector = local_inspector::instance();
 		int send_proc = i;
 		for( int d = 0 ; d < n_data ; d++ ){
 			int nghosts = recvghosts_count[i * n_data + d];
@@ -1112,13 +1110,15 @@ void inspector::CommunicateGhosts()
 	int counter = 0;
 	for( int i = 0 ; i < nprocs ; i++ ){
 
-		local_inspector* source_inspector = local_inspector::instance();
 		int d = 0; 
 
-		for( deque<local_data*>::iterator it = source_inspector->all_data.begin() ; it != source_inspector->all_data.end() ; it++ )
-			if( !(*it)->is_read_only ){
+		for (deque<local_data*>::iterator it = all_local_data.begin();
+		     it != all_local_data.end(); it++)
+			if (!(*it)->is_read_only){
 
-				for( set<int>::iterator jt = (*it)->global_ghosts[i].begin() ; jt != (*it)->global_ghosts[i].end() ; jt++ ){
+				for (set<int>::iterator jt = (*it)->global_ghosts[i].begin();
+				     jt != (*it)->global_ghosts[i].end(); jt++){
+
 					ghosts_send_val[counter] = (*jt);
 					++counter;
 				}
@@ -1127,16 +1127,19 @@ void inspector::CommunicateGhosts()
 			}
 	}
 
-	assert(counter==senddispl[nprocs]);
+	assert(counter == senddispl[nprocs]);
 
-	MPI_Alltoallv(ghosts_send_val,sendcount,senddispl,MPI_INT,ghosts_recv_val,recvcount,recvdispl,MPI_INT, global_comm::global_iec_communicator);
+	MPI_Alltoallv(ghosts_send_val, sendcount, senddispl, MPI_INT,
+	              ghosts_recv_val, recvcount, recvdispl, MPI_INT,
+	              global_comm::global_iec_communicator);
 
 	counter = 0;
-	for( int i = 0 ; i < nprocs ; i++ ){
-		local_inspector* recv_inspector = local_inspector::instance();
-		int d =0 ;
-		for( deque<local_data*>::iterator it = recv_inspector->all_data.begin() ; it!= recv_inspector->all_data.end() ; it++ )
-			if( !(*it)->is_read_only ){	  
+	for (int i = 0; i < nprocs; i++){
+
+		int d = 0;
+		for (deque<local_data*>::iterator it = all_local_data.begin();
+		     it != all_local_data.end(); it++)
+			if (!(*it)->is_read_only){
 				int nghosts = recvghosts_count[i * n_data +d];
 				for( int g = 0 ; g < nghosts ; g++ )
 					(*it)->global_owned[i].insert(ghosts_recv_val[counter++]);
@@ -1152,7 +1155,7 @@ void inspector::CommunicateGhosts()
 }
 
 
-void inspector::CommunicateReads(int comm_num)
+void Inspector::CommunicateReads(int comm_num)
 {
 	int nparts = nprocs;
 
@@ -1161,8 +1164,7 @@ void inspector::CommunicateReads(int comm_num)
 	start_t = rtclock();
 #endif
 
-	local_comm* curr_local_comm =
-		local_inspector::all_local_inspectors[0]->all_comm[comm_num];
+	local_comm* curr_local_comm = all_local_comm[comm_num];
 
 	if( global_comm::max_send_size > 0 )
 		curr_local_comm->PopulateReadSendBuffer(global_comm::send_buffer);
@@ -1202,15 +1204,12 @@ void inspector::CommunicateReads(int comm_num)
 
 	if( curr_local_comm->read_recv_count[0] > 0 ){
 
-		local_inspector* source_inspector =
-			local_inspector::all_local_inspectors[0];
-
 		vector<local_data*>::iterator it =
 			curr_local_comm->read_arrays.begin();
 
-		for( ; it != curr_local_comm->read_arrays.end() ; it++ )
+		for (; it != curr_local_comm->read_arrays.end(); it++)
 			(*it)->PopulateLocalGhosts
-				(source_inspector->all_data[(*it)->my_num],proc_id);
+				(all_local_data[(*it)->my_num], proc_id);
 	}
 
 	ARMCI_WaitAll();
@@ -1245,18 +1244,15 @@ void inspector::CommunicateReads(int comm_num)
 
 
 /**
- * \brief Sends data to consumer processors.
+ * \brief Sends data to all consumer processes.
  */
-void inspector::CommunicateToNext(){
+void Inspector::CommunicateToNext(){
 
 #ifdef COMM_TIME
 	double start_t = rtclock();
 #endif
 
-	// There used to be one local inspector per thread.
-	// Now we don't use threads, so we use only local inspector 0.
-	local_comm* curr_local_comm =
-		local_inspector::all_local_inspectors[0]->all_comm[0];
+	local_comm* curr_local_comm = all_local_comm[0];
 
 	// Fills in the buffer to send updated ghosts to their owners.
 	curr_local_comm->PopulateWriteSendBuffer(global_comm::send_buffer);
@@ -1335,7 +1331,7 @@ void inspector::CommunicateToNext(){
 }
 
 
-void inspector::print_hypergraph(FILE* outfile)
+void Inspector::print_hypergraph(FILE* outfile)
 {
 	printf("PID:%d,PrintingHypergraph\n",proc_id);
 	fflush(stdout);
@@ -1387,4 +1383,18 @@ void inspector::print_hypergraph(FILE* outfile)
 			}
 	fflush(outfile);
 	MPI_Barrier(global_comm::global_iec_communicator);
+}
+
+
+/*
+ * FUNCTIONS STOLEN FROM local_inspector
+ */
+
+
+void Inspector::PopulateGlobalArrays(){
+
+	for (deque<local_data*>::iterator it = all_local_data.begin();
+	     it != all_local_data.end(); it++)
+
+		(*it)->PopulateGlobalArray();
 }

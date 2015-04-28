@@ -16,23 +16,25 @@
  * @file: inspector_metis.cpp
  * @author: Mahesh Ravishankar <ravishan@cse.ohio-state.edu>
  */
-#include "mpi.h"
-#include "RunTime/inspector.hpp"
-#include "parmetis.h"
 #include <cassert>
-//#include "iecxx.h"
+#include "mpi.h"
+#include "parmetis.h"
+#include "RunTime/Inspector.hpp"
 
 using namespace std;
 
-void insertion_sort(int* const array, const int left, const int right, int* const mirror_array)
-{
-  if( left >= right )
+void insertion_sort(int* const array, const int left, const int right,
+                    int* const mirror_array){
+
+  if (left >= right)
     return;
-  for( int i = left + 1 ; i <= right ; i++ ){
+
+  for (int i = left + 1; i <= right; i++){
+
     int val = array[i];
     int mirror_val = mirror_array[i];
     int final_pos = i;
-    while( final_pos > left && val < array[final_pos-1] ){
+    while (final_pos > left && val < array[final_pos-1]){
       array[final_pos] = array[final_pos-1];
       mirror_array[final_pos] = mirror_array[final_pos-1];
       final_pos--;
@@ -123,8 +125,8 @@ int remove_duplicates(int* const array, const int size, int* const mirror_array)
 }
 
 
-void inspector::MetisReplicateHypergraph()
-{
+void Inspector::MetisReplicateHypergraph(){
+
 	if (team_size < 2)
 		return;
 
@@ -132,7 +134,8 @@ void inspector::MetisReplicateHypergraph()
 
 	//First Step , broadcast the number of pins a process has for each net
   
-	int sendcount[team_size],senddispl[team_size + 1],recvcount[team_size],recvdispl[team_size + 1];
+	int sendcount[team_size], senddispl[team_size + 1], recvcount[team_size],
+		recvdispl[team_size + 1];
 
 	int num_local_nets = 0;
 	for( int i = 0 ; i < team_size ; i++) {
@@ -282,7 +285,7 @@ void inspector::MetisReplicateHypergraph()
 }
 
 
-void inspector::MetisPrePartition()
+void Inspector::MetisPrePartition()
 {
   MetisReplicateHypergraph();
 
@@ -330,7 +333,7 @@ void inspector::MetisPrePartition()
 }
 
 
-void inspector::BlockPartition()
+void Inspector::BlockPartition()
 {
   MetisReplicateHypergraph();
 
@@ -353,7 +356,7 @@ void inspector::BlockPartition()
 }
 
 
-void inspector::MetisPartition()
+void Inspector::MetisPartition()
 {
   MetisPrePartition();
 
@@ -629,7 +632,7 @@ void inspector::MetisPartition()
   MetisAfterPartition();
 }
 
-void inspector::MetisAfterPartition()
+void Inspector::MetisAfterPartition()
 {
 	int num_local_nets = 0;
 	int* const recvcount= new int[nprocs];

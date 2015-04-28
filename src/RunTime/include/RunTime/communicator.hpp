@@ -167,7 +167,7 @@ public:
 
 	void print_comm();
 
-	friend class inspector;
+	friend class Inspector;
 };
 
 
