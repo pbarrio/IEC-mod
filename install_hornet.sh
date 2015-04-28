@@ -9,6 +9,12 @@
 
 export MPI_HOME=/usr/
 
-cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=/usr $PWD
+if [ -n build ]; then
+	mkdir build
+fi
+
+cd build
+cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=/usr ..
 make
 sudo make install
+cd ..

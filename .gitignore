@@ -13,9 +13,11 @@ Makefile
 link.txt
 progress.marks
 
+/build/*
 /CMakeFiles/2.8.12.2/*
 /demos/CMakeFiles/2.8.12.2/*
 /demos/CMakeFiles/Progress/*
+
 /CMakeFiles/CMakeDetermineCompilerABI_C.bin
 /CMakeFiles/CMakeDetermineCompilerABI_CXX.bin
 /CMakeFiles/CompilerIdC/CMakeCCompilerId.c
