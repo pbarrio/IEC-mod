@@ -26,6 +26,19 @@ class inspector;
 class local_inspector;
 class local_data;
 
+/**
+ * \brief Communications between members of the same team
+ *
+ * Sometimes a variable is partly calculated in more than one process. Before
+ * communicating it to the consumers, the owner of that variable in this team
+ * must aggregate all the partial results. This class tracks owned/ghost data
+ * in all arrays used in the team's loop.
+ *
+ *    read =  data that we use
+ *    write = data that we modify after computations
+ *    ghost = data that we do not own
+ *    owned = data that we own
+ */
 class local_comm{
   
 private:
@@ -43,13 +56,6 @@ private:
 	const int myid;
 
 	const int my_num;
-  
-	/*
-	 * read =  data that we use.
-	 * write = data that we modify after computations.
-	 * ghost = data that we do not own
-	 * owned = data that we own
-	 */
 
 	/// Start index in the send buffer, for each client process,
 	/// of the OWNED data sent FROM THIS process.
@@ -78,7 +84,7 @@ private:
 public:
   
 	local_comm(int,int,int);
-  
+
 	~local_comm();
 
 	///Unused in quake

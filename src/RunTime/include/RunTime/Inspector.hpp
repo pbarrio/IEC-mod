@@ -65,6 +65,11 @@ private:
 	/// Same as above but for local data. I wonder if I could get rid of these!
 	std::deque<local_data*> all_local_data;
 
+
+	/*
+	 * LOOP INFO
+	 */
+
 	///All loops specified as parallel
 	std::deque<global_loop*> all_loops;
 
@@ -76,6 +81,9 @@ private:
 
 	/// Loops that wait for our data (we are producers for them)
 	std::map<int, global_loop*> consumer_loops;
+
+	/*-----------------*/
+
 
 	///All solvers
 	std::deque<petsc_solve*> all_solvers;
@@ -178,7 +186,7 @@ public:
 #endif
 	}
 
-	///Combine the pieces of the hypergraph from different processes
+	// Combine the pieces of the hypergraph from different processes
 	void PatohPrePartition();
 	void PatohPartition();
 	void PatohAfterPartition();
@@ -189,13 +197,17 @@ public:
 	void MetisPrePartition();
 	void MetisAfterPartition();
 
-	void CommunicateGhosts();
-
 	void GetBufferSize();
 
+	/*
+	 * These are the communication functions. The first two communicate
+	 * data among processes in the same team. The last two communicate
+	 * data between producers and consumers.
+	 */
 	void CommunicateReads(int);
-  
+	void CommunicateGhosts();
 	void CommunicateToNext();
+	void GetFromPrevious();
 
 
 	/**
@@ -310,8 +322,8 @@ public:
 	                           int oas, bool iro, bool ic){
 
 		local_data* new_data =
-			new local_data_double(mn, team_size, team_num, proc_id, stride_size, ddni,
-			                      oas, iro, ic);
+			new local_data_double(mn, team_size, team_num, proc_id, stride_size,
+			                      ddni, oas, iro, ic);
 		all_local_data.push_back(new_data);
 	}
 
@@ -327,6 +339,14 @@ public:
 		all_local_data[dn]->AddIndexAccessed(ind,at);
 	}
 
+	/**
+	 * \brief Populates a local array from its corresponding global array
+	 *
+	 * \param an ID of the local array to be populated
+	 * \param lb Allocated clean array to be populated
+	 * \param oa Original array
+	 * \param st Stride. Not sure what this is.
+	 */
 	inline void PopulateLocalArray(int an, double* lb, double* oa, int st){
 		all_local_data[an]->PopulateLocalArray(lb,oa,st);
 	}
@@ -339,6 +359,11 @@ public:
 		all_local_data[an]->InsertIndirectAccess(v,n);
 	}
 
+	/**
+	 * \param an ID of the local array to be populated
+	 * \param as Size of this local array
+	 * \param aa Array that will be used to index this local array
+	 */
 	inline void RenumberAccessArray(int an, int as, int* aa){
 		all_local_data[an]->RenumberAccessArray(as,aa);
 	}

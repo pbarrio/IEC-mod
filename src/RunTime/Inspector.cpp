@@ -80,8 +80,7 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 	pins_size(-1),
 	my_loop(NULL),
 	iter_num_offset(new int[nl + 1]), // The first '1' is for my loop
-	data_num_offset(new int[nd+1])
-{
+	data_num_offset(new int[nd+1]){
 
 	/// Create new communicator associated to the inspector.
 	/// This avoids having to use MPI_COMM_WORLD.
@@ -110,9 +109,9 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 			iter_num_offset[iLoop] + iter_num_count[iLoop];
 	}
 
-	///  Create data arrays (excludes indirection arrays)
+	/// Create data arrays (excludes indirection arrays)
 	data_num_offset[0] = 0;
-	for( int i = 0 ; i < nd ; i++ ){
+	for (int i = 0; i < nd; i++){
 		global_data* new_data;
 		new_data = new global_data_double(i, data_num_count[i],
 		                                  data_num_offset[i],
@@ -376,21 +375,22 @@ void Inspector::AddVertex(int iter_num, int iter_value)
 
 
 /**
- * \brief Adds a pin from the current vertex to a network representing some data.
+ * \brief Adds a pin from the current vertex to a network representing some data
  *
  * \param data_num Identifier of the array to be referenced
  * \param index Identifier of the array position to be referenced
- * \param is_direct !=0 if addressing is affine; =0 if it depends on indirection array.
+ * \param is_direct !=0 if addressing is affine; =0 if it depends on indirection
+ *                  array
  * \param is_ploop !=0 if the access comes from a partitionable loop
  */
-void Inspector::AddNet(int data_num, int index, int is_direct, int is_ploop)
-{
+void Inspector::AddNet(int data_num, int index, int is_direct, int is_ploop){
+
 	assert(data_num < all_data.size());
 
 	///Get the current net
 	net* net_num = all_data[data_num]->data_net_info[index];
 
-	pin_info new_pin(curr_vertex,is_direct != 0 ? true : false);
+	pin_info new_pin(curr_vertex, is_direct != 0 ? true : false);
 
 	/// If access is from a partitionable loop and is direct access
 	if( is_ploop && is_direct ){
@@ -1050,16 +1050,31 @@ void Inspector::GetBufferSize()
 }
 
 
-void Inspector::CommunicateGhosts()
-{
-	int sendcount[nprocs],senddispl[nprocs+1];
-	int recvcount[nprocs],recvdispl[nprocs+1];
+/**
+ * \brief Communicate all ghosts from/to members of the team
+ */
+void Inspector::CommunicateGhosts(){
 
+	// Number of send-ghosts for each process, all arrays
+	int sendcount[nprocs];
+
+	// senddispl[i] will contain the index where ghosts start for process i,
+	// senddispl[i + 1] the index where ghosts end (not included) for process i
+	int senddispl[nprocs + 1];
+
+	// Number of receive-ghosts for each process, all arrays
+	int recvcount[nprocs];
+
+	// Same explanation as senddispl but for receive-ghosts
+	int recvdispl[nprocs + 1];
+
+	// Number of R/W arrays
 	int n_data = 0;
+
 	for (deque<global_data*>::iterator it = all_data.begin();
 	     it != all_data.end(); it++ )
 
-		if( !(*it)->is_read_only )
+		if (!(*it)->is_read_only)
 			n_data++;
 
 	int* sendghosts_count = new int[nprocs*n_data];
@@ -1073,49 +1088,58 @@ void Inspector::CommunicateGhosts()
 
 		int dest_proc = i;
 		int d = 0;
+
+		// Count #send-ghosts for all arrays
 		for (deque<local_data*>::iterator it = all_local_data.begin();
 		     it != all_local_data.end(); it++)
 
-			if( !(*it)->is_read_only ){
+			if (!(*it)->is_read_only){
 				int nghosts = (*it)->global_ghosts[dest_proc].size();
-
 				sendghosts_count[dest_proc * n_data + d] = nghosts;
 				sendcount[i] += nghosts;
 				d++;
 			}
 	}
+
+	// Calculate indices where send-ghosts start & end for all processes
 	senddispl[0] = 0;
-	for(int i = 0 ; i < nprocs ; i++ )
-		senddispl[i+1] = senddispl[i] + sendcount[i];
+	for (int i = 0; i < team_size; i++)
+		senddispl[i + 1] = senddispl[i] + sendcount[i];
   
+	// #receive-ghosts per target process, per R/W array
 	int* recvghosts_count = new int[nprocs*n_data];
+
+	// Send counts of send-ghosts and receive counts of receive-ghosts
 	MPI_Alltoall(sendghosts_count, n_data, MPI_INT, recvghosts_count, n_data,
 	             MPI_INT, global_comm::global_iec_communicator);
 
-	for( int i = 0 ; i < nprocs ; i++ ){
+	// Extract #receive-ghosts for all sender processes
+	for (int i = 0; i < nprocs; i++){
 		int send_proc = i;
-		for( int d = 0 ; d < n_data ; d++ ){
+		for (int d = 0; d < n_data; d++){
 			int nghosts = recvghosts_count[i * n_data + d];
 			recvcount[i] += nghosts;
 		}
 	}
+
+	// Calculate indices where receive-ghosts start & end for all processes
 	recvdispl[0] = 0;
-	for( int i = 0 ; i < nprocs ; i++ )
-		recvdispl[i+1] = recvdispl[i] + recvcount[i];
+	for (int i = 0; i < nprocs; i++)
+		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
 
   
 	int* ghosts_send_val = new int[senddispl[nprocs]];
 	int* ghosts_recv_val = new int[recvdispl[nprocs]];
 
+	// Populate the actual ghosts from data in the local arrays
 	int counter = 0;
-	for( int i = 0 ; i < nprocs ; i++ ){
+	for (int i = 0; i < nprocs; i++){
 
 		int d = 0; 
-
 		for (deque<local_data*>::iterator it = all_local_data.begin();
 		     it != all_local_data.end(); it++)
-			if (!(*it)->is_read_only){
 
+			if (!(*it)->is_read_only){
 				for (set<int>::iterator jt = (*it)->global_ghosts[i].begin();
 				     jt != (*it)->global_ghosts[i].end(); jt++){
 
@@ -1129,19 +1153,22 @@ void Inspector::CommunicateGhosts()
 
 	assert(counter == senddispl[nprocs]);
 
+	// Communicate the send- and receive-ghosts
 	MPI_Alltoallv(ghosts_send_val, sendcount, senddispl, MPI_INT,
 	              ghosts_recv_val, recvcount, recvdispl, MPI_INT,
 	              global_comm::global_iec_communicator);
 
+	// Update the owned data with the received ghost values
 	counter = 0;
 	for (int i = 0; i < nprocs; i++){
 
 		int d = 0;
 		for (deque<local_data*>::iterator it = all_local_data.begin();
 		     it != all_local_data.end(); it++)
+
 			if (!(*it)->is_read_only){
-				int nghosts = recvghosts_count[i * n_data +d];
-				for( int g = 0 ; g < nghosts ; g++ )
+				int nghosts = recvghosts_count[i * n_data + d];
+				for (int g = 0; g < nghosts; g++)
 					(*it)->global_owned[i].insert(ghosts_recv_val[counter++]);
 				d++;
 			}
@@ -1155,8 +1182,8 @@ void Inspector::CommunicateGhosts()
 }
 
 
-void Inspector::CommunicateReads(int comm_num)
-{
+void Inspector::CommunicateReads(int comm_num){
+
 	int nparts = nprocs;
 
 #ifdef COMM_TIME

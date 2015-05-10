@@ -90,33 +90,37 @@ protected:
 
 public:
 
+	// Ghosts of all arrays in this process (real array values, not indices)
 	std::set<int> *global_ghosts;
 
+	// Data on all arrays owned by this process (real array values, not indices)
 	std::set<int> *global_owned;
 
-	local_data(int,int,int,int,int,const net**,int,bool,bool);
+	local_data(int, int, int, int, int, const net**, int, bool, bool);
 
 	virtual ~local_data();
 
-	virtual int GetGhostsCount(int) const=0;
+	virtual int GetGhostsCount(int) const = 0;
 
-	virtual int GetOwnedCount(int) const=0;
+	virtual int GetOwnedCount(int) const = 0;
 
-	virtual void PopulateLocalArray(double*,double*,int)=0;
+	virtual void PopulateLocalArray(double*, double*, int) = 0;
 
-	virtual void PopulateGlobalArray()=0; 
+	virtual void PopulateGlobalArray() = 0;
 
-	inline int GetLocalSize() const{ return direct_access_size + indirect_access_size; }
+	inline int GetLocalSize() const {
+		return direct_access_size +indirect_access_size;
+	}
 
 	void AddIndexAccessed(int, int);
 
-	void InsertDirectAccess(const int*,const int);
+	void InsertDirectAccess(const int*, const int);
 
-	void InsertIndirectAccess(const int*,const int);
+	void InsertIndirectAccess(const int*, const int);
   
-	void RenumberAccessArray(int,int*);
+	void RenumberAccessArray(int, int*);
 
-	void RenumberOffsetArray(int,int*,int*);
+	void RenumberOffsetArray(int, int*, int*);
 
 	void GenerateGhosts();
 
@@ -132,23 +136,26 @@ public:
 
 	virtual void RecvOwnedData(char*, const int*) = 0;
 
-	virtual void PopulateLocalGhosts(local_data*,int)=0;
+	virtual void PopulateLocalGhosts(local_data*,int) = 0;
 
-	virtual void UpdateLocalOwned(local_data*,int)=0;
+	virtual void UpdateLocalOwned(local_data*,int) = 0;
 
-	virtual void InitWriteGhosts()=0;
+	virtual void InitWriteGhosts() = 0;
 
 	virtual void print_data(FILE*);
 
-	virtual int get_size() const=0;
+	virtual int get_size() const = 0;
 
-	virtual int get_stride_size() const=0;
+	virtual int get_stride_size() const = 0;
 
 	inline int GetMyNum() const{return my_num;}
 
-	inline int GetLocalBlockOffset() const { assert(is_constrained) ; return block_owned_offset; }
+	inline int GetLocalBlockOffset() const {
+		assert(is_constrained);
+		return block_owned_offset;
+	}
 
-	virtual void SetLocalArray(void*)=0;
+	virtual void SetLocalArray(void*) = 0;
 
 	friend class Inspector;
 };

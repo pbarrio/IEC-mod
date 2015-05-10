@@ -147,10 +147,9 @@ extern "C" {
 	 */
 	void add_vertex(int iter_num, int iter_value) {
 		Inspector* my_inspect = Inspector::instance();
-		my_inspect->AddVertex(iter_num,iter_value);
+		my_inspect->AddVertex(iter_num, iter_value);
 	}
 
-  
 	void add_vertex_(int* iter_num, int* iter_value){
 		Inspector* my_inspect = Inspector::instance();
 		my_inspect->AddVertex(*iter_num,*iter_value);
@@ -167,14 +166,14 @@ extern "C" {
 	 *
 	 * \param data_num Identifier of the data array
 	 * \param index Position in the array
-	 * \param isdirect !=0 if addressing is affine; =0 if it depends on indirection array.
-	 * \param isploop !=0 if the access comes from a partitionable loop. What is a p. loop?
+	 * \param isdirect !=0 if the addressing is affine; =0 if depends on
+	 *        indirection array.
+	 * \param isploop !=0 if the access comes from a partitionable loop.
 	 */
 	void add_pin_to_net(int data_num, int index, int isdirect, int isploop) {
 		Inspector* my_inspect = Inspector::instance();
-		my_inspect->AddNet(data_num,index,isdirect,isploop);
+		my_inspect->AddNet(data_num, index, isdirect, isploop);
 	}
-
 
 	void add_pin_to_net_(int* data_num, int* index, int* id, int* isploop){
 		Inspector* my_inspect = Inspector::instance();
@@ -276,50 +275,41 @@ extern "C" {
 		*out = get_local_size(*an);
 	}
 
-
 	/**
 	 * \brief Unused in quake
 	 */
 	void communicate_reads_for(int in, int an){
 		Inspector::instance()->AddReadArray(in,an);
 	}
-
-
-	/**
-	 * \brief Unused in quake
-	 */
 	void communicate_reads_for_(int *in, int *an){
 		Inspector::instance()->AddReadArray(*in,*an);
 	}
 
-
 	void communicate_writes_for(int in, int an){
 		Inspector::instance()->AddWriteArray(in,an);
 	}
-
-
 	void communicate_writes_for_(int *in, int *an){
 		Inspector::instance()->AddWriteArray(*in,*an);
 	}
-
 
 	void add_index_from_proc(int data_num, int index, int access_type){
 		Inspector::instance()->
 			AddIndexAccessed(data_num,index,access_type);
 	}
-
-
 	void add_index_from_proc_(int *data_num, int *index, int *access_type){
 		Inspector::instance()->
 			AddIndexAccessed(*data_num,*index,*access_type);
 	}
 
-
-	void populate_local_array(int an, double*lb, double*oa, int st){
+	/**
+	 * \param an ID of the local array to be populated
+	 * \param lb Allocated clean array to be populated
+	 * \param oa Original array
+	 * \param st Stride. Not sure what this is.
+	 */
+	void populate_local_array(int an, double* lb, double* oa, int st){
 		Inspector::instance()->PopulateLocalArray(an,lb,oa,st);
 	}
-
-
 	void populate_local_array_(int *an, double*lb, double*oa, int *st){
 		Inspector::instance()->PopulateLocalArray(*an,lb,oa,*st);
 	}
@@ -328,22 +318,16 @@ extern "C" {
 	void renumber_access_array(int an, int as, int* aa){
 		Inspector::instance()->RenumberAccessArray(an,as,aa);
 	}
-
-
 	void renumber_access_array_(int *an, int *as, int* aa){
 		Inspector::instance()->RenumberAccessArray(*an,*as,aa);
 	}
 
-
 	void renumber_offset_array(int an, int as, int* aa, int* la){
 		Inspector::instance()->RenumberOffsetArray(an,as,aa,la);
 	}
-
-
 	void renumber_offset_array_(int *an, int *as, int* aa, int* la){
 		Inspector::instance()->RenumberOffsetArray(*an,*as,aa,la);
 	}
-
 
 	/**
 	 * \brief Start executor
@@ -373,8 +357,6 @@ extern "C" {
 
 		executor_start = rtclock();
 	}
-
-  
 	void setup_executor_(){
 		setup_executor();
 	}
@@ -382,7 +364,6 @@ extern "C" {
 	void communicate_reads(int cn){
 		Inspector::instance()->CommunicateReads(cn);
 	}
-
 	void communicate_reads_(int *cn){
 		Inspector::instance()->CommunicateReads(*cn);
 	}

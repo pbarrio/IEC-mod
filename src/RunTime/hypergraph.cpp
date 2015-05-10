@@ -68,7 +68,7 @@ double vertex::clear_adjvertex()
  *
  * \param dn ID of the array
  * \param di Index of the array position
- * \param wt ??? Looks like it's initialized to the size of the data (e.g. int = 4)
+ * \param wt Weight of the net. Used for cost calculation?
  * \param mn ID of the net
  */
 net::net(short dn, int di, short wt, int mn):
@@ -76,8 +76,8 @@ net::net(short dn, int di, short wt, int mn):
   data_index(di),
   weight(wt),
   my_num(mn),
-  direct_vertex(NULL)
-{
+  direct_vertex(NULL){
+
   home = -1;
 }
 

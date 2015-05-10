@@ -439,9 +439,9 @@ int main(int argc, char **argv)
 	double Exc_dt = Exc.dt;
 	double Exc_t0 = Exc.t0;
 
-#pragma arrays disp0[ARCHnodes][3],disp1[ARCHnodes][3],disp2[ARCHnodes][3],K[ARCHmatrixlen][9],M[ARCHnodes][3],C[ARCHnodes][3],vel[ARCHnodes][3],M23[ARCHnodes][3],C23[ARCHnodes][3],V23[ARCHnodes][3],ARCHmatrixindex[ARCHnodes+1][1],ARCHmatrixcol[ARCHmatrixlen][1]
+#pragma arrays disp0[ARCHnodes][3], disp1[ARCHnodes][3], disp2[ARCHnodes][3], K[ARCHmatrixlen][9], M[ARCHnodes][3], C[ARCHnodes][3], vel[ARCHnodes][3], M23[ARCHnodes][3], C23[ARCHnodes][3], V23[ARCHnodes][3], ARCHmatrixindex[ARCHnodes+1][1] ,ARCHmatrixcol[ARCHmatrixlen][1]
 
-	for (iter = 1; iter <= timesteps ;  ) {
+	for (iter = 1; iter <= timesteps; ) {
 
 		/*
 		 * LOOP 1
@@ -456,20 +456,29 @@ int main(int argc, char **argv)
 		for (i = 0; i < ARCHnodes; i++) {
 			Anext = ARCHmatrixindex[i];
 
-			sum0 = K[Anext][0]*disp1[i][0] + K[Anext][1]*disp1[i][1] + K[Anext][2]*disp1[i][2];
-			sum1 = K[Anext][3]*disp1[i][0] + K[Anext][4]*disp1[i][1] + K[Anext][5]*disp1[i][2];
-			sum2 = K[Anext][6]*disp1[i][0] + K[Anext][7]*disp1[i][1] + K[Anext][8]*disp1[i][2];
+			sum0 = K[Anext][0] * disp1[i][0] + K[Anext][1] * disp1[i][1] +
+				K[Anext][2] * disp1[i][2];
+			sum1 = K[Anext][3] * disp1[i][0] + K[Anext][4] * disp1[i][1] +
+				K[Anext][5] * disp1[i][2];
+			sum2 = K[Anext][6] * disp1[i][0] + K[Anext][7] * disp1[i][1] +
+				K[Anext][8] * disp1[i][2];
 
-			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
+			for (j = ARCHmatrixindex[i] + 1; j < ARCHmatrixindex[i + 1]; j++){
 				col = ARCHmatrixcol[j];
 
-				sum0 += K[j][0]*disp1[col][0] + K[j][1]*disp1[col][1] + K[j][2]*disp1[col][2];
-				sum1 += K[j][3]*disp1[col][0] + K[j][4]*disp1[col][1] + K[j][5]*disp1[col][2];
-				sum2 += K[j][6]*disp1[col][0] + K[j][7]*disp1[col][1] + K[j][8]*disp1[col][2];
+				sum0 += K[j][0] * disp1[col][0] + K[j][1] * disp1[col][1] +
+					K[j][2] * disp1[col][2];
+				sum1 += K[j][3] * disp1[col][0] + K[j][4] * disp1[col][1] +
+					K[j][5] * disp1[col][2];
+				sum2 += K[j][6] * disp1[col][0] + K[j][7] * disp1[col][1] +
+					K[j][8] * disp1[col][2];
 
-				disp0[col][0] += K[j][0]*disp1[i][0] + K[j][3]*disp1[i][1] + K[j][6]*disp1[i][2];
-				disp0[col][1] += K[j][1]*disp1[i][0] + K[j][4]*disp1[i][1] + K[j][7]*disp1[i][2];
-				disp0[col][2] += K[j][2]*disp1[i][0] + K[j][5]*disp1[i][1] + K[j][8]*disp1[i][2];
+				disp0[col][0] += K[j][0] * disp1[i][0] + K[j][3] * disp1[i][1] +
+					K[j][6] * disp1[i][2];
+				disp0[col][1] += K[j][1] * disp1[i][0] + K[j][4] * disp1[i][1] +
+					K[j][7] * disp1[i][2];
+				disp0[col][2] += K[j][2] * disp1[i][0] + K[j][5] * disp1[i][1] +
+					K[j][8] * disp1[i][2];
 			}
 			disp0[i][0] += sum0;
 			disp0[i][1] += sum1;

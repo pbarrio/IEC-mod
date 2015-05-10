@@ -139,48 +139,58 @@ void local_data::SetupLocalArray()
 	indirect_access_size = indirect_access.size();
 	indirect_access_array = new int[indirect_access_size];
     
-	for( set<int>::const_iterator it = direct_access.begin() ; it != direct_access.end() ; it++ , counter++ ){
+	for (set<int>::const_iterator it = direct_access.begin();
+	     it != direct_access.end(); it++, counter++)
 		direct_access_array[counter] = *it;
-	}
-	for( set<int>::const_iterator it = indirect_access.begin() ; it != indirect_access.end() ; it++ , counter++ )
+
+	for (set<int>::const_iterator it = indirect_access.begin();
+	     it != indirect_access.end(); it++, counter++)
 		indirect_access_array[counter-direct_access_size] = *it;
+
 	assert(counter == direct_access_size + indirect_access_size);
   
 	direct_access.clear();
 	indirect_access.clear();
 }
 
+int local_data::GetLocalIndex(int global_index) const {
 
-int local_data::GetLocalIndex(int global_index) const
-{
 	int local_index = -1;
-	if( direct_access_size > 0 )
-		local_index = binary_search(direct_access_array,direct_access_size,global_index);
-	if( local_index == -1 ){
+	if (direct_access_size > 0)
+		local_index = binary_search(direct_access_array, direct_access_size,
+		                            global_index);
+	if (local_index == -1){
 		assert(indirect_access_size > 0);
-		local_index = binary_search(indirect_access_array,indirect_access_size,global_index);
+		local_index = binary_search(indirect_access_array, indirect_access_size,
+		                            global_index);
 		if( local_index == -1 )
-			printf("ID:%d, Couldnt find %d of array %d\n",myid,global_index,my_num);
-		assert(local_index != -1 );
+			printf("ID:%d, Couldnt find %d of array %d\n", myid, global_index,
+			       my_num);
+		assert(local_index != -1);
 		local_index += direct_access_size;
 	}
 	return local_index;
 }
 
-void local_data::RenumberAccessArray(int array_size, int* access_array)
-{
-	for( int i = 0 ; i < array_size ; i++ ) 
+/**
+ * \param array_size Size of this local array
+ * \param access_array Array that will be used to index this local array
+ */
+void local_data::RenumberAccessArray(int array_size, int* access_array){
+
+	for (int i = 0; i < array_size; i++)
 		access_array[i] = GetLocalIndex(access_array[i]);
 }
 
+void local_data::RenumberOffsetArray(int array_size, int* offset_array,
+                                     int* lower_bound){
 
+	for (int i = 0; i < array_size; i++){
 
-void local_data::RenumberOffsetArray(int array_size, int* offset_array, int* lower_bound)
-{
-	for( int i = 0 ; i < array_size ; i++ ){
 		int curr_index = offset_array[i];
-		int curr_posn = binary_search(direct_access_array,direct_access_size,curr_index);
-		if( curr_posn == -1 ){
+		int curr_posn = binary_search(direct_access_array, direct_access_size,
+		                              curr_index);
+		if (curr_posn == -1){
 			offset_array[i] = -1;
 		}
 		else
@@ -243,32 +253,39 @@ void local_data::GenerateGhosts()
 	}
 }
 
-void local_data::GenerateOwned()
-{
-	if( !is_read_only ){
-		ghosts_offset[0] = 0; owned_offset[0] = 0;
-		for( int i = 0 ; i < nparts ; i++ ){
-			ghosts_offset[i+1] = ghosts_offset[i] + global_ghosts[i].size();
-			owned_offset[i+1] = owned_offset[i] + global_owned[i].size();
-		}
+void local_data::GenerateOwned(){
 
-		ghosts = new int[ghosts_offset[nparts]];
-		owned = new int[owned_offset[nparts]];
-  
-		int counter = 0;
-		for( int i = 0 ; i <  nparts ; i++ )
-			for( set<int>::iterator it = global_ghosts[i].begin(); it != global_ghosts[i].end() ; it++ )
-				ghosts[counter++] = GetLocalIndex(*it);
-		assert(counter == ghosts_offset[nparts]);
-		counter = 0;
-		for( int i = 0 ; i <  nparts ; i++ )
-			for( set<int>::iterator it = global_owned[i].begin(); it != global_owned[i].end() ; it++ )
-				owned[counter++] = GetLocalIndex(*it);
-		assert(counter == owned_offset[nparts]);
-		delete[] global_owned;
-		delete[] global_ghosts;
-  
+	if (is_read_only)
+		return;
+
+	ghosts_offset[0] = 0;
+	owned_offset[0] = 0;
+	for (int i = 0; i < nparts; i++){
+		ghosts_offset[i + 1] = ghosts_offset[i] + global_ghosts[i].size();
+		owned_offset[i + 1] = owned_offset[i] + global_owned[i].size();
 	}
+
+	ghosts = new int[ghosts_offset[nparts]];
+	owned = new int[owned_offset[nparts]];
+
+	int counter = 0;
+	for (int i = 0; i < nparts; i++)
+		for (set<int>::iterator it = global_ghosts[i].begin();
+		     it != global_ghosts[i].end(); it++)
+			ghosts[counter++] = GetLocalIndex(*it);
+
+	assert(counter == ghosts_offset[nparts]);
+
+	counter = 0;
+	for (int i = 0; i < nparts; i++)
+		for (set<int>::iterator it = global_owned[i].begin();
+		     it != global_owned[i].end(); it++)
+			owned[counter++] = GetLocalIndex(*it);
+
+	assert(counter == owned_offset[nparts]);
+
+	delete[] global_owned;
+	delete[] global_ghosts;
 }
 
 
@@ -328,26 +345,32 @@ local_data_double::local_data_double(int mn, int np, int md, int pid, int st,
 } 
 
 
-local_data_double::~local_data_double()
-{}
+local_data_double::~local_data_double(){}
 
 
-void local_data_double::PopulateLocalArray(double* local_base, double* orig, int st)
-{
-	assert( stride == st && orig_array == NULL && local_array == NULL);
+/**
+ * \param local_base Allocated clean array to be populated
+ * \param orig Original array
+ * \param st Stride. Not sure what this is.
+ */
+void local_data_double::PopulateLocalArray(double* local_base, double* orig,
+                                           int st){
+
+	assert(stride == st && orig_array == NULL && local_array == NULL);
 	orig_array = orig;
 	local_array = local_base;
 
 	int counter = 0 ;
     
 	if( stride != 1 ){
-		for( int j = 0 ; j < direct_access_size ; j++ , counter++ ){
-			int orig_offset = direct_access_array[j]*stride;
-			for( int i = 0 ; i < stride ; i++ )
-				local_array[counter*stride+i] = orig_array[orig_offset+i];
+		for (int j = 0; j < direct_access_size; j++, counter++){
+			int orig_offset = direct_access_array[j] * stride;
+			for (int i = 0; i < stride; i++)
+				local_array[counter * stride + i] = orig_array[orig_offset + i];
 		}
-		for( int j = 0 ; j < indirect_access_size ; j++ , counter++ ){
-			int orig_offset = indirect_access_array[j]*stride;
+		for (int j = 0; j < indirect_access_size; j++, counter++){
+
+			int orig_offset = indirect_access_array[j] * stride;
 			for( int i = 0 ; i < stride ; i++ )
 				local_array[counter*stride+i] = orig_array[orig_offset+i];
 		}
