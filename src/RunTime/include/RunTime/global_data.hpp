@@ -33,17 +33,25 @@ class global_data{
 
 protected:
 
+	/// Pointers to nets for each array value, for each team
+	typedef std::map<int, net**> LoopNets;
+
 	/// The identifier assigned to this global_data.
 	const int id;
 
-	/// All the nets, one for each position of this global array.
-	net**  data_net_info;
+	/// All the nets, one for each position of this global array, for each team.
+	/// e.g. data_net_info[2][6] is a net* with the net for position 6, loop 2.
+	LoopNets data_net_info;
 
 	/// Size of the original array
 	const int orig_array_size;
 
 	/// Size of each element of the array in bytes (e.g. for int. stride_size=4)
 	int stride_size;
+
+	/// Offset: address of the first elem if we put all global data in a single
+	/// buffer in ID order.
+	int offset;
 
 	/// True if the array is read-only in the original code
 	const bool is_read_only;
@@ -52,7 +60,7 @@ protected:
 	bool is_constrained;
 
 public:
-	global_data(int,int,bool);
+	global_data(int, int, int, bool);
 
 	virtual ~global_data();
 
@@ -64,6 +72,8 @@ public:
 	 * \brief Unimportant for the quake benchmark
 	 */
 	inline void SetConstraint(){is_constrained = true;}
+
+	void use_in_loop(int);
 
 	friend class Inspector;
 };

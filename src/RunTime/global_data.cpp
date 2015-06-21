@@ -23,26 +23,44 @@
 
 using namespace std;
 
-global_data::global_data(int mn, int oas, bool iro):
-	id(mn),
-	orig_array_size(oas),
-	is_read_only(iro){
+/**
+ * \brief Constructor
+ *
+ * \param mn Identifier for this data
+ * \param oas Size of the original array
+ * \param of Offset: address of the first elem if we put all global data in a
+ *           single buffer in ID order.
+ * \param iro True if read-only array
+ */
+global_data::global_data(int mn, int oas, int of, bool iro):
+	id(mn), orig_array_size(oas), offset(of), is_read_only(iro){
 
-  data_net_info = new net*[oas];
 	is_constrained = false;
 }
-	}
-
 
 global_data::~global_data(){
 
-	if( data_net_info ){
-		for( int i = 0 ; i < orig_array_size ; i++ )
-			delete data_net_info[i];
-		delete[] data_net_info;
+	for (LoopNets::iterator netIt = data_net_info.begin(),
+		     netEnd = data_net_info.begin();
+	     netIt != netEnd; ++netIt){
+
+		net** nets = netIt->second;
+		for (int i = 0; i < orig_array_size; i++)
+			delete nets[i];
+		delete[] nets;
 	}
 }
 
+/**
+ * \brief Mark the data as used in a loop and initialize some required info
+ */
+void global_data::use_in_loop(int loopID){
+
+	// Create a net for each element of the array to be used in partitioning
+	data_net_info[loopID] = new net*[orig_array_size];
+	for (int i = 0; i < orig_array_size; i++)
+		data_net_info[loopID][i] = new net(id, i, stride_size, offset + i);
+}
 
 /**
  * \brief Constructor
@@ -54,21 +72,24 @@ global_data::~global_data(){
  * \param iro True if read-only array
  */
 global_data_double::global_data_double(int mn, int oas, int of, bool iro):
-	global_data(mn, oas, iro){
+	global_data(mn, oas, of, iro){
 
 	// Set default stride between elements
 	stride_size = sizeof(double);
-
-	// Create a net for each element of the array to be used in partitioning
-	for (int i = 0; i < oas; i++)
-		data_net_info[i] = new net(mn, i, stride_size, of + i);
 }
 
 void global_data_double::SetStride(int st){
 
 	stride_size = st * sizeof(double);
-	for (int i = 0; i < orig_array_size; i++)
-		data_net_info[i]->weight = stride_size;
+
+	for (LoopNets::iterator netIt = data_net_info.begin(),
+		     netEnd = data_net_info.end();
+	     netIt != netEnd; ++netIt){
+
+		net** nets = netIt->second;
+		for (int i = 0; i < orig_array_size; i++)
+			nets[i]->weight = stride_size;
+	}
 }
 
 global_data_double::~global_data_double(){}

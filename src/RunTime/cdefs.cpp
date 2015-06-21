@@ -25,7 +25,6 @@ using namespace std;
 
 static double* scalar_holder = NULL;
 static double final_val = 0.0;
-static ret_data_access data_access_info;
 static double inspector_start = 0.0;
 static double inspector_stop = 0.0;
 static double executor_start = 0.0;
@@ -166,18 +165,22 @@ extern "C" {
 	 *
 	 * \param data_num Identifier of the data array
 	 * \param index Position in the array
+	 * \param loop The pin is meaningful in the context of this loop.
 	 * \param isdirect !=0 if the addressing is affine; =0 if depends on
 	 *        indirection array.
 	 * \param isploop !=0 if the access comes from a partitionable loop.
 	 */
-	void add_pin_to_net(int data_num, int index, int isdirect, int isploop){
+	void add_pin_to_net
+	(int data_num, int index, int loop, int isdirect, int isploop){
+
 		Inspector* my_inspect = Inspector::instance();
-		my_inspect->AddNet(data_num, index, isdirect, isploop);
+		my_inspect->AddPinToNet(data_num, index, loop, isdirect, isploop);
 	}
 
-	void add_pin_to_net_(int* data_num, int* index, int* id, int* isploop){
-		Inspector* my_inspect = Inspector::instance();
-		my_inspect->AddNet(*data_num,*index,*id,*isploop);
+	void add_pin_to_net_
+	(int* data_num, int* index, int* loop, int* id, int* isploop){
+
+		add_pin_to_net(*data_num, *index, *loop, *id, *isploop);
 	}
 
 	/**
@@ -188,10 +191,10 @@ extern "C" {
 	void partition_hypergraph(int useType){
 		switch(useType){
 		case 0:
-			Inspector::instance()->PatohPartition();
+			Inspector::instance()->PatohPartitionAll();
 			return;
 		case 1:
-			Inspector::instance()->MetisPartition();
+			Inspector::instance()->MetisPartitionAll();
 			return;
 		case 2:
 			Inspector::instance()->BlockPartition();
@@ -464,14 +467,13 @@ extern "C" {
 		*sn = Inspector::instance()->InitSolver(*s);
 	}
   
-	void add_unknown(int sn, int an, int idx, int rn){
+	void add_unknown(int sn, int an, int idx, int rn, int l){
 		assert(sn == 0);
-		Inspector::instance()->AddUnknown(sn,an,idx,rn);
+		Inspector::instance()->AddUnknown(sn, an, idx, rn, l);
 	}
 
-	void add_unknown_(int *sn, int *an, int *idx, int *rn){
-		assert(*sn == 0);
-		Inspector::instance()->AddUnknown(*sn,*an,*idx,*rn);
+	void add_unknown_(int *sn, int *an, int *idx, int *rn, int *l){
+		add_unknown(*sn, *an, *idx, *rn, *l);
 	}
 
 	void renumber_solver_rows(int sn, int* oa, int as){
@@ -541,6 +543,11 @@ extern "C" {
 	/*
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
+
+	void pipe_initLoop(int loop, int usedArrays[]){
+
+		Inspector::instance()->init_loop(loop, usedArrays);
+	}
 
 	void pipe_endExternalIter(){
 

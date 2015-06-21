@@ -118,8 +118,7 @@ private:
 
 	std::set<int>** send_info;
 
-
-	void AfterPartition();
+	void AfterPartition(int loop);
 
 
 public:
@@ -156,6 +155,7 @@ public:
 
 	inline int GetProcLocal(int in) const { return all_loops[in]->nproc_local; }
 
+	void init_loop(int, int[]);
 	void AddVertex(int, int);
 	void AddPinToNet(int, int, int, int, int);
 
@@ -175,15 +175,17 @@ public:
 	}
 
 	// Combine the pieces of the hypergraph from different processes
-	void PatohPrePartition();
-	void PatohPartition();
-	void PatohAfterPartition();
+	void PatohPartitionAll();
+	void PatohPrePartition(int loop);
+	void PatohPartition(int loop);
+	void PatohAfterPartition(int loop);
 
-	void MetisReplicateHypergraph();
+	void MetisReplicateHypergraph(int loop);
 	void BlockPartition();
-	void MetisPartition();
-	void MetisPrePartition();
-	void MetisAfterPartition();
+	void MetisPartitionAll();
+	void MetisPartition(int loop);
+	void MetisPrePartition(int loop);
+	void MetisAfterPartition(int loop);
 
 	void GetBufferSize();
 

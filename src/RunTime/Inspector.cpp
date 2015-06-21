@@ -348,6 +348,20 @@ bool Inspector::DoneGraphGeneration(){
 
 
 /**
+ * \brief Initializes structures required by the Inspector for this loop
+ *
+ * Mark arrays as used
+ */
+void Inspector::init_loop(int loopID, int dataIDs[]){
+
+	for (int i = 0; i < sizeof(dataIDs); ++i){
+		global_data* data = all_data[i];
+		data->use_in_loop(loopID);
+	}
+}
+
+
+/**
  * \brief Adds a vertex to the iteration/data hypergraph
  *
  * This function also classifies the loop as a "producer", "consumer",
@@ -386,12 +400,13 @@ void Inspector::AddVertex(int loop_id, int iter_value){
  *                  array.
  * \param is_ploop !=0 if the access is direct from the partitionable loops.
  */
-void Inspector::AddNet(int data_num, int index, int is_direct, int is_ploop){
+void Inspector::AddPinToNet
+(int data_num, int index, int loop, int is_direct, int is_ploop){
 
 	assert(data_num < all_data.size());
 
 	///Get the current net
-	net* net_num = all_data[data_num]->data_net_info[index];
+	net* net_num = all_data[data_num]->data_net_info[index][loop];
 
 	pin_info new_pin(curr_vertex, is_direct != 0 ? true : false);
 
@@ -400,7 +415,8 @@ void Inspector::AddNet(int data_num, int index, int is_direct, int is_ploop){
 		// The compile time analysis should ensure that there are not other
 		// "direct accesses" to this array. The direct_vertex field should be
 		// NULL or the same vertex as the curr_vertex
-		assert(net_num->direct_vertex == NULL || net_num->direct_vertex == curr_vertex);
+		assert(net_num->direct_vertex == NULL ||
+		       net_num->direct_vertex == curr_vertex);
 		net_num->direct_vertex = curr_vertex;
 	}
 
@@ -432,7 +448,7 @@ void Inspector::AddUnknown
 	all_solvers[solver_num]->orig_net[row_num] = curr_net;
 }
 
-void Inspector::PatohPrePartition(){
+void Inspector::PatohPrePartition(int loop){
 
 	if( nprocs > 1 ) {
 		const int ia_size = data_num_offset[all_data.size()];
@@ -448,7 +464,7 @@ void Inspector::PatohPrePartition(){
 		for (int i = 0; i < all_data.size(); i++)
 			for (int j = 0; j < all_data[i]->orig_array_size; j++){
 				net_ia[counter + 1] = net_ia[counter] +
-					all_data[i]->data_net_info[j]->pins.size() * 2 + 1;
+					all_data[i]->data_net_info[loop][j]->pins.size() * 2 + 1;
 				counter++;
 			}
 		assert(counter == ia_size);
@@ -473,7 +489,7 @@ void Inspector::PatohPrePartition(){
 		counter = 0;
 		for (int i = 0; i < all_data.size(); i++)
 			for (int j = 0; j < all_data[i]->orig_array_size; j++){
-				net* curr_net = all_data[i]->data_net_info[j];
+				net* curr_net = all_data[i]->data_net_info[loop][j];
 
 				for (set<pin_info, pin_comparator>::iterator it =
 					     curr_net->pins.begin();
@@ -519,7 +535,7 @@ void Inspector::PatohPrePartition(){
 				///Update the local information
 				for( int i = 0 ; i < curr_data->orig_array_size ; i++ ){
 
-					net* curr_net = curr_data->data_net_info[i];
+					net* curr_net = curr_data->data_net_info[loop][i];
 					for (int j = recv_ia[counter];
 					     j < recv_ia[counter + 1] - 1;
 					     j+=2){
@@ -566,9 +582,17 @@ void Inspector::PatohPrePartition(){
 	}
 }
 
-void Inspector::PatohPartition(){
 
-	PatohPrePartition();
+void Inspector::PatohPartitionAll(){
+
+	for (int loop = 0; loop < all_loops.size(); ++loop)
+		PatohPartition(loop);
+}
+
+
+void Inspector::PatohPartition(int loop){
+
+	PatohPrePartition(loop);
 
 	if( nprocs > 1 ){
 		int patoh_n,patoh_c,patoh_nc,patoh_cutsize;
@@ -614,9 +638,9 @@ void Inspector::PatohPartition(){
 			if( !all_data[i]->is_read_only)
 				for( j = 0 ; j < all_data[i]->orig_array_size ; j++ ) {
 					patoh_netwts[counter] =
-						all_data[i]->data_net_info[j]->weight;
+						all_data[i]->data_net_info[loop][j]->weight;
 					patoh_xpins[counter + 1] = patoh_xpins[counter] +
-						all_data[i]->data_net_info[j]->pins.size();
+						all_data[i]->data_net_info[loop][j]->pins.size();
 					counter++;
 				}
 
@@ -628,8 +652,9 @@ void Inspector::PatohPartition(){
 			if( !all_data[i]->is_read_only )
 				for( j = 0 ; j < all_data[i]->orig_array_size ; j++ ) {
 					set<pin_info, pin_comparator>::iterator jt =
-						all_data[i]->data_net_info[j]->pins.begin();
-					for (; jt != all_data[i]->data_net_info[j]->pins.end();
+						all_data[i]->data_net_info[loop][j]->pins.begin();
+					for (;
+					     jt != all_data[i]->data_net_info[loop][j]->pins.end();
 					     jt++)
 						patoh_pins[counter++] = (*jt).pin->my_num;
 				}
@@ -669,11 +694,11 @@ void Inspector::PatohPartition(){
 				all_loops[i]->iter_vertex[j]->home = 0;
 			}
 	}
-	PatohAfterPartition();
 
+	PatohAfterPartition(loop);
 }
 
-void Inspector::PatohAfterPartition(){
+void Inspector::PatohAfterPartition(int loop){
 
 	//Decide homes for the nets
 	int possible[nprocs];
@@ -685,7 +710,7 @@ void Inspector::PatohAfterPartition(){
 		if( !(*it)->is_read_only ){
 			if( !(*it)->is_constrained ){
 				for( int j = 0 ; j < (*it)->orig_array_size ; j++ ){
-					net* curr_net = (*it)->data_net_info[j];
+					net* curr_net = (*it)->data_net_info[loop][j];
 					int home = -1;
 					///If there is a direct access use the home of that vertex
 					if( curr_net->direct_vertex ){
@@ -724,7 +749,7 @@ void Inspector::PatohAfterPartition(){
 				int curr_proc = 0;
 				const int array_split = (*it)->orig_array_size / (nprocs);
 				for( int j = 0 ; j < (*it)->orig_array_size ; j++ ){
-					net* curr_net = (*it)->data_net_info[j];
+					net* curr_net = (*it)->data_net_info[loop][j];
 					curr_net->home = curr_proc;
 					if( (j+1)%array_split == 0 )
 						curr_proc = (curr_proc + 1 > nprocs -1 ?
@@ -732,7 +757,7 @@ void Inspector::PatohAfterPartition(){
 				}
 			}
 		}
-	AfterPartition();
+	AfterPartition(loop);
 }
 
 /**
@@ -744,7 +769,7 @@ void Inspector::PatohAfterPartition(){
  * Previously, there was one local inspector per thread in the process.
  * Now, there is only one thread.
  */
-void Inspector::AfterPartition(){
+void Inspector::AfterPartition(int loop){
 
 	/// What are exactly the solvers?
 	for (deque<petsc_solve*>::iterator it = all_solvers.begin();
@@ -793,12 +818,12 @@ void Inspector::AfterPartition(){
 					assert(!all_data[k]->is_read_only);
 					assert(curr_solver->orig_net[j] == NULL ||
 					       curr_solver->orig_net[j] ==
-					       all_data[k]->data_net_info[net_num -
-					                                  data_num_offset[k]
-					                                  ]);
+					       all_data[k]->data_net_info[loop][net_num -
+					                                        data_num_offset[k]
+					                                        ]);
 					curr_solver->orig_net[j] =
-						all_data[k]->data_net_info[net_num -
-						                           data_num_offset[k]];
+						all_data[k]->data_net_info[loop][net_num -
+						                                 data_num_offset[k]];
 				}
 			}
 			MPI_Wait(&i_send_request,&i_send_status);
@@ -818,9 +843,9 @@ void Inspector::AfterPartition(){
 		int orig_array_size = (*it)->orig_array_size;
 		bool read_only_flag =(*it)->is_read_only;
 		bool is_constrained = (*it)->is_constrained; // Irrelevant for "quake"
-		assert( (*it)->data_net_info != NULL );
+		assert((*it)->data_net_info[loop] != NULL);
 		const net** data_net_info =
-			const_cast<const net**>((*it)->data_net_info);
+			const_cast<const net**>((*it)->data_net_info[loop]);
 		add_local_data(array_id, stride_size, data_net_info, orig_array_size,
 		               read_only_flag, is_constrained);
 	}
@@ -831,7 +856,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
                                  int** count){
 
 	const global_data* curr_array = all_data[array_num];
-	net** curr_nets = curr_array->data_net_info;
+	net** const curr_nets = curr_array->data_net_info.at(team_num);
 	const int curr_array_size = curr_array->orig_array_size;
 	const int curr_split = curr_array_size / nprocs;
 	const int curr_start = curr_split * proc_id;
@@ -948,9 +973,6 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	delete[] recvcount_mpi;
 	delete[] sendbuffer;
 	delete[] recvdispl;
-
-	ret_data_access ret_val(recvbuffer,recv_thread_count,recv_thread_displ);
-	return ret_val;
 }
 
 

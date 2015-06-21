@@ -126,7 +126,16 @@ int remove_duplicates(int* const array, const int size, int* const mirror_array)
 }
 
 
-void Inspector::MetisReplicateHypergraph(){
+/**
+ * \brief Replicate the hypergraph corresponding to one loop
+ *
+ * Each process in a team communicates only part of the hypergraph. This
+ * function communicates the whole hypergraph across the processes so that
+ * all of them have the complete hypergraph.
+ *
+ * \param loop Loop ID corresponding to the hypergraph that will be replicated
+ */
+void Inspector::MetisReplicateHypergraph(int loop){
 
 	if (team_size < 2)
 		return;
@@ -227,7 +236,7 @@ void Inspector::MetisReplicateHypergraph(){
 		for (int j = 0,  curr_proc = 0; j < curr_array_size; j++){
 			if (j < my_start || j >= my_end){
 
-				net* curr_net = (*it)->data_net_info[j];
+				net* curr_net = (*it)->data_net_info[loop][j];
 				for (set<pin_info, pin_comparator>::iterator jt =
 					     curr_net->pins.begin();
 				     jt != curr_net->pins.end(); jt++){
@@ -266,12 +275,6 @@ void Inspector::MetisReplicateHypergraph(){
 				int num_pins = net_recv_npins[recvdispl[j] + i] - 1;
 				for (int l = 0; l < num_pins; l += 2){
 					int vertex_num = recv_pins[vcount[j]++];
-					int k = 0 ;
-					for( k = 0 ; k < all_loops.size() ; k++ )
-						if( iter_num_offset[k+1] > vertex_num )
-							break;
-					assert(k != all_loops.size());
-					assert( vertex_num - iter_num_offset[k] >= 0 && vertex_num - iter_num_offset[k] < all_loops[k]->num_iters);
 					pin_info new_pin
 						(all_loops[loop]->iter_vertex[vertex_num -
 						                              iter_num_offset[loop]],
@@ -316,7 +319,7 @@ void Inspector::MetisPrePartition(int loop){
 			int curr_end = (proc_id == nprocs - 1 ?
 			                curr_array_size : curr_split * ( proc_id + 1 ));
 			for (int j = curr_start; j < curr_end; j++){
-	net* curr_net = (*it)->data_net_info[j];
+				net* curr_net = (*it)->data_net_info[loop][j];
 				int npins = curr_net->pins.size();
 				vertex* curr_pins[npins];
 				int counter = 0;
@@ -387,9 +390,15 @@ void Inspector::BlockPartition(){
 }
 
 
-void Inspector::MetisPartition(){
+void Inspector::MetisPartitionAll(){
 
-	MetisPrePartition();
+	for (int loop = 0; loop < all_loops.size(); ++loop)
+		MetisPartition(loop);
+}
+
+void Inspector::MetisPartition(int loop){
+
+	MetisPrePartition(loop);
 
 	const int num_vertex = iter_num_offset[all_loops.size()];
 	const int vertex_split = num_vertex / nprocs;
@@ -649,11 +658,11 @@ void Inspector::MetisPartition(){
 	delete[] vertex_home;
 	delete[] metis_vertex;
 
-	MetisAfterPartition();
+	MetisAfterPartition(loop);
 }
 
-void Inspector::MetisAfterPartition()
-{
+void Inspector::MetisAfterPartition(int loop){
+
 	int num_local_nets = 0;
 	int* const recvcount= new int[nprocs];
 	for (int i = 0; i < nprocs; i++){
@@ -692,7 +701,6 @@ void Inspector::MetisAfterPartition()
 		if (!(*it)->is_read_only){
 
 			int curr_array_size = (*it)->orig_array_size;
-					net* curr_net = (*it)->data_net_info[j];
 			int curr_split = curr_array_size / nprocs;
 			int curr_start = curr_split * proc_id;
 			int curr_end = (proc_id == nprocs - 1 ?
@@ -701,17 +709,18 @@ void Inspector::MetisAfterPartition()
 
 				int thread_split = curr_array_size / (nprocs);
 				for (int j = curr_start; j < curr_end; j++){
+					net* curr_net = (*it)->data_net_info[loop][j];
 					int home = (j / thread_split > nprocs - 1?
 					            nprocs - 1: j / thread_split);
 					curr_net->home = home;
 					send_home[countv++] = curr_net->home;
-				}	
+				}
 			}
 			else{
 
 				for (int j = curr_start; j < curr_end; j++){
 
-					net* curr_net = (*it)->data_net_info[j];
+					net* curr_net = (*it)->data_net_info[loop][j];
 					int home = -1;
 					if (curr_net->direct_vertex){
 						home = curr_net->direct_vertex->home;
@@ -766,11 +775,11 @@ void Inspector::MetisAfterPartition()
 			int curr_array_size = (*it)->orig_array_size;
 			int curr_split = curr_array_size / nprocs;
 			int my_start = curr_split*proc_id;
-					net* curr_net = (*it)->data_net_info[j];
 			int my_end = (proc_id == nprocs - 1?
 			              curr_array_size: my_start + curr_split);
 			for (int j = 0, curr_proc = 0; j < curr_array_size; j++){
 				if (j < my_start || j >= my_end){
+					net* curr_net = (*it)->data_net_info[loop][j];
 					assert(curr_net->home == -1);
 					assert(recv_home[curr_displ[curr_proc]] >= 0 &&
 					       recv_home[curr_displ[curr_proc]] < nprocs);
@@ -788,5 +797,5 @@ void Inspector::MetisAfterPartition()
 	delete[] send_home;
 	delete[] recv_home;
 
-	AfterPartition();
+	AfterPartition(loop);
 }
