@@ -13,7 +13,7 @@
  *
  */
 /**
- * @file: inspector.cpp
+ * @file: Inspector.cpp
  * @author: Mahesh Ravishankar <ravishan@cse.ohio-state.edu>
  */
 #include "RunTime/Inspector.hpp"
@@ -219,14 +219,15 @@ Inspector::~Inspector(){
 		delete[] send_info;
 	}
 
-	// Deallocate MPI communicator common to all participating processes in the inspector/executor.
+	// Deallocate MPI communicator common to all participating processes
+	// in the inspector/executor.
 	if (global_comm::global_iec_communicator != MPI_COMM_NULL)
 		MPI_Comm_free(&global_comm::global_iec_communicator);
 }
 
 
-void Inspector::GetDontHave()
-{
+void Inspector::GetDontHave(){
+
 	int stride = all_access_data.size(); // Number of indirection arrays
 	int* get_n_elems = new int[team_size * stride];
 	int* send_n_elems = new int[team_size * stride];
@@ -234,7 +235,9 @@ void Inspector::GetDontHave()
 	/// Get the number of elements to get from other processes
 	for( int i = 0 ; i < team_size * stride ; i++ )
 		get_n_elems[i] = 0;
-	for( deque<access_data*>::iterator it = all_access_data.begin() ; it != all_access_data.end() ; it++ )
+	for (deque<access_data*>::iterator it = all_access_data.begin();
+	     it != all_access_data.end(); it++)
+
 		(*it)->GetSendCounts(get_n_elems,stride);
 
 	///Initial communication to setup the buffer
@@ -246,55 +249,53 @@ void Inspector::GetDontHave()
 	int send_offset[team_size + 1];
 	int recv_offset[team_size + 1];
 
-	///Compute the size of message sent and received by each process
+	// Compute the size of message sent and received by each process
 	send_offset[0] = 0; recv_offset[0] = 0;
-	for( int i =0 ; i < team_size ; i++ ){
+	for (int i = 0; i < team_size; i++){
 
 		send_count[i] = 0; recv_count[i] = 0;
-		for( int j = 0 ; j < stride ; j++ ){
-			send_count[i] += get_n_elems[i*stride+j];
-			recv_count[i] += send_n_elems[i*stride+j];
+		for (int j = 0; j < stride; j++){
+			send_count[i] += get_n_elems[i * stride + j];
+			recv_count[i] += send_n_elems[i * stride + j];
 		}
-		send_offset[i+1] = send_offset[i] + send_count[i];
-		recv_offset[i+1] = recv_offset[i] + recv_count[i];
+		send_offset[i + 1] = send_offset[i] + send_count[i];
+		recv_offset[i + 1] = recv_offset[i] + recv_count[i];
 	}
 
-	int *sendbuf,*recvbuf;
-#ifndef NDEBUG
-	printf("ID = %d, SendBufferSize = %d, recvbuffersize = %d\n",proc_id,send_offset[team_size],recv_offset[team_size]);
-#endif
-	///Allocate send buffer
-	if( send_offset[team_size] > 0 )
+	int *sendbuf, *recvbuf;
+
+	// Allocate send buffer
+	if (send_offset[team_size] > 0)
 		sendbuf = new int[send_offset[team_size]];
 	else
 		sendbuf = NULL;
 
-	///Allocate recv buffer
-	if( recv_offset[team_size] > 0 )
+	// Allocate recv buffer
+	if (recv_offset[team_size] > 0)
 		recvbuf = new int[recv_offset[team_size]];
 	else
 		recvbuf = NULL;
 
-	///Populate the sendbuffer with the indices requested by other processes
+	// Populate the send buffer with the indices requested by other processes
 	int* curr_offset = new int[team_size];
-	for( int i =0 ; i < team_size ; i++ )
+	for (int i = 0; i < team_size; i++)
 		curr_offset[i] = send_offset[i];
 	for (deque<access_data*>::iterator it = all_access_data.begin();
 	     it != all_access_data.end(); it++)
 
-		(*it)->PopulateBuffer(sendbuf,send_offset[team_size],curr_offset);
+		(*it)->PopulateBuffer(sendbuf, send_offset[team_size], curr_offset);
 
 	MPI_Alltoallv(sendbuf, send_count, send_offset, MPI_INT, recvbuf,
 	              recv_count, recv_offset, MPI_INT,
 	              global_comm::global_iec_communicator);
   
-	/// Populate the recvbuffer with the values of all indices requested
-	/// by this process.
-	for( int i = 0; i < team_size ; i++ )
+	// Populate the receive buffer with the values of all indices requested
+	// by this process.
+	for (int i = 0; i < team_size; i++)
 		curr_offset[i] = recv_offset[i];
 
 	for (deque<access_data*>::iterator it = all_access_data.begin();
-	     it != all_access_data.end() ; it++ )
+	     it != all_access_data.end(); it++)
 
 		(*it)->GetRequestedValue(recvbuf, recv_offset[team_size], curr_offset,
 		                         send_n_elems, stride);
@@ -304,7 +305,7 @@ void Inspector::GetDontHave()
 	              global_comm::global_iec_communicator);
   
 	///Add to set of elements that are known on each process
-	for( int i =0 ; i < team_size ; i++ )
+	for (int i = 0; i < team_size; i++)
 		curr_offset[i] = send_offset[i];
 
 	for (deque<access_data*>::iterator it = all_access_data.begin();
@@ -335,8 +336,9 @@ bool Inspector::DoneGraphGeneration(){
 	fflush(stdout);
 #endif
 
-	// If there is still one array position missing, the graph generation is not done.
-	if( n_dont != 0 ){
+	// If there is still one array position missing,
+	// the graph generation is not done.
+	if (n_dont != 0){
 		GetDontHave();
 		return false;
 	}
@@ -354,21 +356,21 @@ bool Inspector::DoneGraphGeneration(){
  * supply data to this process (producer) or wait for data to be communicated by
  * this process (consumers).
  *
- * \param iter_num The vertex will be added to this loop.
+ * \param loop_id The vertex will be added to this loop.
  * \param iter_value The vertex represents this iteration number.
  */
-void Inspector::AddVertex(int iter_num, int iter_value)
-{
-	assert(iter_num < all_loops.size());
+void Inspector::AddVertex(int loop_id, int iter_value){
+
+	assert(loop_id < all_loops.size());
 
 	// Loop classification
-	global_loop* curr_loop = all_loops[iter_num];
-	if (iter_num == team_num)
+	global_loop* curr_loop = all_loops[loop_id];
+	if (loop_id == team_num)
 		my_loop = curr_loop;
-	else if (iter_num < team_num)
-		producer_loops[iter_num] = curr_loop;
-	else if (iter_num > team_num)
-		consumer_loops[iter_num] = curr_loop;
+	else if (loop_id < team_num)
+		producer_loops[loop_id] = curr_loop;
+	else if (loop_id > team_num)
+		consumer_loops[loop_id] = curr_loop;
 
 	curr_vertex = curr_loop->iter_vertex[iter_value];
 }
@@ -377,11 +379,12 @@ void Inspector::AddVertex(int iter_num, int iter_value)
 /**
  * \brief Adds a pin from the current vertex to a network representing some data
  *
- * \param data_num Identifier of the array to be referenced
- * \param index Identifier of the array position to be referenced
+ * \param data_num Identifier of the array to be referenced.
+ * \param index Index in the array to be referenced.
+ * \param loop The pin is meaningful in the context of this loop.
  * \param is_direct !=0 if addressing is affine; =0 if it depends on indirection
- *                  array
- * \param is_ploop !=0 if the access comes from a partitionable loop
+ *                  array.
+ * \param is_ploop !=0 if the access is direct from the partitionable loops.
  */
 void Inspector::AddNet(int data_num, int index, int is_direct, int is_ploop){
 
@@ -393,8 +396,10 @@ void Inspector::AddNet(int data_num, int index, int is_direct, int is_ploop){
 	pin_info new_pin(curr_vertex, is_direct != 0 ? true : false);
 
 	/// If access is from a partitionable loop and is direct access
-	if( is_ploop && is_direct ){
-		///The compile time analysis should ensure that there are not other "direct accesses" to this array. The direct_vertex field should be NULL or the same vertex as the curr_vertex
+	if (is_ploop && is_direct){
+		// The compile time analysis should ensure that there are not other
+		// "direct accesses" to this array. The direct_vertex field should be
+		// NULL or the same vertex as the curr_vertex
 		assert(net_num->direct_vertex == NULL || net_num->direct_vertex == curr_vertex);
 		net_num->direct_vertex = curr_vertex;
 	}
@@ -402,106 +407,133 @@ void Inspector::AddNet(int data_num, int index, int is_direct, int is_ploop){
 	///Check for the pin already existing in the set
 	set<pin_info,pin_comparator>::iterator it = net_num->pins.find(new_pin);
 	if( it != net_num->pins.end() ){
-		/// If it is not a direct access, and current access is direct, promote it to direct access.
+		// If it is not a direct access, and current access is direct,
+		// promote it to direct access.
 		if( is_direct && !(*it).is_direct ){
 			net_num->pins.erase(*it);
 			net_num->pins.insert(new_pin);
-			//printf("ID=%d,ReplacingIndirectWithDirect,array=%d,index=%d\n",proc_id,data_num,index);
 		}
 	}
 	else{
 		net_num->pins.insert(new_pin);
-		//printf("ID=%d,AddingAccess,array=%d,index=%d,direct=%d\n",proc_id,data_num,index,is_direct);
 	}
 }
 
-void Inspector::AddUnknown(int solver_num, int array_num, int index, int row_num)
-{
-	assert(array_num < all_data.size() && solver_num < all_solvers.size() );
+void Inspector::AddUnknown
+(int solver_num, int array_num, int index, int row_num, int loop){
+
+	assert(array_num < all_data.size() && solver_num < all_solvers.size());
 	assert(index < all_data[array_num]->orig_array_size);
-	net* curr_net = all_data[array_num]->data_net_info[index];
-	assert(all_solvers[solver_num]->orig_net[row_num] == NULL || all_solvers[solver_num]->orig_net[row_num] == curr_net );
+	net* curr_net = all_data[array_num]->data_net_info[index][loop];
+
+	assert(all_solvers[solver_num]->orig_net[row_num] == NULL ||
+	       all_solvers[solver_num]->orig_net[row_num] == curr_net);
+
 	all_solvers[solver_num]->orig_net[row_num] = curr_net;
 }
 
-void Inspector::PatohPrePartition()
-{
+void Inspector::PatohPrePartition(){
+
 	if( nprocs > 1 ) {
 		const int ia_size = data_num_offset[all_data.size()];
 
 		int** armci_net_ia = new int*[nprocs];
-		ARMCI_Malloc((void**)armci_net_ia,(ia_size+1)*sizeof(int));
+		ARMCI_Malloc((void**)armci_net_ia, (ia_size + 1) * sizeof(int));
 		int* const net_ia = (int*)armci_net_ia[proc_id];
 
 		net_ia[0] = 0;
 		int counter = 0;
-		///Store the pin information for nets in CSR format, compute the ia
-		for( int i = 0 ; i < all_data.size() ; i++ )
-			for( int j = 0 ; j < all_data[i]->orig_array_size ; j++ ){
-				net_ia[counter+1] = net_ia[counter] + all_data[i]->data_net_info[j]->pins.size() * 2 + 1;
+
+		// Store the pin information for nets in CSR format, compute the ia
+		for (int i = 0; i < all_data.size(); i++)
+			for (int j = 0; j < all_data[i]->orig_array_size; j++){
+				net_ia[counter + 1] = net_ia[counter] +
+					all_data[i]->data_net_info[j]->pins.size() * 2 + 1;
 				counter++;
 			}
-		assert( counter == ia_size );
+		assert(counter == ia_size);
 
 		int net_ja_size[nprocs];
-    
+
 		///Total number of pins on each process
-		MPI_Allgather(&(net_ia[ia_size]),1,MPI_INT,net_ja_size,1,MPI_INT,global_comm::global_iec_communicator);
-    
+		MPI_Allgather(&(net_ia[ia_size]), 1, MPI_INT, net_ja_size, 1, MPI_INT,
+		              global_comm::global_iec_communicator);
+
 		int max_net_ja_size = 0;
 		///Maximum size needed for the pin information from each process
 		for( int i =0 ; i < nprocs ; i++)
-			max_net_ja_size = ( net_ja_size[i] > max_net_ja_size ? net_ja_size[i] : max_net_ja_size );
-    
+			max_net_ja_size = (net_ja_size[i] > max_net_ja_size ?
+			                   net_ja_size[i] : max_net_ja_size);
+
 		int** armci_net_ja = new int*[nprocs];
-		ARMCI_Malloc((void**)armci_net_ja,max_net_ja_size*sizeof(int));
+		ARMCI_Malloc((void**)armci_net_ja, max_net_ja_size * sizeof(int));
 		int* const net_ja = (int*)armci_net_ja[proc_id];
 
 		///Populate the pin information on the local process
 		counter = 0;
-		for( int i = 0 ; i < all_data.size() ; i++ )
-			for( int j = 0 ; j < all_data[i]->orig_array_size ; j++ ){
+		for (int i = 0; i < all_data.size(); i++)
+			for (int j = 0; j < all_data[i]->orig_array_size; j++){
 				net* curr_net = all_data[i]->data_net_info[j];
-				for( set<pin_info,pin_comparator>::iterator it = curr_net->pins.begin() ; it != curr_net->pins.end() ; it++ ){
+
+				for (set<pin_info, pin_comparator>::iterator it =
+					     curr_net->pins.begin();
+				     it != curr_net->pins.end();
+				     it++){
+
 					net_ja[counter++] = (*it).pin->my_num;
-					net_ja[counter++] = ( (*it).is_direct ? 1 : 0 );
+					net_ja[counter++] = ((*it).is_direct ? 1 : 0);
 				}
-				if( curr_net->direct_vertex )
+
+				if (curr_net->direct_vertex)
 					net_ja[counter++] = curr_net->direct_vertex->my_num;
 				else
 					net_ja[counter++] = -1;
 			}
 		assert(counter == net_ia[ia_size]);
 
-		///Local buffer to hold the pin information from different processes
-		int* const recv_ia = (int*)ARMCI_Malloc_local((ia_size+1)*sizeof(int));
-		int* const recv_ja = (int*)ARMCI_Malloc_local(max_net_ja_size*sizeof(int));
+		// Local buffer to hold the pin information from different processes
+		int* const recv_ia =
+			(int*)ARMCI_Malloc_local((ia_size + 1) * sizeof(int));
+		int* const recv_ja =
+			(int*)ARMCI_Malloc_local(max_net_ja_size * sizeof(int));
 
 		MPI_Barrier(global_comm::global_iec_communicator);
-    
-		for( int i = 1 ; i < nprocs ; i++ ){
-			///Get the pin information from each process
-			int dest_id = (proc_id+i)%nprocs;
-			int source_id = (proc_id+nprocs-i)%nprocs;
-			ARMCI_Get((void*)armci_net_ia[source_id],(void*)recv_ia,(ia_size+1)*sizeof(int),source_id);
-			ARMCI_Get((void*)armci_net_ja[source_id],(void*)recv_ja,recv_ia[ia_size]*sizeof(int),source_id);
+
+		for (int i = 1; i < nprocs; i++){
+
+			// Get the pin information from each process
+			int dest_id = (proc_id + i) % nprocs;
+			int source_id = (proc_id + nprocs - i) % nprocs;
+
+			ARMCI_Get((void*)armci_net_ia[source_id], (void*)recv_ia,
+			          (ia_size + 1) * sizeof(int), source_id);
+			ARMCI_Get((void*)armci_net_ja[source_id], (void*)recv_ja,
+			          recv_ia[ia_size] * sizeof(int), source_id);
 
 			counter = 0;
-			for( deque<global_data*>::iterator of_data = all_data.begin() ; of_data != all_data.end() ; of_data++ ){
+			for (deque<global_data*>::iterator of_data = all_data.begin();
+			     of_data != all_data.end(); of_data++){
+
 				global_data* curr_data = (*of_data);
 
 				///Update the local information
 				for( int i = 0 ; i < curr_data->orig_array_size ; i++ ){
+
 					net* curr_net = curr_data->data_net_info[i];
-					for( int j = recv_ia[counter] ; j < recv_ia[counter+1] - 1 ; j+=2 ){
+					for (int j = recv_ia[counter];
+					     j < recv_ia[counter + 1] - 1;
+					     j+=2){
+
 						int vertex_num = recv_ja[j];
 						int k = 0;
 						for( k = 0 ; k < all_loops.size() ; k++ )
 							if( iter_num_offset[k+1] > vertex_num )
 								break;
 						assert(k != all_loops.size());
-						pin_info new_pin(all_loops[k]->iter_vertex[vertex_num-iter_num_offset[k]],(recv_ja[j+1] != 0 ? true : false ));
-						//curr_net->pins.insert(all_loops[k]->iter_vertex[vertex_num-iter_num_offset[k]]);
+						pin_info new_pin
+							(all_loops[k]->iter_vertex[vertex_num -
+							                           iter_num_offset[k]],
+							 (recv_ja[j + 1] != 0 ? true : false));
 						curr_net->pins.insert(new_pin);
 					}
 					if( recv_ja[recv_ia[counter+1]-1] != -1 ){
@@ -511,11 +543,12 @@ void Inspector::PatohPrePartition()
 							if( iter_num_offset[k+1] > vertex_num )
 								break;
 						assert(k != all_loops.size());
-						curr_net->direct_vertex = all_loops[k]->iter_vertex[vertex_num-iter_num_offset[k]];
+						curr_net->direct_vertex = all_loops[k]->
+							iter_vertex[vertex_num - iter_num_offset[k]];
 					}
 					counter++;
 				}
-			}	
+			}
 		}
 
 		ARMCI_Free(armci_net_ja[proc_id]);
@@ -533,36 +566,33 @@ void Inspector::PatohPrePartition()
 	}
 }
 
-void Inspector::PatohPartition()
-{
+void Inspector::PatohPartition(){
+
 	PatohPrePartition();
 
 	if( nprocs > 1 ){
 		int patoh_n,patoh_c,patoh_nc,patoh_cutsize;
-		int *patoh_cellwts,*patoh_netwts,*patoh_xpins,*patoh_pins,*patoh_partwts,*patoh_partvec;
-		float* patoh_targetwts=NULL;  
+		int *patoh_cellwts, *patoh_netwts, *patoh_xpins, *patoh_pins,
+			*patoh_partwts, *patoh_partvec;
+		float* patoh_targetwts=NULL;
 		int i,j,k;
 
 		PaToH_Parameters patoh;
 
-		PaToH_Initialize_Parameters(&patoh,PATOH_CONPART,PATOH_SUGPARAM_QUALITY);
+		PaToH_Initialize_Parameters(&patoh, PATOH_CONPART,
+		                            PATOH_SUGPARAM_QUALITY);
 
 		//Number of vertices
-		patoh_c = iter_num_offset[all_loops.size()]; //all_vertex.size();
+		patoh_c = iter_num_offset[all_loops.size()];
 		//number of nets
 		patoh_n = 0;
 		for( i = 0 ; i < all_data.size() ; i++ )
 			if( !all_data[i]->is_read_only )
 				patoh_n += all_data[i]->orig_array_size;
-		//Number of constraints 
+		//Number of constraints
 		patoh_nc = all_loops.size();
 		//Number of partitions
 		patoh._k = nprocs;
-#ifndef NDEBUG
-		printf("PID:%d,Nvertices:%d,NNets:%d,Nconstraints:%d,Npartitions:%d\n",proc_id,patoh_c,patoh_n,patoh_nc,patoh._k);
-		fflush(stdout);
-		MPI_Barrier(global_comm::global_iec_communicator);
-#endif
 
 		//Weight for cells
 		patoh_cellwts = new int[patoh_c*patoh_nc];
@@ -575,7 +605,7 @@ void Inspector::PatohPartition()
 				counter++;
 			}
 
-		//Weight and xpins for nets 
+		//Weight and xpins for nets
 		patoh_netwts = new int[patoh_n];
 		patoh_xpins = new int[patoh_n+1];
 		patoh_xpins[0] = 0;
@@ -583,11 +613,12 @@ void Inspector::PatohPartition()
 		for( i = 0 ; i < all_data.size() ; i++ )
 			if( !all_data[i]->is_read_only)
 				for( j = 0 ; j < all_data[i]->orig_array_size ; j++ ) {
-					patoh_netwts[counter] = all_data[i]->data_net_info[j]->weight;
-					patoh_xpins[counter+1] = patoh_xpins[counter] + all_data[i]->data_net_info[j]->pins.size();
+					patoh_netwts[counter] =
+						all_data[i]->data_net_info[j]->weight;
+					patoh_xpins[counter + 1] = patoh_xpins[counter] +
+						all_data[i]->data_net_info[j]->pins.size();
 					counter++;
 				}
-  
 
 		//pins for nets;
 		pins_size = patoh_xpins[patoh_n];
@@ -596,18 +627,23 @@ void Inspector::PatohPartition()
 		for( i = 0 ; i < all_data.size() ; i++ )
 			if( !all_data[i]->is_read_only )
 				for( j = 0 ; j < all_data[i]->orig_array_size ; j++ ) {
-					set<pin_info,pin_comparator>::iterator jt = all_data[i]->data_net_info[j]->pins.begin();
-					for( ; jt != all_data[i]->data_net_info[j]->pins.end() ; jt++ )
+					set<pin_info, pin_comparator>::iterator jt =
+						all_data[i]->data_net_info[j]->pins.begin();
+					for (; jt != all_data[i]->data_net_info[j]->pins.end();
+					     jt++)
 						patoh_pins[counter++] = (*jt).pin->my_num;
 				}
 
-		PaToH_Alloc(&patoh,patoh_c,patoh_n,patoh_nc,patoh_cellwts,patoh_netwts,patoh_xpins,patoh_pins);
+		PaToH_Alloc(&patoh, patoh_c, patoh_n, patoh_nc, patoh_cellwts,
+		            patoh_netwts, patoh_xpins, patoh_pins);
 
 		patoh_partvec = new int[patoh_c];
 		patoh_partwts = new int[patoh_nc*patoh._k];
 		patoh.seed = 42;
 
-		PaToH_Part(&patoh,patoh_c,patoh_n,patoh_nc,0,patoh_cellwts,patoh_netwts,patoh_xpins,patoh_pins,patoh_targetwts,patoh_partvec,patoh_partwts,&patoh_cutsize);
+		PaToH_Part(&patoh, patoh_c, patoh_n, patoh_nc, 0, patoh_cellwts,
+		           patoh_netwts, patoh_xpins, patoh_pins, patoh_targetwts,
+		           patoh_partvec, patoh_partwts, &patoh_cutsize);
 
 		counter = 0;
 		for( i = 0 ; i < all_loops.size() ; i++ )
@@ -623,7 +659,7 @@ void Inspector::PatohPartition()
 		delete[] patoh_pins;
 		delete[] patoh_partvec;
 		delete[] patoh_partwts;
-  
+
 		PaToH_Free();
 	}
 	else{
@@ -637,8 +673,8 @@ void Inspector::PatohPartition()
 
 }
 
-void Inspector::PatohAfterPartition()
-{
+void Inspector::PatohAfterPartition(){
+
 	//Decide homes for the nets
 	int possible[nprocs];
 
@@ -679,7 +715,7 @@ void Inspector::PatohAfterPartition()
 						}
 					}
 					assert(curr_net->home == -1 && home >= 0 && home <= nprocs);
-					curr_net->home = home;      
+					curr_net->home = home;
 				}
 			}
 			else{
@@ -720,7 +756,7 @@ void Inspector::AfterPartition(){
 		const int curr_size = (*it)->size;
 		int* send_buf = new int[curr_solver->size];
 		int* recv_buf = new int[curr_solver->size];
-    
+
 		int source_proc = proc_id -1;
 		for (int dest_proc = (proc_id + 1) % nprocs;
 		     dest_proc != proc_id;
@@ -728,7 +764,7 @@ void Inspector::AfterPartition(){
 
 			MPI_Request i_send_request;
 			MPI_Status i_recv_status,i_send_status;
-      
+
 			if( source_proc < 0 )
 				source_proc = nprocs - 1;
 
@@ -742,19 +778,19 @@ void Inspector::AfterPartition(){
 			          global_comm::global_iec_communicator, &i_send_request);
 			MPI_Recv(recv_buf, curr_size, MPI_INT, source_proc, 0,
 			         global_comm::global_iec_communicator,&i_recv_status);
-    
-			for( int j = 0 ; j < curr_size ; j++ ){
+
+			for (int j = 0; j < curr_size; j++){
 				int net_num = recv_buf[j];
-				if( net_num != -1 ){
+				if (net_num != -1){
 					int k = 0;
-					for( ; k < all_data.size() ; k++ )
-						if( data_num_offset[k+1] > net_num)
+					for (; k < all_data.size(); k++)
+						if (data_num_offset[k + 1] > net_num)
 							break;
-					if( k == all_data.size() )
+					if (k == all_data.size())
 						printf("ID=%d,Source=%d,net_num=%d,k=%d\n", proc_id,
 						       source_proc, net_num, k);
-					assert( k != all_data.size());
-					assert(!all_data[k]->is_read_only );
+					assert(k != all_data.size());
+					assert(!all_data[k]->is_read_only);
 					assert(curr_solver->orig_net[j] == NULL ||
 					       curr_solver->orig_net[j] ==
 					       all_data[k]->data_net_info[net_num -
@@ -791,46 +827,54 @@ void Inspector::AfterPartition(){
 }
 
 
-ret_data_access Inspector::GetLocalAccesses(int array_num)
-{
+void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
+                                 int** count){
+
 	const global_data* curr_array = all_data[array_num];
 	net** curr_nets = curr_array->data_net_info;
 	const int curr_array_size = curr_array->orig_array_size;
 	const int curr_split = curr_array_size / nprocs;
 	const int curr_start = curr_split * proc_id;
-	const int curr_end = ( proc_id == nprocs - 1 ? curr_array_size : curr_split * ( proc_id + 1 ) );
+	const int curr_end = (proc_id == nprocs - 1 ?
+	                      curr_array_size :
+	                      curr_split * (proc_id + 1));
 
-	for( int i = 0 ; i < nprocs * 2 ;i++  )
+	for (int i = 0; i < nprocs * 2; i++)
 		send_info[i]->clear();
 	int* const sendcount_mpi = new int[nprocs];
 	bool* is_direct = new bool[nprocs];
 	bool* flags = new bool[nprocs];
 
-	///Find all the processes that access the blocked part of array owned by the process
-	for( int i = curr_start ; i < curr_end ; i++ ){
+	// Find all the processes that access the blocked part of array owned
+	// by the process
+	for (int i = curr_start; i < curr_end; i++){
+
 		const net* curr_net = curr_nets[i];
-		for( int j = 0 ; j < nprocs ; j++ ){
+		for (int j = 0; j < nprocs; j++){
 			is_direct[j] = false;
 			flags[j] = false;
 		}
 
-		for( set<pin_info,pin_comparator>::const_iterator it = curr_net->pins.begin() ;
+		for (set<pin_info, pin_comparator>::const_iterator it =
+			     curr_net->pins.begin();
 		     it != curr_net->pins.end();
-		     it++ )
+		     it++)
 
-			is_direct[(*it).pin->home] = is_direct[(*it).pin->home] || (*it).is_direct;
+			is_direct[(*it).pin->home] =
+				is_direct[(*it).pin->home] || (*it).is_direct;
 
-		for( set<pin_info,pin_comparator>::const_iterator it = curr_net->pins.begin();
+		for (set<pin_info, pin_comparator>::const_iterator it =
+			     curr_net->pins.begin();
 		     it != curr_net->pins.end();
 		     it++ ){
 
 			const int access_proc = (*it).pin->home;
-			assert(access_proc != -1 && access_proc < nprocs );
-			if( !flags[access_proc] ){
-				if( is_direct[access_proc] )
-					send_info[access_proc*2]->insert(curr_net->data_index);
+			assert(access_proc != -1 && access_proc < nprocs);
+			if (!flags[access_proc]){
+				if (is_direct[access_proc])
+					send_info[access_proc * 2]->insert(curr_net->data_index);
 				else
-					send_info[access_proc*2+1]->insert(curr_net->data_index);
+					send_info[access_proc * 2 + 1]->insert(curr_net->data_index);
 				flags[access_proc] = true;
 			}
 		}
@@ -838,57 +882,62 @@ ret_data_access Inspector::GetLocalAccesses(int array_num)
 	delete[] is_direct;
 	delete[] flags;
 
-	int* const sendcount = new int[nprocs*2];
-	int* const curr_displ = new int[nprocs*2+1];
-	int* const senddispl = new int[nprocs+1];
+	int* const sendcount = new int[nprocs * 2];
+	int* const curr_displ = new int[nprocs * 2 + 1];
+	int* const senddispl = new int[nprocs + 1];
 	senddispl[0] = 0;
-	curr_displ[0]=0;
-	for( int i = 0 ; i < nprocs ; i++ ){
+	curr_displ[0] = 0;
+	for (int i = 0; i < nprocs; i++){
 		sendcount_mpi[i] = 0;
-		for( int k = 0 ; k < 2 ; k++ ){
-			sendcount[i*2+k] = send_info[i*2+k]->size();
-			curr_displ[i*2+k+1] = curr_displ[i*2+k] + sendcount[i*2+k];
-			sendcount_mpi[i] += sendcount[i*2+k];
+		for (int k = 0; k < 2; k++){
+			sendcount[i * 2 + k] = send_info[i * 2 + k]->size();
+			curr_displ[i * 2 + k + 1] =
+				curr_displ[i * 2 + k] + sendcount[i * 2 + k];
+			sendcount_mpi[i] += sendcount[i * 2 + k];
 		}
-		senddispl[i+1] = senddispl[i] + sendcount_mpi[i];
+		senddispl[i + 1] = senddispl[i] + sendcount_mpi[i];
 	}
 
 	int* const recvcount = new int[nprocs*2];
 	int* const recvcount_mpi = new int[nprocs];
 
-	///Send the number of elements sent from each process
-	MPI_Alltoall(sendcount,2,MPI_INT,recvcount,2,MPI_INT,global_comm::global_iec_communicator);
+	// Send the number of elements sent from each process
+	MPI_Alltoall(sendcount, 2, MPI_INT, recvcount, 2, MPI_INT,
+	             global_comm::global_iec_communicator);
 
 	int* const sendbuffer = new int[senddispl[nprocs]];
 
-	///Send the actual elements 
+	// Send the actual elements
 	int counter = 0;
-	for( int i = 0 ; i < nprocs ; i++ )
-		for( int k = 0 ; k < 2 ; k++ )
-			for( set<int>::iterator it = send_info[i*2+k]->begin() ; it != send_info[i*2+k]->end() ; it++ )
+	for (int i = 0; i < nprocs; i++)
+		for (int k = 0; k < 2; k++)
+			for (set<int>::iterator it = send_info[i * 2 + k]->begin();
+			     it != send_info[i * 2 + k]->end(); it++)
+
 				sendbuffer[counter++] = (*it);
+
 	assert(counter == senddispl[nprocs]);
-      
-	int* const recvdispl = new int[nprocs+1];
-	int* const recv_thread_displ = new int[nprocs*2];
-	int* const recv_thread_count = new int[nprocs*2];
-	recvdispl[0] = 0; 
+
+	int* const recvdispl = new int[nprocs + 1];
+	*displ = new int[nprocs * 2];
+	*count = new int[nprocs * 2];
+	recvdispl[0] = 0;
 	int curr_recv_displ = 0;
-	for( int i = 0; i < nprocs; i++ ){
+	for (int i = 0; i < nprocs; i++){
 		recvcount_mpi[i] = 0;
-		for( int k = 0 ; k < 2 ; k++ ){
-			recv_thread_count[i*2+k] = recvcount[i * 2 + k];
+		for (int k = 0; k < 2; k++){
+			*count[i * 2 + k] = recvcount[i * 2 + k];
 			recvcount_mpi[i] += recvcount[i * 2 + k];
-			recv_thread_displ[i*2+k] = curr_recv_displ;
-			curr_recv_displ += recvcount[i * 2 + k ];
+			*displ[i * 2 + k] = curr_recv_displ;
+			curr_recv_displ += recvcount[i * 2 + k];
 		}
 		recvdispl[i+1] = recvdispl[i] + recvcount_mpi[i];
 	}
 
- 	int* const recvbuffer = new int[recvdispl[nprocs]];
+	*recvbuf = new int[recvdispl[nprocs]];
 
-	MPI_Alltoallv(sendbuffer,sendcount_mpi,senddispl,MPI_INT,
-	              recvbuffer,recvcount_mpi,recvdispl,MPI_INT,
+	MPI_Alltoallv(sendbuffer, sendcount_mpi, senddispl, MPI_INT,
+	              *recvbuf, recvcount_mpi, recvdispl, MPI_INT,
 	              global_comm::global_iec_communicator);
 
 	delete[] sendcount;
@@ -905,9 +954,8 @@ ret_data_access Inspector::GetLocalAccesses(int array_num)
 }
 
 
+void Inspector::GetBufferSize(){
 
-void Inspector::GetBufferSize()
-{
 	global_comm::max_send_size = 0;
 	global_comm::max_recv_size = 0;
 	global_comm::max_nprocs_read_send = 0;
@@ -1105,7 +1153,7 @@ void Inspector::CommunicateGhosts(){
 	senddispl[0] = 0;
 	for (int i = 0; i < team_size; i++)
 		senddispl[i + 1] = senddispl[i] + sendcount[i];
-  
+
 	// #receive-ghosts per target process, per R/W array
 	int* recvghosts_count = new int[nprocs*n_data];
 
@@ -1127,7 +1175,6 @@ void Inspector::CommunicateGhosts(){
 	for (int i = 0; i < nprocs; i++)
 		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
 
-  
 	int* ghosts_send_val = new int[senddispl[nprocs]];
 	int* ghosts_recv_val = new int[recvdispl[nprocs]];
 
@@ -1135,7 +1182,7 @@ void Inspector::CommunicateGhosts(){
 	int counter = 0;
 	for (int i = 0; i < nprocs; i++){
 
-		int d = 0; 
+		int d = 0;
 		for (deque<local_data*>::iterator it = all_local_data.begin();
 		     it != all_local_data.end(); it++)
 
@@ -1146,7 +1193,6 @@ void Inspector::CommunicateGhosts(){
 					ghosts_send_val[counter] = (*jt);
 					++counter;
 				}
-
 				d++;
 			}
 	}
@@ -1178,7 +1224,6 @@ void Inspector::CommunicateGhosts(){
 	delete[] ghosts_recv_val;
 	delete[] recvghosts_count;
 	delete[] sendghosts_count;
-
 }
 
 
@@ -1275,148 +1320,20 @@ void Inspector::CommunicateReads(int comm_num){
  */
 void Inspector::CommunicateToNext(){
 
-#ifdef COMM_TIME
-	double start_t = rtclock();
-#endif
-
-	local_comm* curr_local_comm = all_local_comm[0];
-
-	// Fills in the buffer to send updated ghosts to their owners.
-	curr_local_comm->PopulateWriteSendBuffer(global_comm::send_buffer);
-
-	// Send "ready to receive" signal to the processes that will send us
-	// updated data that we own.
-	for( int i = 0 ; i < all_comm[0]->nprocs_write_recv ; i++ )
-		MPI_Isend(global_comm::write_recv_signal, 1, MPI_CHAR,
-		          all_comm[0]->proc_id_write_recv[i], 0,
-		          global_comm::global_iec_communicator,
-		          global_comm::write_recv_start_request + i);
-
-	// Wait for "ready to receive" signal from the processes that will receive
-	// our updated ghosts.
-	for( int i = 0 ; i < all_comm[0]->nprocs_write_send ; i++ )
-		MPI_Recv(global_comm::write_send_signal + i, 1, MPI_CHAR,
-		         all_comm[0]->proc_id_write_send[i], 0,
-		         global_comm::global_iec_communicator,
-		         global_comm::write_send_start_status+i);
-
-	if( all_comm[0]->nprocs_write_recv > 0 )
-		MPI_Waitall(all_comm[0]->nprocs_write_recv,
-		            global_comm::write_recv_start_request,
-		            global_comm::write_recv_start_status);
-
-	// We put our updated ghosts in other processes' memory.
-	if( global_comm::max_send_size > 0 ){
-		global_comm* curr_communicator = all_comm[0];
-		int count;
-		for(int i = 0; i < team_size; i++){
-
-			if( ( count = curr_communicator->write_send_count[i]  ) != 0 )
-
-				ARMCI_NbPut(global_comm::send_buffer +
-				            curr_communicator->write_send_offset[i],
-
-				            global_comm::put_buffer[i] +
-				            curr_communicator->write_put_displ[i],
-
-				            count, i, NULL);
-		}
-	}
-
-	// Wait for all ARMCI operations to finish.
-	ARMCI_WaitAll();
-	ARMCI_AllFence();
-
-	// Tell the receivers of our ghosts that we finished sending.
-	for( int i = 0 ; i < all_comm[0]->nprocs_write_send ; i++ )
-		MPI_Isend(global_comm::write_send_signal, 1, MPI_CHAR,
-		          all_comm[0]->proc_id_write_send[i], 0,
-		          global_comm::global_iec_communicator,
-		          global_comm::write_send_end_request + i);
-
-	// Wait for senders of our owned data to notify us about send completion.
-	for( int i = 0 ; i < all_comm[0]->nprocs_write_recv ; i++ )
-		MPI_Recv(global_comm::write_recv_signal + i, 1, MPI_CHAR,
-		         all_comm[0]->proc_id_write_recv[i], 0,
-		         global_comm::global_iec_communicator,
-		         global_comm::write_recv_end_status + i);
-
-	if( all_comm[0]->nprocs_write_send > 0 )
-		MPI_Waitall(all_comm[0]->nprocs_write_send,
-		            global_comm::write_send_end_request,
-		            global_comm::write_send_end_status);
-
-	// Update our owned data with the updates received from other processes.
-	if( global_comm::max_recv_size > 0 )
-		curr_local_comm->ExtractWriteRecvBuffer(global_comm::recv_buffer);
-
-#ifdef COMM_TIME
-	double stop_t = rtclock();
-	curr_local_comm->write_comm_time += (stop_t - start_t);
-#endif
-
+	assert(0 && "CommunicateToNext not implemented yet");
 }
 
-
-void Inspector::print_hypergraph(FILE* outfile)
-{
-	printf("PID:%d,PrintingHypergraph\n",proc_id);
-	fflush(stdout);
-	fprintf(outfile,"%% Input file to be used with PaToH\n");
-	int pins_size = 0;
-	fprintf(outfile, "0 %d %d %d 3 %d\n", iter_num_offset[all_loops.size()],
-	        data_num_offset[all_data.size()], pins_size, (int)all_loops.size());
-	fflush(outfile);
-	for( int i = 0 ; i  < all_data.size() ; i++ )
-		for( int j = 0 ; j <  all_data[i]->orig_array_size ; j++ )
-			{
-				fprintf(outfile,"%d ",all_data[i]->data_net_info[j]->weight);
-				set<pin_info>::iterator it;
-				for (it = all_data[i]->data_net_info[j]->pins.begin();
-				     it != all_data[i]->data_net_info[j]->pins.end(); it++)
-
-					fprintf(outfile,"%d ",(*it).pin->my_num);
-#ifndef NO_COMMENTS
-				fprintf(outfile, "%% Array : %d, Index : %d, Home : %d, type = ",
-				        all_data[i]->data_net_info[j]->data_num,
-				        all_data[i]->data_net_info[j]->data_index,
-				        all_data[i]->data_net_info[j]->home);
-
-				for (it = all_data[i]->data_net_info[j]->pins.begin();
-				     it != all_data[i]->data_net_info[j]->pins.end();
-				     it++)
-
-					fprintf(outfile," %d",(*it).is_direct);
-
-#endif
-				fprintf(outfile,"\n");
-			}
-	fprintf(outfile,"%% Printing weights for vertices\n");
-	for( int i = 0 ; i < all_loops.size() ; i++ )
-		for( int j = 0 ; j < all_loops[i]->num_iters ; j++ )
-			{
-				for( int k = 0 ; k < all_loops.size() ; k++ )
-					if( k != i )
-						fprintf(outfile,"0 ");
-					else
-						fprintf(outfile,"1 ");
-#ifndef NO_COMMENTS
-				fprintf(outfile, "%% Loop : %d, Value : %d, Home = %d",
-				        all_loops[i]->iter_vertex[j]->iter_num,
-				        all_loops[i]->iter_vertex[j]->iter_value,
-				        all_loops[i]->iter_vertex[j]->home);
-#endif
-				fprintf(outfile,"\n");
-			}
-	fflush(outfile);
-	MPI_Barrier(global_comm::global_iec_communicator);
+/**
+ * \brief Receives data from producer processes
+ */
+void Inspector::GetFromPrevious(){
+	assert(0 && "GetFromPrevious not implemented yet");
 }
 
 
 /*
  * FUNCTIONS STOLEN FROM local_inspector
  */
-
 
 void Inspector::PopulateGlobalArrays(){
 

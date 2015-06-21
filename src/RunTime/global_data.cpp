@@ -16,29 +16,31 @@
  * @file: global_data.cpp
  * @author: Mahesh Ravishankar <ravishan@cse.ohio-state.edu>
  */
-#include "RunTime/global_data.hpp"
 #include <cassert>
 #include <cstdio>
+
+#include "RunTime/global_data.hpp"
 
 using namespace std;
 
 global_data::global_data(int mn, int oas, bool iro):
-  id(mn),
-  orig_array_size(oas),
-  is_read_only(iro){
+	id(mn),
+	orig_array_size(oas),
+	is_read_only(iro){
 
   data_net_info = new net*[oas];
-  is_constrained = false;
+	is_constrained = false;
 }
+	}
 
 
-global_data::~global_data()
-{
-  if( data_net_info ){
-    for( int i = 0 ; i < orig_array_size ; i++ )
-      delete data_net_info[i];
-    delete[] data_net_info;
-  }
+global_data::~global_data(){
+
+	if( data_net_info ){
+		for( int i = 0 ; i < orig_array_size ; i++ )
+			delete data_net_info[i];
+		delete[] data_net_info;
+	}
 }
 
 
@@ -52,7 +54,7 @@ global_data::~global_data()
  * \param iro True if read-only array
  */
 global_data_double::global_data_double(int mn, int oas, int of, bool iro):
-	global_data(mn,oas,iro){
+	global_data(mn, oas, iro){
 
 	// Set default stride between elements
 	stride_size = sizeof(double);
@@ -64,9 +66,9 @@ global_data_double::global_data_double(int mn, int oas, int of, bool iro):
 
 void global_data_double::SetStride(int st){
 
-  stride_size = st * sizeof(double);
-  for (int i = 0; i < orig_array_size; i++)
-    data_net_info[i]->weight = stride_size;
+	stride_size = st * sizeof(double);
+	for (int i = 0; i < orig_array_size; i++)
+		data_net_info[i]->weight = stride_size;
 }
 
 global_data_double::~global_data_double(){}

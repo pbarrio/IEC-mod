@@ -45,13 +45,13 @@ extern "C" {
 	}
 
 
-	double rtclock() { 
-		struct timezone Tzp; 
-		struct timeval Tp; 
-		int stat; 
-		stat = gettimeofday (&Tp, &Tzp); 
-		if (stat != 0) printf("Error return from gettimeofday: %d",stat); 
-		return(Tp.tv_sec + Tp.tv_usec*1.0e-6); 
+	double rtclock() {
+		struct timezone Tzp;
+		struct timeval Tp;
+		int stat;
+		stat = gettimeofday (&Tp, &Tzp);
+		if (stat != 0) printf("Error return from gettimeofday: %d",stat);
+		return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 	}
 
 
@@ -142,12 +142,12 @@ extern "C" {
 	/**
 	 * \brief Add a vertex corresponding to a loop iteration.
 	 *
-	 * \param iter_num Loop identifier
+	 * \param loop Loop identifier
 	 * \param iter_value Iteration number
 	 */
-	void add_vertex(int iter_num, int iter_value) {
+	void add_vertex(int loop, int iter_value) {
 		Inspector* my_inspect = Inspector::instance();
-		my_inspect->AddVertex(iter_num, iter_value);
+		my_inspect->AddVertex(loop, iter_value);
 	}
 
 	void add_vertex_(int* iter_num, int* iter_value){
@@ -170,7 +170,7 @@ extern "C" {
 	 *        indirection array.
 	 * \param isploop !=0 if the access comes from a partitionable loop.
 	 */
-	void add_pin_to_net(int data_num, int index, int isdirect, int isploop) {
+	void add_pin_to_net(int data_num, int index, int isdirect, int isploop){
 		Inspector* my_inspect = Inspector::instance();
 		my_inspect->AddNet(data_num, index, isdirect, isploop);
 	}
@@ -180,8 +180,13 @@ extern "C" {
 		my_inspect->AddNet(*data_num,*index,*id,*isploop);
 	}
 
-	void partition_hypergraph(int use_type)  {
-		switch(use_type){
+	/**
+	 * \brief Partition the hypergraphs for all loops
+	 *
+	 * \param useType Partition algorithm: 0 = Patoh, 1 = Metis, 2 = block
+	 */
+	void partition_hypergraph(int useType){
+		switch(useType){
 		case 0:
 			Inspector::instance()->PatohPartition();
 			return;
@@ -200,23 +205,6 @@ extern "C" {
 		partition_hypergraph(*type);
 	}
 
-  
-	void print_hypergraph() {  
-#ifndef NDEBUG
-		printf("ID:%d,Here:\n",Inspector::instance()->get_proc_id());
-		fflush(stdout);
-		char graph_file[18];
-		sprintf(graph_file,"hypergraph_%d.dat",Inspector::instance()->get_proc_id());
-		FILE* outfile = fopen(graph_file,"w");
-		Inspector::instance()->print_hypergraph(outfile);
-		fclose(outfile);
-#endif
-	}
-
-	void print_hypergraph_(){
-		print_hypergraph();
-	}
-  
 	int get_proc_iter_size(int in){
 		return Inspector::instance()->GetProcLocal(in);
 	}
@@ -238,34 +226,36 @@ extern "C" {
 		return Inspector::instance()->GetVertexHome(in,iv);
 	}
 
-
 	void get_vertex_home_(int* in ,int* iv, int* out){
-		*out = Inspector::instance()->GetVertexHome(*in,*iv);
+		*out = Inspector::instance()->GetVertexHome(*in, *iv);
 	}
 
+
+	/**
+	 * \brief Get the local size of an array in this process
+	 *
+	 * This is the size of the array portion that is locally used
+	 * by this process.
+	 *
+	 * \param an Array ID
+	 */
 	int get_local_size(int an){
 
+		int *buf, *displ, *count;
 		Inspector* inspector = Inspector::instance();
-		data_access_info = inspector->GetLocalAccesses(an);
+		inspector->GetLocalAccesses(an, &buf, &displ, &count);
 
-		int* proc_recv_buffer = data_access_info.recvbuffer;
-		int* proc_recv_displ = data_access_info.recvdispl;
-		int* proc_recv_count = data_access_info.recvcount;
 		int nprocs = Inspector::instance()->GetNProcs();
-		for( int j = 0 ; j < nprocs ; j++ ){
-			inspector->
-				InsertDirectAccess(an,
-				                   proc_recv_buffer + proc_recv_displ[j * 2],
-				                   proc_recv_count[j * 2]);
-			inspector->
-				InsertIndirectAccess(an,
-				                     proc_recv_buffer + proc_recv_displ[j * 2 + 1],
-				                     proc_recv_count[j*2+1]);
+		for (int j = 0; j < nprocs; j++){
+			inspector->InsertDirectAccess(an, buf + displ[j * 2], count[j * 2]);
+			inspector->InsertIndirectAccess(an, buf + displ[j * 2 + 1],
+			                                count[j * 2 + 1]);
 		}
 
-		delete[] data_access_info.recvbuffer;
-		delete[] data_access_info.recvcount;
-		delete[] data_access_info.recvdispl;
+		delete[] buf;
+		delete[] count;
+		delete[] displ;
+
 		inspector->SetupLocalArray(an);
 		return inspector->GetLocalDataSize(an);
 	}
@@ -357,6 +347,7 @@ extern "C" {
 
 		executor_start = rtclock();
 	}
+
 	void setup_executor_(){
 		setup_executor();
 	}
@@ -379,9 +370,10 @@ extern "C" {
 	void init_write_ghosts_(int *cn){
 		Inspector::instance()->InitWriteGhosts(*cn);
 	}
+
 	void reduce_scalar(double *val){
 		scalar_holder[0] = *val;
-		final_val = scalar_holder[0];      
+		final_val = scalar_holder[0];
 		MPI_Allreduce(MPI_IN_PLACE, &final_val, 1, MPI_DOUBLE, MPI_SUM,
 		              MPI_COMM_WORLD);
 
@@ -393,12 +385,12 @@ extern "C" {
 	}
 
 	void populate_global_arrays(){
-			executor_stop = rtclock();
-			if (Inspector::instance()->get_proc_id() == 0)
-				fprintf(stderr, "[IEC]:ExecutorTime:%lf\n", 
-				        executor_stop-executor_start);
- 
-			Inspector::instance()->PopulateGlobalArrays();
+		executor_stop = rtclock();
+		if (Inspector::instance()->get_proc_id() == 0)
+			fprintf(stderr, "[IEC]:ExecutorTime:%lf\n",
+			        executor_stop-executor_start);
+
+		Inspector::instance()->PopulateGlobalArrays();
 	}
 
 	void populate_global_arrays_(){
@@ -484,12 +476,12 @@ extern "C" {
 
 	void renumber_solver_rows(int sn, int* oa, int as){
 		assert(sn == 0 );
-		Inspector::instance()->RenumberGlobalRows(sn,oa,as);
+		Inspector::instance()->RenumberGlobalRows(sn, oa, as);
 	}
 
 	void renumber_solver_rows_(int *sn, int* oa, int *as){
 		assert(*sn == 0 );
-		Inspector::instance()->RenumberGlobalRows(*sn,oa,*as);
+		Inspector::instance()->RenumberGlobalRows(*sn, oa, *as);
 	}
 
 	void print_solver(){

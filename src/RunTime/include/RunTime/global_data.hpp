@@ -31,54 +31,54 @@ class inspector;
  */
 class global_data{
 
- protected:
+protected:
 
-  /// The identifier assigned to this global_data.
-  const int id;
+	/// The identifier assigned to this global_data.
+	const int id;
 
-  /// All the nets, one for each position of this global array.
-  net**  data_net_info;
+	/// All the nets, one for each position of this global array.
+	net**  data_net_info;
 
-  /// Size of the original array
-  const int orig_array_size;
+	/// Size of the original array
+	const int orig_array_size;
 
-  /// Size of each element of the array in bytes (e.g. for int. stride_size=4)
-  int stride_size;
+	/// Size of each element of the array in bytes (e.g. for int. stride_size=4)
+	int stride_size;
 
-  /// True if the array is read-only in the original code
-  const bool is_read_only;
+	/// True if the array is read-only in the original code
+	const bool is_read_only;
 
-  /// Unimportant for the quake benchmark
-  bool is_constrained;
-  
- public:
-  global_data(int,int,bool);
+	/// Unimportant for the quake benchmark
+	bool is_constrained;
 
-  virtual ~global_data();
+public:
+	global_data(int,int,bool);
 
-  virtual void SetStride(int)=0;
+	virtual ~global_data();
 
-  virtual int get_stride_size() const=0;
+	virtual void SetStride(int) = 0;
 
-  /**
-   * \brief Unimportant for the quake benchmark
-   */
-  inline void SetConstraint() { is_constrained = true; }
+	virtual int get_stride_size() const = 0;
 
-  friend class Inspector;
+	/**
+	 * \brief Unimportant for the quake benchmark
+	 */
+	inline void SetConstraint(){is_constrained = true;}
+
+	friend class Inspector;
 };
 
 class global_data_double: public global_data{
- public:
+public:
 
-  global_data_double(int,int,int,bool);
-  
-  ~global_data_double();
+	global_data_double(int, int, int, bool);
 
-  void SetStride(int);
+	~global_data_double();
 
-  inline int get_stride_size() const{ return stride_size; }
+	void SetStride(int);
+
+	inline int get_stride_size() const{ return stride_size; }
 };
-  
+
 
 #endif

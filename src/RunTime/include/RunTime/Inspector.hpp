@@ -27,11 +27,12 @@
 #include "RunTime/external.hpp"
 #include "RunTime/local_comm.hpp"
 #include "RunTime/local_data.hpp"
-#include <deque>
-#include <cstdio>
-#include <cstring>
-#include <cstdlib>
+
 #include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <deque>
 
 #define PIPE_TAG 9813 // For instance :D
 
@@ -51,15 +52,15 @@ struct ret_data_access{
 };
 
 class Inspector{
-  
+
 private:
-  
+
 	const int proc_id, nprocs, team_num, id_in_team, team_size;
 
-	///Used by the partitioner
+	/// Used by the partitioner
 	int pins_size;
 
-	///All arrays in pragma, except for indirection arrays.
+	/// All arrays in pragma, except for indirection arrays.
 	std::deque<global_data*> all_data;
 
 	/// Same as above but for local data. I wonder if I could get rid of these!
@@ -70,7 +71,7 @@ private:
 	 * LOOP INFO
 	 */
 
-	///All loops specified as parallel
+	/// All loops specified as parallel
 	std::deque<global_loop*> all_loops;
 
 	/// Loop that we process
@@ -93,7 +94,7 @@ private:
 	int* const data_num_offset;
 
 	/// Node level communicator
-	std::deque<global_comm*> all_comm; 
+	std::deque<global_comm*> all_comm;
 
 	std::deque<local_comm*> all_local_comm;
 
@@ -103,7 +104,7 @@ private:
 	Inspector(int pid, int np, int team, int pid_team, int teamsize,
 	          int nl, int nd, int nc, int nad, int* iter_num_count,
 	          int* data_num_count, int* ro);
-  
+
 	///Singleton inspector object. There is one inspector per process.
 	static Inspector* singleton_inspector;
 
@@ -131,11 +132,11 @@ public:
 
 		if( singleton_inspector == NULL )
 			singleton_inspector =
-				new Inspector(pid, np, team, pid_team, teamsize, nl, nd, nc, nad,
-				              iter_num_count, data_num_count, ro);
+				new Inspector(pid, np, team, pid_team, teamsize, nl, nd, nc,
+				              nad, iter_num_count, data_num_count, ro);
 		return singleton_inspector;
 	}
-    
+
 	static Inspector* instance() {
 		assert(singleton_inspector);
 		return singleton_inspector;
@@ -155,21 +156,8 @@ public:
 
 	inline int GetProcLocal(int in) const { return all_loops[in]->nproc_local; }
 
-	///Add a new vertex to the hypergraph
-	///Arguments :
-	///  1) the loop_number
-	///  2) the iterator value
-	void AddVertex(int,int);
-  
-	///Add a new pin to a net to the hypergraph
-	///Arguments :
-	///  1) the array_number
-	///  2) the index of the element
-	///  3) if the access is through a direct access ( 1=true, 0=false)
-	///  4) if the access is direct from the partitionable loops ( 1 = true, 0 = false)
-	void AddNet(int,int,int,int);
-
-	void print_hypergraph(FILE*);
+	void AddVertex(int, int);
+	void AddPinToNet(int, int, int, int, int);
 
 	void print_comm(){
 #ifndef NDEBUG
@@ -251,19 +239,19 @@ public:
 	///Retrieve values of indirection array elements from other processes
 	void GetDontHave();
 
-	ret_data_access GetLocalAccesses(int);
+	void GetLocalAccesses(int, int**, int**, int**);
 
 	inline int InitSolver(int s){
 		assert(all_solvers.size() == 0);
-		all_solvers.push_back(new petsc_solve(proc_id,nprocs/*,nthreads*/,s));
+		all_solvers.push_back(new petsc_solve(proc_id, nprocs, s));
 		return all_solvers.size() - 1;
 	}
-  
-	void AddUnknown(int,int,int,int);
+
+	void AddUnknown(int, int, int, int, int);
 
 	void RenumberGlobalRows(int sn, int* oa, int as) const{
 		assert(sn == 0);
-		all_solvers[sn]->RenumberGlobalRows(oa,as);
+		all_solvers[sn]->RenumberGlobalRows(oa, as);
 	}
 
 	inline int GetLocalRows(int sn) const{

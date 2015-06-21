@@ -206,8 +206,8 @@ void local_data::RenumberOffsetArray(int array_size, int* offset_array,
  * Therefore, if we want to use it locally, it must be communicated by the
  * owner first.
  */
-void local_data::GenerateGhosts()
-{
+void local_data::GenerateGhosts(){
+
 	assert(local_array_size == -1);
 	if( !is_read_only ){
 		assert(data_net_info);

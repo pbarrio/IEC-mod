@@ -42,28 +42,28 @@ enum partition_type{
 extern void create_inspector(int md, int np, int team, int pid_team,
                              int teamsize, int nloops, int ndata, int nc,
                              int nac, int *nic, int* ndc, int* ro);
-extern void set_access_array_param(int,int,int,int*);
+extern void set_access_array_param(int, int, int, int*);
 extern int done_graph_gen();
-extern int is_known(int,int);
-extern int get_elem(int,int);
-extern void set_array_stride(int,int);
+extern int is_known(int, int);
+extern int get_elem(int, int);
+extern void set_array_stride(int, int);
 extern void partition_hypergraph(enum partition_type);
-extern int add_vertex(int,int);
-extern void add_pin_to_net(int,int,int,int);
-extern void add_index_from_proc(int,int,int,int);
-extern int get_vertex_home(int,int);
+extern int add_vertex(int, int);
+extern void add_pin_to_net(int, int, int, int, int);
+extern void add_index_from_proc(int, int, int, int);
+extern int get_vertex_home(int, int);
 extern int get_local_size(int);
-extern int populate_local_array(int,double*,double*,int);
-extern int renumber_access_array(int,int,int*);
-extern int renumber_offset_array(int,int,int*,int*);
-extern int renumber_const_offset_array(int,int,int,int*,int);
+extern int populate_local_array(int, double*, double*, int);
+extern int renumber_access_array(int, int, int*);
+extern int renumber_offset_array(int, int, int* ,int*);
+extern int renumber_const_offset_array(int, int, int, int* ,int);
 extern int get_proc_iter_size(int);
 extern void setup_executor();
-extern void communicate_reads_for(int,int);
-extern void communicate_writes_for(int,int);
+extern void communicate_reads_for(int, int);
+extern void communicate_writes_for(int, int);
 extern void communicate_reads(int);
-extern void communicate_reads_start(int,int);
-extern void communicate_reads_end(int,int);
+extern void communicate_reads_start(int, int);
+extern void communicate_reads_end(int, int);
 extern void communicate_writes(int);
 extern void init_write_ghosts(int);
 extern void reduce_scalar(double*);
@@ -73,17 +73,15 @@ extern void print_access();
 extern void populate_global_arrays();
 extern double rtclock();
 extern void delete_inspector();
-extern double** malloc_2d_double(int,int);
+extern double** malloc_2d_double(int, int);
 extern void free_2d_double(double**);
-extern float** malloc_2d_float(int,int);
+extern float** malloc_2d_float(int, int);
 extern void free_2d_float(float**);
 
 
 /*
  * NEW FUNCTIONS FOR PIPELINING
  */
-extern void pipe_comm(int loop, int iter);
-extern void pipe_get(int loop, int iter);
 extern void pipe_endExternalIter();
 
 
