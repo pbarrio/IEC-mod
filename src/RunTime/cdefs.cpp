@@ -366,6 +366,10 @@ extern "C" {
 		Inspector::instance()->CommunicateToNext();
 	}
 
+	void get_from_previous(){
+		Inspector::instance()->GetFromPrevious();
+	}
+
 	void init_write_ghosts(int cn){
 		Inspector::instance()->InitWriteGhosts(cn);
 	}
