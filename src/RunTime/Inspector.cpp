@@ -1147,14 +1147,16 @@ void Inspector::CommunicateGhosts(){
 		if (!(*it)->is_read_only)
 			n_data++;
 
-	int* sendghosts_count = new int[nprocs*n_data];
+	// #send-ghosts per target process, per R/W array
+	int* sendghosts_count = new int[team_size * n_data];
 
-	for( int i = 0 ; i < nprocs ; i++ ){
+	for (int i = 0; i < team_size; i++){
 		sendcount[i] = 0;
 		recvcount[i] = 0;
 	}
-  
-	for (int i = 0; i < nprocs; i++){
+
+	// Count #send-ghosts for all receiver processes
+	for (int i = 0; i < team_size; i++){
 
 		int dest_proc = i;
 		int d = 0;
@@ -1197,8 +1199,8 @@ void Inspector::CommunicateGhosts(){
 	for (int i = 0; i < nprocs; i++)
 		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
 
-	int* ghosts_send_val = new int[senddispl[nprocs]];
-	int* ghosts_recv_val = new int[recvdispl[nprocs]];
+	int* ghosts_send_val = new int[senddispl[team_size]];
+	int* ghosts_recv_val = new int[recvdispl[team_size]];
 
 	// Populate the actual ghosts from data in the local arrays
 	int counter = 0;
