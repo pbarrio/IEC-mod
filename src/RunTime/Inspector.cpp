@@ -409,7 +409,7 @@ void Inspector::AddPinToNet
 	assert(data_num < all_data.size());
 
 	///Get the current net
-	net* net_num = all_data[data_num]->data_net_info[index][loop];
+	net* net_num = all_data[data_num]->data_net_info[loop][index];
 
 	pin_info new_pin(curr_vertex, is_direct != 0 ? true : false);
 
