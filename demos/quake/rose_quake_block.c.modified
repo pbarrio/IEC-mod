@@ -436,7 +436,7 @@ int main(int argc,char **argv){
 	}
 	const int teamSize = __nprocs__ / nTeams;
 	const int myTeam = __proc_id__ / nTeams;
-	const int idInMyTeam = __proc_id__ - nTeams * teamSize;
+	const int idInMyTeam = __proc_id__ % teamSize;
 
 	int iter_num_count[2] = {ARCHnodes - 0, ARCHnodes - 0};
 
