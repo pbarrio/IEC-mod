@@ -548,9 +548,9 @@ extern "C" {
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
 
-	void pipe_initLoop(int loop, int usedArrays[]){
-
-		Inspector::instance()->init_loop(loop, usedArrays);
+	void pipe_initLoop(int loop, int usedArrays[], int usedArraysSize){
+		vector<int> usedArraysV(usedArrays, usedArrays + usedArraysSize);
+		Inspector::instance()->init_loop(loop, usedArraysV);
 	}
 
 	void pipe_endExternalIter(){

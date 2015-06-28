@@ -82,7 +82,7 @@ extern void free_2d_float(float**);
 /*
  * NEW FUNCTIONS FOR PIPELINING
  */
-extern void pipe_initLoop(int, int[]);
+extern void pipe_initLoop(int, int[], int);
 extern void pipe_endExternalIter();
 
 

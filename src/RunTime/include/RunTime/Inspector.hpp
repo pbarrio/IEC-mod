@@ -33,6 +33,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <deque>
+#include <vector>
 
 #define PIPE_TAG 9813 // For instance :D
 
@@ -155,7 +156,7 @@ public:
 
 	inline int GetProcLocal(int in) const { return all_loops[in]->nproc_local; }
 
-	void init_loop(int, int[]);
+	void init_loop(int, std::vector<int>);
 	void AddVertex(int, int);
 	void AddPinToNet(int, int, int, int, int);
 

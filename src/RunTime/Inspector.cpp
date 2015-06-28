@@ -352,10 +352,13 @@ bool Inspector::DoneGraphGeneration(){
  *
  * Mark arrays as used
  */
-void Inspector::init_loop(int loopID, int dataIDs[]){
+void Inspector::init_loop(int loopID, vector<int> dataIDs){
 
-	for (int i = 0; i < sizeof(dataIDs); ++i){
-		global_data* data = all_data[i];
+	for (vector<int>::iterator dataID = dataIDs.begin(),
+		     dataIDEnd = dataIDs.end();
+	     dataID != dataIDEnd; dataID++){
+
+		global_data* data = all_data[*dataID];
 		data->use_in_loop(loopID);
 	}
 }
