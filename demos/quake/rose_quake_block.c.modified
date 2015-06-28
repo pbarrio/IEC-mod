@@ -47,8 +47,7 @@ struct properties{
 	double den;
 };
 
-struct source 
-{
+struct source{
 	double dip;
 	double strike;
 	double rake;
@@ -122,8 +121,8 @@ struct excitation Exc;
 struct damping Damp;
 /*--------------------------------------------------------------------------*/
 
-int main(int argc,char **argv)
-{
+int main(int argc,char **argv){
+
 	MPI_Init(&argc,&argv);
 	ARMCI_Init();
 	MPI_Comm_rank(MPI_COMM_WORLD,&__proc_id__);
@@ -161,62 +160,63 @@ int main(int argc,char **argv)
 	double vertices[4UL][3UL];
 	struct properties prop;
 	/* NOTE: There are 5 possible flag values for the node data:
-	   1 if the node is in the interior 
+	   1 if the node is in the interior
 	   4 if the node is on a x=const boundary surface
 	   5 if the node is on a y=const boundary surface
 	   6 if the node is on the bottom surface (z=z_lower)
 	   3 if the node is on the surface (z=0) (but not along the edges)
 	*/
-	/*--------------------------------------------------------------------------*/
+	/*------------------------------------------------------------------------*/
 	/* Read in data from the pack file */
 	arch_init(argc,argv,&options);
 	/* Dynamic memory allocations and initializations */
 	mem_init();
 	arch_readnodevector(nodekindf,ARCHnodes);
-	if (!(options.quiet != 0)) 
+	if (!(options.quiet != 0))
 		fprintf(stderr,"%s: Beginning simulation.\n",argv[0]);
-	{
-		/* Excitation characteristics */
-		Exc.dt = 0.0024;
-		Exc.duration = ARCHduration;
-		Exc.t0 = 0.6;
-		timesteps = ((Exc.duration / Exc.dt) + 1);
-		/* Damping characteristics */
-		Damp.zeta = 30.0;
-		Damp.consta = 0.00533333;
-		Damp.constb = 0.06666667;
-		Damp.freq = 0.5;
-		/* Source characteristics */
-		Src.strike = 111.0 * 3.141592653589793238 / 180.0;
-		Src.dip = 44.0 * 3.141592653589793238 / 180.0;
-		Src.rake = 70.0 * 3.141592653589793238 / 180.0;
-		Src.fault = 29.640788;
-		Src.xyz[0] = 32.264153;
-		Src.xyz[1] = 23.814432;
-		Src.xyz[2] = -11.25;
-		Src.epixyz[0] = Src.xyz[0];
-		Src.epixyz[1] = Src.xyz[1];
-		Src.epixyz[2] = 0.0;
-		Src.sourcenode = -1;
-		Src.epicenternode = -1;
-	}
+
+	/* Excitation characteristics */
+	Exc.dt = 0.0024;
+	Exc.duration = ARCHduration;
+	Exc.t0 = 0.6;
+	timesteps = ((Exc.duration / Exc.dt) + 1);
+	/* Damping characteristics */
+	Damp.zeta = 30.0;
+	Damp.consta = 0.00533333;
+	Damp.constb = 0.06666667;
+	Damp.freq = 0.5;
+	/* Source characteristics */
+	Src.strike = 111.0 * 3.141592653589793238 / 180.0;
+	Src.dip = 44.0 * 3.141592653589793238 / 180.0;
+	Src.rake = 70.0 * 3.141592653589793238 / 180.0;
+	Src.fault = 29.640788;
+	Src.xyz[0] = 32.264153;
+	Src.xyz[1] = 23.814432;
+	Src.xyz[2] = -11.25;
+	Src.epixyz[0] = Src.xyz[0];
+	Src.epixyz[1] = Src.xyz[1];
+	Src.epixyz[2] = 0.0;
+	Src.sourcenode = -1;
+	Src.epicenternode = -1;
+
 	/* Prescribe slip motion */
 	uf[0] = (uf[1] = (uf[2] = 0.0));
 	slip((uf + 0),(uf + 1),(uf + 2));
-	{
-		uf[0] *= Src.fault;
-		uf[1] *= Src.fault;
-		uf[2] *= Src.fault;
-		/* Soil properties (homogeneous material) */
-		prop.cp = 6.0;
-		prop.cs = 3.2;
-		prop.den = 2.0;
-		/* Output frequency parameter */
-		Step_stride = 30;
-		disptplus = 0;
-		dispt = 1;
-		disptminus = 2;
-	}
+	uf[0] *= Src.fault;
+	uf[1] *= Src.fault;
+	uf[2] *= Src.fault;
+
+	/* Soil properties (homogeneous material) */
+	prop.cp = 6.0;
+	prop.cs = 3.2;
+	prop.den = 2.0;
+
+	/* Output frequency parameter */
+	Step_stride = 30;
+	disptplus = 0;
+	dispt = 1;
+	disptminus = 2;
+
 	/* Case info */
 	fprintf(stderr,"\n");
 	fprintf(stderr,"CASE SUMMARY\n");
@@ -225,77 +225,83 @@ int main(int argc,char **argv)
 	fprintf(stderr,"                   dip: %f\n",Src.dip);
 	fprintf(stderr,"                  rake: %f\n",Src.rake);
 	fprintf(stderr,"           dislocation: %f cm\n",Src.fault);
-	fprintf(stderr,"Hypocenter: (%f, %f, %f) Km\n",Src.xyz[0],Src.xyz[1],Src.xyz[2]);
+	fprintf(stderr,"Hypocenter: (%f, %f, %f) Km\n",
+	        Src.xyz[0], Src.xyz[1], Src.xyz[2]);
 	fprintf(stderr,"Excitation characteristics\n");
 	fprintf(stderr,"     Time step: %f sec\n",Exc.dt);
 	fprintf(stderr,"      Duration: %f sec\n",Exc.duration);
 	fprintf(stderr,"     Rise time: %f sec\n",Exc.t0);
 	fprintf(stderr,"\n");
 	fflush(stderr);
-	{
-		/* Redefine nodekind to be 1 for all surface nodes */
-		for (i = 0; i < ARCHnodes; i++) {
-			nodekind[i] = ((int )nodekindf[i]);
-			if (nodekind[i] == 3) 
-				nodekind[i] = 1;
-		}
-		/* Search for the node closest to the point source (hypocenter) and */
-		/*        for the node closest to the epicenter */
-		bigdist1 = 1000000.0;
-		bigdist2 = 1000000.0;
+
+	/* Redefine nodekind to be 1 for all surface nodes */
+	for (i = 0; i < ARCHnodes; i++) {
+		nodekind[i] = ((int )nodekindf[i]);
+		if (nodekind[i] == 3)
+			nodekind[i] = 1;
 	}
-	{
-		for (i = 0; i < ARCHnodes; i++) {
-			c0[0] = ARCHcoord[i][0];
-			c0[1] = ARCHcoord[i][1];
-			c0[2] = ARCHcoord[i][2];
-			d1 = distance(c0,Src.xyz);
-			d2 = distance(c0,Src.epixyz);
-			if (d1 < bigdist1) {
-				bigdist1 = d1;
-				Src.sourcenode = i;
-			}
-			if (d2 < bigdist2) {
-				bigdist2 = d2;
-				Src.epicenternode = i;
-			}
+	/* Search for the node closest to the point source (hypocenter) and */
+	/*        for the node closest to the epicenter */
+	bigdist1 = 1000000.0;
+	bigdist2 = 1000000.0;
+
+	for (i = 0; i < ARCHnodes; i++){
+		c0[0] = ARCHcoord[i][0];
+		c0[1] = ARCHcoord[i][1];
+		c0[2] = ARCHcoord[i][2];
+		d1 = distance(c0,Src.xyz);
+		d2 = distance(c0,Src.epixyz);
+		if (d1 < bigdist1) {
+			bigdist1 = d1;
+			Src.sourcenode = i;
+		}
+		if (d2 < bigdist2) {
+			bigdist2 = d2;
+			Src.epicenternode = i;
 		}
 	}
-	if ((Src.sourcenode != 0) && (Src.sourcenode <= ARCHmine)) {
+
+	if ((Src.sourcenode != 0) && (Src.sourcenode <= ARCHmine)){
 		fprintf(stderr,"The source is node %d at (%f  %f  %f)\n",
 		        ARCHglobalnode[Src.sourcenode], ARCHcoord[Src.sourcenode][0],
 		        ARCHcoord[Src.sourcenode][1], ARCHcoord[Src.sourcenode][2]);
 		fflush(stderr);
 	}
+
 	if ((Src.epicenternode != 0) && (Src.epicenternode <= ARCHmine)) {
-		fprintf(stderr,"The epicenter is node %d at (%f  %f  %f)\n",ARCHglobalnode[Src.epicenternode],ARCHcoord[Src.epicenternode][0],ARCHcoord[Src.epicenternode][1],ARCHcoord[Src.epicenternode][2]);
+		fprintf(stderr, "The epicenter is node %d at (%f  %f  %f)\n",
+		        ARCHglobalnode[Src.epicenternode],
+		        ARCHcoord[Src.epicenternode][0],
+		        ARCHcoord[Src.epicenternode][1],
+		        ARCHcoord[Src.epicenternode][2]);
 		fflush(stderr);
 	}
 	/* Search for all the elements that contain the source node */
 	if (Src.sourcenode != 0) {
-		for (i = 0; i < ARCHelems; i++) {{
-				for (j = 0; j < 4; j++) 
+		for (i = 0; i < ARCHelems; i++){{
+				for (j = 0; j < 4; j++)
 					cor[j] = ARCHvertex[i][j];
 			}
-			if ((((cor[0] == Src.sourcenode) || (cor[1] == Src.sourcenode)) || (cor[2] == Src.sourcenode)) || (cor[3] == Src.sourcenode)) {{
-					for (j = 0; j < 4; j++) 
-						for (k = 0; k < 3; k++) 
-							vertices[j][k] = ARCHcoord[cor[j]][k];
-					centroid(vertices,xc);
-					source_elms[i] = 2;
-				}
-				if (point2fault(xc) >= 0) 
+			if ((((cor[0] == Src.sourcenode) || (cor[1] == Src.sourcenode)) ||
+			     (cor[2] == Src.sourcenode)) || (cor[3] == Src.sourcenode)){
+				for (j = 0; j < 4; j++)
+					for (k = 0; k < 3; k++)
+						vertices[j][k] = ARCHcoord[cor[j]][k];
+				centroid(vertices,xc);
+				source_elms[i] = 2;
+				if (point2fault(xc) >= 0)
 					source_elms[i] = 3;
 			}
 		}
 	}
+
 	/* Simulation */
 	for (i = 0; i < ARCHelems; i++) {{
 			for (j = 0; j < 12; j++) {
 				Me[j] = 0.0;
 				Ce[j] = 0.0;
 				v[j] = 0.0;
-				for (k = 0; k < 12; k++) 
+				for (k = 0; k < 12; k++)
 					Ke[j][k] = 0.0;
 			}
 			for (j = 0; j < 4; j++) {
@@ -303,32 +309,34 @@ int main(int argc,char **argv)
 			}
 			verticesonbnd = 0;
 		}
-		for (j = 0; j < 4; j++) 
-			if (nodekind[cor[j]] != 1) 
+		for (j = 0; j < 4; j++)
+			if (nodekind[cor[j]] != 1)
 				bv[verticesonbnd++] = j;
 		if (verticesonbnd == 3) {{
-				for (j = 0; j < 3; j++) 
-					for (k = 0; k < 3; k++) 
+				for (j = 0; j < 3; j++)
+					for (k = 0; k < 3; k++)
 						vertices[j][k] = ARCHcoord[cor[bv[j]]][k];
 			}
 			abe_matrix(vertices,bv,&prop,Ce);
 		}
 		{
-			for (j = 0; j < 4; j++) 
-				for (k = 0; k < 3; k++) 
+			for (j = 0; j < 4; j++)
+				for (k = 0; k < 3; k++)
 					vertices[j][k] = ARCHcoord[cor[j]][k];
 		}
-		element_matrices(vertices,&prop,Ke,Me);
-		{
-			/* Damping (proportional) */
-			centroid(vertices,xc);
-			if (xc[2] < -11.5) 
-				alpha = (((2.0 * Damp.zeta) / 100.0) * (2.0 * 3.141592653589793238 * Damp.freq));
-			else 
-				alpha = (((4.0 * 3.141592653589793238 * Damp.consta) * 0.95) / (prop.cs + Damp.constb));
-			for (j = 0; j < 12; j++) 
-				Ce[j] = (Ce[j] + (alpha * Me[j]));
-		}
+		element_matrices(vertices, &prop, Ke, Me);
+
+		/* Damping (proportional) */
+		centroid(vertices,xc);
+		if (xc[2] < -11.5)
+			alpha = (((2.0 * Damp.zeta) / 100.0) *
+			         (2.0 * 3.141592653589793238 * Damp.freq));
+		else
+			alpha = (((4.0 * 3.141592653589793238 * Damp.consta) * 0.95) /
+			         (prop.cs + Damp.constb));
+		for (j = 0; j < 12; j++)
+			Ce[j] = (Ce[j] + (alpha * Me[j]));
+
 		/* Source mechanism */
 		if ((source_elms[i] == 2) || (source_elms[i] == 3)) {
 			for (j = 0; j < 4; j++) {
@@ -347,7 +355,7 @@ int main(int argc,char **argv)
 				vv12x12(Me,v,Mexv);
 				vv12x12(Ce,v,Cexv);
 				mv12x12(Ke,v);
-				if (source_elms[i] == 3) 
+				if (source_elms[i] == 3)
 					for (j = 0; j < 12; j++) {
 						v[j] = -v[j];
 						Mexv[j] = -Mexv[j];
@@ -394,6 +402,7 @@ int main(int argc,char **argv)
 			}
 		}
 	}
+
 	/* Time integration loop */
 	fprintf(stderr,"\n");
 	double sum0;
