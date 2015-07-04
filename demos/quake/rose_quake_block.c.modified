@@ -435,7 +435,7 @@ int main(int argc,char **argv){
 		return -1;
 	}
 	const int teamSize = __nprocs__ / nTeams;
-	const int myTeam = __proc_id__ / nTeams;
+	const int myTeam = __proc_id__ / teamSize;
 	const int idInMyTeam = __proc_id__ % teamSize;
 
 	int iter_num_count[2] = {ARCHnodes - 0, ARCHnodes - 0};
@@ -663,7 +663,6 @@ int main(int argc,char **argv){
 		if (get_vertex_home(0,i) == __myid__) {
 			__body_0__ = __body_0__ + 1;;
 		}
-		else ;;
 	}
 
 	// Loop 1
@@ -679,7 +678,6 @@ int main(int argc,char **argv){
 			}
 			__body_1__ = __body_1__ + 1;;
 		}
-		else ;;
 	};
 	int *__i_disp0_j_5_ = (int *)(malloc(__body_i_6__ * sizeof(int )));
 	int *__i_disp1_j_4_ = (int *)(malloc(__body_i_6__ * sizeof(int )));
@@ -702,7 +700,6 @@ int main(int argc,char **argv){
 			if (get_vertex_home(0,i) == __myid__) {
 				__body_0__ = __body_0__ + 1;;
 			}
-			else ;;
 		}
 	}
 
@@ -1032,9 +1029,9 @@ int main(int argc,char **argv){
 	delete_inspector();;
 
 	fprintf(stderr,"Time step %d\n",iter);
-	if (Src.sourcenode <= ARCHmine) 
+	if (Src.sourcenode <= ARCHmine)
 		printf("%d: %.2e %.2e %.2e\n",ARCHglobalnode[Src.sourcenode],disp0[Src.sourcenode][0],disp0[Src.sourcenode][1],disp0[Src.sourcenode][2]);
-	if (Src.epicenternode <= ARCHmine) 
+	if (Src.epicenternode <= ARCHmine)
 		printf("%d: %.2e %.2e %.2e\n",ARCHglobalnode[Src.epicenternode],disp0[Src.epicenternode][0],disp0[Src.epicenternode][1],disp0[Src.epicenternode][2]);
 	fprintf(stderr,"%s: %d nodes %d elems %d timesteps\n",progname,ARCHglobalnodes,ARCHglobalelems,timesteps);
 	fprintf(stderr,"\n");

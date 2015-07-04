@@ -56,22 +56,22 @@ class access_data{
 
   ~access_data();
 
-  void SetParams(int,int,int*);
-  
+  void SetParams(int, int, int*);
+
   bool HaveIndex(int);
 
   int GetIndex(int) const;
 
   ///Get the count of number of elements needed from other processes
   ///All indirection arrays assumed to be blocked partitioned initially
-  ///Arguments : 
+  ///Arguments :
   /// 1 )Buffer, viewed as a 2D array [nprocs][n_ind_arrays]
   /// 2) n_ind_arrays
   void GetSendCounts(int*,int) const;
 
   ///Send indices whose values are to be retrieved
   /// Arguments :
-  ///  1) Buffer used for communication 
+  ///  1) Buffer used for communication
   ///  2) the size of the buffer
   ///  3) the offset in the buffer for the message sent to each process
   void PopulateBuffer(int*,int,int*) const;
@@ -92,7 +92,7 @@ class access_data{
 #endif
 
   friend class Inspector;
-};  
+};
 
 
 #endif

@@ -42,23 +42,26 @@ access_data::access_data(int mn, int md, int np, int teamID, int teamSize):
  * \param st Stride
  * \param oa Pointer to the start of the array piece assigned to this process.
  */
-void access_data::SetParams(int as, int st, int* oa)
-{
+void access_data::SetParams(int as, int st, int* oa){
+
   array_size = as;
   stride = st;
   orig_array = oa;
   assert(stride == 1);
   int split = array_size / myTeamSize;
   local_start_index = split * myTeamID;
-  local_end_index =  ( myTeamID == myTeamSize - 1 ? array_size : split * (myTeamID + 1));
+  local_end_index = (myTeamID == myTeamSize - 1 ?
+                     array_size :
+                     split * (myTeamID + 1));
+
 #ifdef USE_HSQPHASH
   have_set = new qphash(401);
 #endif
 }
 
 
-access_data::~access_data() 
-{
+access_data::~access_data(){
+
 #ifdef USE_HSQPHASH
   delete have_set;
 #else

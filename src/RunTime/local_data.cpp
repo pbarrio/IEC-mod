@@ -23,21 +23,21 @@
 
 using namespace std;
 
-int binary_search( int* const array, const int n, const int value) 
-{
-	int left = 0 , right = n -1;
+int binary_search( int* const array, const int n, const int value){
+
+	int left = 0, right = n - 1;
 	int mid;
 	while( left <= right ){
-		mid = ( left + right ) / 2;
-		if( array[mid] ==value )
+		mid = (left + right) / 2;
+		if (array[mid] ==value)
 			break;
-		else if ( array[mid] < value ){
+		else if (array[mid] < value){
 			left = mid + 1;
 		}
 		else
 			right = mid - 1;
 	}
-	if( left > right )
+	if(left > right)
 		return -1;
 	else
 		return mid;
@@ -138,7 +138,7 @@ void local_data::SetupLocalArray()
 	direct_access_array = new int[direct_access_size];
 	indirect_access_size = indirect_access.size();
 	indirect_access_array = new int[indirect_access_size];
-    
+
 	for (set<int>::const_iterator it = direct_access.begin();
 	     it != direct_access.end(); it++, counter++)
 		direct_access_array[counter] = *it;
@@ -148,7 +148,7 @@ void local_data::SetupLocalArray()
 		indirect_access_array[counter-direct_access_size] = *it;
 
 	assert(counter == direct_access_size + indirect_access_size);
-  
+
 	direct_access.clear();
 	indirect_access.clear();
 }
@@ -289,9 +289,9 @@ void local_data::GenerateOwned(){
 }
 
 
-void local_data::print_data(FILE* data_file)
-{
-#ifndef NDEBUG 
+void local_data::print_data(FILE* data_file){
+
+#ifndef NDEBUG
 	fprintf(data_file,"Array %d, localsize %d, stride %d\n",my_num,local_array_size,stride);
 // 	fprintf(data_file,"\tDirect(%d) :",direct_access_size);
 	fprintf(data_file,"\tDirect(%ld) :",direct_access_size);

@@ -80,10 +80,10 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 	pins_size(-1),
 	my_loop(NULL),
 	iter_num_offset(new int[nl + 1]), // The first '1' is for my loop
-	data_num_offset(new int[nd+1]){
+	data_num_offset(new int[nd + 1]){
 
-	/// Create new communicator associated to the inspector.
-	/// This avoids having to use MPI_COMM_WORLD.
+	// Create new communicator associated to the inspector. This avoids having
+	// to use MPI_COMM_WORLD.
 	MPI_Group worldGroup;
 	MPI_Group iecGroup;
 	int ranges[1][3] = {{0, np-1, 1}};
@@ -179,7 +179,7 @@ Inspector::~Inspector(){
 		delete (*it);
 
 	all_access_data.clear();
-  
+
 	if( global_comm::max_send_size > 0 )
 		ARMCI_Free_local(global_comm::send_buffer);
 	if (global_comm::put_buffer){
@@ -839,7 +839,7 @@ void Inspector::AfterPartition(int loop){
 	/// Take all global data and intialize the corresponding local data
 	// It might be possible to get rid of this
 	for (deque<global_data*>::iterator it = all_data.begin();
-	     it != all_data.end() ; it++ ){
+	     it != all_data.end(); it++){
 
 		int array_id = (*it)->id;
 		int stride_size = (*it)->stride_size;
@@ -959,7 +959,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 			*displ[i * 2 + k] = curr_recv_displ;
 			curr_recv_displ += recvcount[i * 2 + k];
 		}
-		recvdispl[i+1] = recvdispl[i] + recvcount_mpi[i];
+		recvdispl[i + 1] = recvdispl[i] + recvcount_mpi[i];
 	}
 
 	*recvbuf = new int[recvdispl[nprocs]];
@@ -992,7 +992,7 @@ void Inspector::GetBufferSize(){
 		global_comm* curr_global_comm = all_comm[iter_num];
 		int send_read_count = 0, recv_read_count = 0;
 		int send_write_count = 0, recv_write_count = 0;
-    
+
 		curr_global_comm->read_send_offset[0] = 0;
 		curr_global_comm->read_recv_offset[0] = 0;
 		curr_global_comm->write_send_offset[0] = 0;

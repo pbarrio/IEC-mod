@@ -207,8 +207,8 @@ public:
 	 * \param c Stride
 	 * \param d Pointer to the start of the array piece assigned to this process
 	 */
-	inline void SetAccessArrayParam(int a,int b,int c ,int* d){
-		all_access_data[a]->SetParams(b,c,d);
+	inline void SetAccessArrayParam(int a, int b, int c, int* d){
+		all_access_data[a]->SetParams(b, c, d);
 	}
 
 	/**

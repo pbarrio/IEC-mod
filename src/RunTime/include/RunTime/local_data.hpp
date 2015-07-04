@@ -117,7 +117,7 @@ public:
 	void InsertDirectAccess(const int*, const int);
 
 	void InsertIndirectAccess(const int*, const int);
-  
+
 	void RenumberAccessArray(int, int*);
 
 	void RenumberOffsetArray(int, int*, int*);

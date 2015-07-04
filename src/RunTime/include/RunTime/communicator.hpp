@@ -54,9 +54,9 @@ class inspector;
  */
 class global_comm{
 private:
-  
+
 	int* const read_send_offset;
-  
+
 	int* const read_recv_offset;
 
 	int* const write_send_offset;
@@ -64,25 +64,25 @@ private:
 	int* const write_recv_offset;
 
 	int* const read_send_count;
-  
+
 	int* const read_recv_count;
-  
+
 	int* const write_send_count;
-  
+
 	int* const write_recv_count;
 
 	int* const read_put_displ;
-  
+
 	int* const write_put_displ;
 
 	static char* read_send_signal;
 
 	static char* read_recv_signal;
-  
+
 	static char* write_send_signal;
 
 	static char* write_recv_signal;
- 
+
 	int nprocs_read_send;
 
 	int nprocs_read_recv;
@@ -90,7 +90,7 @@ private:
 	int nprocs_write_send;
 
 	int nprocs_write_recv;
-  
+
 	int* proc_id_read_send;
 
 	int* proc_id_read_recv;
@@ -98,7 +98,7 @@ private:
 	int* proc_id_write_send;
 
 	int* proc_id_write_recv;
-  
+
 	static int max_nprocs_read_send;
 
 	static int max_nprocs_read_recv;
@@ -112,25 +112,25 @@ private:
 	static MPI_Request* read_send_end_request;
 
 	static MPI_Status* read_recv_end_status;
-  
+
 	static MPI_Status* read_send_end_status;
 
 	static MPI_Request* read_recv_start_request;
 
 	static MPI_Status* read_send_start_status;
-  
+
 	static MPI_Status* read_recv_start_status;
 
 	static MPI_Request* write_send_end_request;
 
 	static MPI_Status* write_recv_end_status;
-  
+
 	static MPI_Status* write_send_end_status;
 
 	static MPI_Request* write_recv_start_request;
 
 	static MPI_Status* write_send_start_status;
-  
+
 	static MPI_Status* write_recv_start_status;
 
 	const int my_num;
@@ -140,13 +140,13 @@ private:
 	const int proc_id;
 
 	static char** put_buffer;
-  
+
 	static char* send_buffer;
 
 	static char* recv_buffer;
 
 	static int max_send_size;
-  
+
 	static int max_recv_size;
 
 #ifndef NDEBUG
@@ -156,7 +156,7 @@ private:
 	global_comm(int,int,int);
 
 	~global_comm();
-  
+
 	void CommunicateReads();
 
 	void CommunicateWrites();

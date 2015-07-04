@@ -89,7 +89,7 @@ extern "C" {
 	void set_access_array_param_(int* an, int *as, int* st, int *oa){
 		set_access_array_param(*an,*as,*st,oa);
 	}
-  
+
 
 	/**
 	 * \brief Ask if we have the value of a position in an indirection array.
@@ -291,7 +291,7 @@ extern "C" {
 	}
 	void add_index_from_proc_(int *data_num, int *index, int *access_type){
 		Inspector::instance()->
-			AddIndexAccessed(*data_num,*index,*access_type);
+			AddIndexAccessed(*data_num, *index, *access_type);
 	}
 
 	/**
@@ -301,25 +301,25 @@ extern "C" {
 	 * \param st Stride. Not sure what this is.
 	 */
 	void populate_local_array(int an, double* lb, double* oa, int st){
-		Inspector::instance()->PopulateLocalArray(an,lb,oa,st);
+		Inspector::instance()->PopulateLocalArray(an, lb, oa, st);
 	}
 	void populate_local_array_(int *an, double*lb, double*oa, int *st){
-		Inspector::instance()->PopulateLocalArray(*an,lb,oa,*st);
+		Inspector::instance()->PopulateLocalArray(*an, lb, oa, *st);
 	}
 
 
 	void renumber_access_array(int an, int as, int* aa){
-		Inspector::instance()->RenumberAccessArray(an,as,aa);
+		Inspector::instance()->RenumberAccessArray(an, as, aa);
 	}
 	void renumber_access_array_(int *an, int *as, int* aa){
-		Inspector::instance()->RenumberAccessArray(*an,*as,aa);
+		Inspector::instance()->RenumberAccessArray(*an, *as, aa);
 	}
 
 	void renumber_offset_array(int an, int as, int* aa, int* la){
-		Inspector::instance()->RenumberOffsetArray(an,as,aa,la);
+		Inspector::instance()->RenumberOffsetArray(an, as, aa, la);
 	}
 	void renumber_offset_array_(int *an, int *as, int* aa, int* la){
-		Inspector::instance()->RenumberOffsetArray(*an,*as,aa,la);
+		Inspector::instance()->RenumberOffsetArray(*an, *as, aa, la);
 	}
 
 	/**
