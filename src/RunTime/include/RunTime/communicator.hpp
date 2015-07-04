@@ -109,6 +109,8 @@ private:
 
 	static MPI_Comm global_iec_communicator;
 
+	static MPI_Comm team_communicator;
+
 	static MPI_Request* read_send_end_request;
 
 	static MPI_Status* read_recv_end_status;

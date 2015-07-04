@@ -35,6 +35,7 @@ int global_comm::max_nprocs_read_recv = 0;
 int global_comm::max_nprocs_write_send = 0;
 int global_comm::max_nprocs_write_recv = 0;
 MPI_Comm global_comm::global_iec_communicator = NULL;
+MPI_Comm global_comm::team_communicator = NULL;
 MPI_Status* global_comm::read_send_start_status = NULL;
 MPI_Status* global_comm::read_recv_start_status = NULL;
 MPI_Request* global_comm::read_recv_start_request = NULL;
@@ -84,13 +85,10 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 
 	// Create new communicator associated to the inspector. This avoids having
 	// to use MPI_COMM_WORLD.
-	MPI_Group worldGroup;
-	MPI_Group iecGroup;
-	int ranges[1][3] = {{0, np-1, 1}};
-	MPI_Comm_group(MPI_COMM_WORLD, &worldGroup);
-	MPI_Group_range_incl(worldGroup, 1, ranges, &iecGroup);
-	MPI_Comm_create(MPI_COMM_WORLD, iecGroup,
-	                &global_comm::global_iec_communicator);
+	// Also create a communicator for the team.
+	MPI_Comm_dup(MPI_COMM_WORLD, &global_comm::global_iec_communicator);
+	MPI_Comm_split(MPI_COMM_WORLD, team_num, 0,
+	               &global_comm::team_communicator);
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	if (pid >= np)
@@ -221,6 +219,8 @@ Inspector::~Inspector(){
 
 	// Deallocate MPI communicator common to all participating processes
 	// in the inspector/executor.
+	if (global_comm::team_communicator != MPI_COMM_NULL)
+		MPI_Comm_free(&global_comm::team_communicator);
 	if (global_comm::global_iec_communicator != MPI_COMM_NULL)
 		MPI_Comm_free(&global_comm::global_iec_communicator);
 }
@@ -931,7 +931,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 
 	// Send the number of elements sent from each process
 	MPI_Alltoall(sendcount, 2, MPI_INT, recvcount, 2, MPI_INT,
-	             global_comm::global_iec_communicator);
+	             global_comm::team_communicator);
 
 	int* const sendbuffer = new int[senddispl[nprocs]];
 
@@ -966,7 +966,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 
 	MPI_Alltoallv(sendbuffer, sendcount_mpi, senddispl, MPI_INT,
 	              *recvbuf, recvcount_mpi, recvdispl, MPI_INT,
-	              global_comm::global_iec_communicator);
+	              global_comm::team_communicator);
 
 	delete[] sendcount;
 	delete[] sendcount_mpi;
