@@ -23,8 +23,7 @@
 
 using namespace std;
 
-local_comm::local_comm(int mn, int np, int pid):
-	my_num(mn),
+local_comm::local_comm(int np, int pid):
 	nprocs(np),
 	proc_id(pid),
 	myid(pid),
@@ -61,10 +60,10 @@ local_comm::local_comm(int mn, int np, int pid):
 local_comm::~local_comm(){
 
 #ifdef COMM_TIME
-	if( thread_id == 0 && read_comm_time > 0.0 )
-		printf("MXC:GID:%d,CommNum:%d,ReadCommTime:%5.4le\n",myid,my_num,read_comm_time);
-	if( thread_id == 0 && write_comm_time > 0.0 )
-		printf("MXC:GID:%d,CommNum:%d,WriteCommTime:%5.4le\n",myid,my_num,read_comm_time);
+	if (thread_id == 0 && read_comm_time > 0.0)
+		printf("MXC:GID:%d,ReadCommTime:%5.4le\n", myid, read_comm_time);
+	if (thread_id == 0 && write_comm_time > 0.0)
+		printf("MXC:GID:%d,WriteCommTime:%5.4le\n", myid, read_comm_time);
 #endif
 	delete[] read_send_offset;
 	delete[] read_recv_offset;

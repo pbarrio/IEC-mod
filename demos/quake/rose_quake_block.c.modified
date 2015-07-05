@@ -735,7 +735,7 @@ int main(int argc,char **argv){
 	double **__local_disp0__ = malloc_2d_double(__localsize_disp0__, 3);
 	populate_local_array(0, __local_disp0__[0], disp0[0], 3);
 	renumber_access_array(0, __body_i_6__, __i_disp0_j_5_);
-	communicate_writes_for(1, 0);
+	communicate_writes_for(0);
 
 	// Initialize disp1
 	int __localsize_disp1__ = get_local_size(1);

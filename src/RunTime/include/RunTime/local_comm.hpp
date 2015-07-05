@@ -80,8 +80,8 @@ private:
 	int* const write_recv_count;
 
 public:
-  
-	local_comm(int,int,int);
+
+	local_comm(int, int);
 
 	~local_comm();
 

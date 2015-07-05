@@ -269,20 +269,27 @@ extern "C" {
 	}
 
 	/**
-	 * \brief Unused in quake
+	 * \brief Mark array as readable by this process
+	 *
+	 * \brief an Id of the array
 	 */
-	void communicate_reads_for(int in, int an){
-		Inspector::instance()->AddReadArray(in,an);
+	void communicate_reads_for(int an){
+		Inspector::instance()->AddReadArray(an);
 	}
-	void communicate_reads_for_(int *in, int *an){
-		Inspector::instance()->AddReadArray(*in,*an);
+	void communicate_reads_for_(int *an){
+		Inspector::instance()->AddReadArray(*an);
 	}
 
-	void communicate_writes_for(int in, int an){
-		Inspector::instance()->AddWriteArray(in,an);
+	/**
+	 * \brief Mark array as writable by this process
+	 *
+	 * \brief an Id of the array
+	 */
+	void communicate_writes_for(int an){
+		Inspector::instance()->AddWriteArray(an);
 	}
-	void communicate_writes_for_(int *in, int *an){
-		Inspector::instance()->AddWriteArray(*in,*an);
+	void communicate_writes_for_(int *an){
+		Inspector::instance()->AddWriteArray(*an);
 	}
 
 	void add_index_from_proc(int data_num, int index, int access_type){

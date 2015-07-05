@@ -97,7 +97,10 @@ private:
 	/// Node level communicator
 	std::deque<global_comm*> all_comm;
 
-	std::deque<local_comm*> all_local_comm;
+	/// Communication info useful in the team. There used to be multiple of them
+	/// (one per loop), but now that each process only processes one loop, there
+	/// is only one.
+	local_comm* team_comm;
 
 	/// Indirection arrays are tracked here
 	std::deque<access_data*> all_access_data;
@@ -305,12 +308,22 @@ public:
 		all_local_data.push_back(new_data);
 	}
 
-	inline void AddReadArray(int in, int an){
-		all_local_comm[in]->read_arrays.push_back(all_local_data[an]);
+	/*
+	 * \brief Add array to the set of data that is read in this process
+	 *
+	 * \param an Id of the array
+	 */
+	inline void AddReadArray(int an){
+		team_comm->read_arrays.push_back(all_local_data[an]);
 	}
 
-	inline void AddWriteArray(int in, int an){
-		all_local_comm[in]->write_arrays.push_back(all_local_data[an]);
+	/*
+	 * \brief Add array to the set of data that is written in this process
+	 *
+	 * \param an Id of the array
+	 */
+	inline void AddWriteArray(int an){
+		team_comm->write_arrays.push_back(all_local_data[an]);
 	}
 
 	inline void AddIndexAccessed(int dn, int ind, int at){
@@ -367,7 +380,7 @@ public:
 	}
 
 	inline void InitWriteGhosts(int cn){
-		all_local_comm[cn]->InitWriteGhosts();
+		team_comm->InitWriteGhosts();
 	}
 
 	inline void SetLocalArray(int an, void* la) {

@@ -126,6 +126,9 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 		all_comm.push_back(new_comm);
 	}
 
+	// Set up IEC communicator local to the team
+	team_comm = new local_comm(team_size, id_in_team);
+
 	// Indirection arrays (called access data).
 	for (int i = 0; i < nad; i++){
 		access_data* new_access_data =
@@ -1001,16 +1004,15 @@ void Inspector::GetBufferSize(){
 
 		for (int i = 0; i < nprocs; i++){
 
-			local_comm* local_recv_comm = all_local_comm[iter_num];
-			local_comm* local_send_comm = all_local_comm[iter_num];
 			send_read_count +=
-				local_send_comm->GetReadSendCount(i, send_read_count);
+				team_comm->GetReadSendCount(i, send_read_count);
 			recv_read_count +=
-				local_recv_comm->GetReadRecvCount(i, recv_read_count);
+				team_comm->GetReadRecvCount(i, recv_read_count);
 			send_write_count +=
-				local_send_comm->GetWriteSendCount(i, send_write_count);
+				team_comm->GetWriteSendCount(i, send_write_count);
 			recv_write_count +=
-				local_recv_comm->GetWriteRecvCount(i, recv_write_count);
+				team_comm->GetWriteRecvCount(i, recv_write_count);
+
 			curr_global_comm->read_send_count[i] =
 				send_read_count - curr_global_comm->read_send_offset[i];
 			curr_global_comm->read_send_offset[i + 1] = send_read_count;
@@ -1277,10 +1279,8 @@ void Inspector::CommunicateReads(int comm_num){
 	start_t = rtclock();
 #endif
 
-	local_comm* curr_local_comm = all_local_comm[comm_num];
-
 	if( global_comm::max_send_size > 0 )
-		curr_local_comm->PopulateReadSendBuffer(global_comm::send_buffer);
+		team_comm->PopulateReadSendBuffer(global_comm::send_buffer);
 
 	// For all participants in the communication with id "comm_num",
 	// send and receive alive signals.
@@ -1315,12 +1315,12 @@ void Inspector::CommunicateReads(int comm_num){
 				            count, i, NULL);
 	}
 
-	if( curr_local_comm->read_recv_count[0] > 0 ){
+	if( team_comm->read_recv_count[0] > 0 ){
 
 		vector<local_data*>::iterator it =
-			curr_local_comm->read_arrays.begin();
+			team_comm->read_arrays.begin();
 
-		for (; it != curr_local_comm->read_arrays.end(); it++)
+		for (; it != team_comm->read_arrays.end(); it++)
 			(*it)->PopulateLocalGhosts
 				(all_local_data[(*it)->my_num], proc_id);
 	}
@@ -1346,11 +1346,11 @@ void Inspector::CommunicateReads(int comm_num){
 		            global_comm::read_send_end_status);
 
 	if( global_comm::max_recv_size > 0 )
-		curr_local_comm->ExtractReadRecvBuffer(global_comm::recv_buffer);
+		team_comm->ExtractReadRecvBuffer(global_comm::recv_buffer);
 
 #ifdef COMM_TIME
 	stop_t = rtclock();
-	curr_local_comm->read_comm_time += stop_t - start_t;
+	team_comm->read_comm_time += stop_t - start_t;
 #endif
 
 }
