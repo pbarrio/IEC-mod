@@ -863,24 +863,24 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	const global_data* curr_array = all_data[array_num];
 	net** const curr_nets = curr_array->data_net_info.at(team_num);
 	const int curr_array_size = curr_array->orig_array_size;
-	const int curr_split = curr_array_size / nprocs;
-	const int curr_start = curr_split * proc_id;
-	const int curr_end = (proc_id == nprocs - 1 ?
+	const int curr_split = curr_array_size / team_size;
+	const int curr_start = curr_split * id_in_team;
+	const int curr_end = (id_in_team == team_size - 1 ?
 	                      curr_array_size :
-	                      curr_split * (proc_id + 1));
+	                      curr_split * (id_in_team + 1));
 
-	for (int i = 0; i < nprocs * 2; i++)
+	for (int i = 0; i < team_size * 2; i++)
 		send_info[i]->clear();
-	int* const sendcount_mpi = new int[nprocs];
-	bool* is_direct = new bool[nprocs];
-	bool* flags = new bool[nprocs];
+	int* const sendcount_mpi = new int[team_size];
+	bool* is_direct = new bool[team_size];
+	bool* flags = new bool[team_size];
 
 	// Find all the processes that access the blocked part of array owned
 	// by the process
 	for (int i = curr_start; i < curr_end; i++){
 
 		const net* curr_net = curr_nets[i];
-		for (int j = 0; j < nprocs; j++){
+		for (int j = 0; j < team_size; j++){
 			is_direct[j] = false;
 			flags[j] = false;
 		}
@@ -899,7 +899,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 		     it++ ){
 
 			const int access_proc = (*it).pin->home;
-			assert(access_proc != -1 && access_proc < nprocs);
+			assert(access_proc != -1 && access_proc < team_size);
 			if (!flags[access_proc]){
 				if (is_direct[access_proc])
 					send_info[access_proc * 2]->insert(curr_net->data_index);
@@ -912,12 +912,12 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	delete[] is_direct;
 	delete[] flags;
 
-	int* const sendcount = new int[nprocs * 2];
-	int* const curr_displ = new int[nprocs * 2 + 1];
-	int* const senddispl = new int[nprocs + 1];
+	int* const sendcount = new int[team_size * 2];
+	int* const curr_displ = new int[team_size * 2 + 1];
+	int* const senddispl = new int[team_size + 1];
 	senddispl[0] = 0;
 	curr_displ[0] = 0;
-	for (int i = 0; i < nprocs; i++){
+	for (int i = 0; i < team_size; i++){
 		sendcount_mpi[i] = 0;
 		for (int k = 0; k < 2; k++){
 			sendcount[i * 2 + k] = send_info[i * 2 + k]->size();
@@ -928,32 +928,32 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 		senddispl[i + 1] = senddispl[i] + sendcount_mpi[i];
 	}
 
-	int* const recvcount = new int[nprocs*2];
-	int* const recvcount_mpi = new int[nprocs];
+	int* const recvcount = new int[team_size * 2];
+	int* const recvcount_mpi = new int[team_size];
 
 	// Send the number of elements sent from each process
 	MPI_Alltoall(sendcount, 2, MPI_INT, recvcount, 2, MPI_INT,
 	             global_comm::team_communicator);
 
-	int* const sendbuffer = new int[senddispl[nprocs]];
+	int* const sendbuffer = new int[senddispl[team_size]];
 
 	// Send the actual elements
 	int counter = 0;
-	for (int i = 0; i < nprocs; i++)
+	for (int i = 0; i < team_size; i++)
 		for (int k = 0; k < 2; k++)
 			for (set<int>::iterator it = send_info[i * 2 + k]->begin();
 			     it != send_info[i * 2 + k]->end(); it++)
 
 				sendbuffer[counter++] = (*it);
 
-	assert(counter == senddispl[nprocs]);
+	assert(counter == senddispl[team_size]);
 
-	int* const recvdispl = new int[nprocs + 1];
-	*displ = new int[nprocs * 2];
-	*count = new int[nprocs * 2];
+	int* const recvdispl = new int[team_size + 1];
+	*displ = new int[team_size * 2];
+	*count = new int[team_size * 2];
 	recvdispl[0] = 0;
 	int curr_recv_displ = 0;
-	for (int i = 0; i < nprocs; i++){
+	for (int i = 0; i < team_size; i++){
 		recvcount_mpi[i] = 0;
 		for (int k = 0; k < 2; k++){
 			*count[i * 2 + k] = recvcount[i * 2 + k];
@@ -964,7 +964,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 		recvdispl[i + 1] = recvdispl[i] + recvcount_mpi[i];
 	}
 
-	*recvbuf = new int[recvdispl[nprocs]];
+	*recvbuf = new int[recvdispl[team_size]];
 
 	MPI_Alltoallv(sendbuffer, sendcount_mpi, senddispl, MPI_INT,
 	              *recvbuf, recvcount_mpi, recvdispl, MPI_INT,
