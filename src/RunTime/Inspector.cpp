@@ -1002,7 +1002,7 @@ void Inspector::GetBufferSize(){
 		curr_global_comm->write_send_offset[0] = 0;
 		curr_global_comm->write_recv_offset[0] = 0;
 
-		for (int i = 0; i < nprocs; i++){
+		for (int i = 0; i < team_size; i++){
 
 			send_read_count +=
 				team_comm->GetReadSendCount(i, send_read_count);
@@ -1145,17 +1145,17 @@ void Inspector::GetBufferSize(){
 void Inspector::CommunicateGhosts(){
 
 	// Number of send-ghosts for each process, all arrays
-	int sendcount[nprocs];
+	int sendcount[team_size];
 
 	// senddispl[i] will contain the index where ghosts start for process i,
 	// senddispl[i + 1] the index where ghosts end (not included) for process i
-	int senddispl[nprocs + 1];
+	int senddispl[team_size + 1];
 
 	// Number of receive-ghosts for each process, all arrays
-	int recvcount[nprocs];
+	int recvcount[team_size];
 
 	// Same explanation as senddispl but for receive-ghosts
-	int recvdispl[nprocs + 1];
+	int recvdispl[team_size + 1];
 
 	// Number of R/W arrays
 	int n_data = 0;
@@ -1198,14 +1198,14 @@ void Inspector::CommunicateGhosts(){
 		senddispl[i + 1] = senddispl[i] + sendcount[i];
 
 	// #receive-ghosts per target process, per R/W array
-	int* recvghosts_count = new int[nprocs*n_data];
+	int* recvghosts_count = new int[team_size * n_data];
 
 	// Send counts of send-ghosts and receive counts of receive-ghosts
 	MPI_Alltoall(sendghosts_count, n_data, MPI_INT, recvghosts_count, n_data,
 	             MPI_INT, global_comm::global_iec_communicator);
 
 	// Extract #receive-ghosts for all sender processes
-	for (int i = 0; i < nprocs; i++){
+	for (int i = 0; i < team_size; i++){
 		int send_proc = i;
 		for (int d = 0; d < n_data; d++){
 			int nghosts = recvghosts_count[i * n_data + d];
@@ -1215,7 +1215,7 @@ void Inspector::CommunicateGhosts(){
 
 	// Calculate indices where receive-ghosts start & end for all processes
 	recvdispl[0] = 0;
-	for (int i = 0; i < nprocs; i++)
+	for (int i = 0; i < team_size; i++)
 		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
 
 	int* ghosts_send_val = new int[senddispl[team_size]];
@@ -1223,7 +1223,7 @@ void Inspector::CommunicateGhosts(){
 
 	// Populate the actual ghosts from data in the local arrays
 	int counter = 0;
-	for (int i = 0; i < nprocs; i++){
+	for (int i = 0; i < team_size; i++){
 
 		int d = 0;
 		for (deque<local_data*>::iterator it = all_local_data.begin();
@@ -1240,7 +1240,7 @@ void Inspector::CommunicateGhosts(){
 			}
 	}
 
-	assert(counter == senddispl[nprocs]);
+	assert(counter == senddispl[team_size]);
 
 	// Communicate the send- and receive-ghosts
 	MPI_Alltoallv(ghosts_send_val, sendcount, senddispl, MPI_INT,
@@ -1249,7 +1249,7 @@ void Inspector::CommunicateGhosts(){
 
 	// Update the owned data with the received ghost values
 	counter = 0;
-	for (int i = 0; i < nprocs; i++){
+	for (int i = 0; i < team_size; i++){
 
 		int d = 0;
 		for (deque<local_data*>::iterator it = all_local_data.begin();

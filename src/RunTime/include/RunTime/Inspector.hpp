@@ -148,6 +148,7 @@ public:
 	}
 
 	inline int GetNProcs() const {return nprocs;}
+	inline int GetTeamSize() const {return team_size;}
 
 	inline void SetStride(int an, int st){
 		all_data[an]->SetStride(st);
@@ -303,8 +304,8 @@ public:
 	                           int oas, bool iro, bool ic){
 
 		local_data* new_data =
-			new local_data_double(mn, team_size, team_num, proc_id, stride_size,
-			                      ddni, oas, iro, ic);
+			new local_data_double(mn, team_size, proc_id, stride_size, ddni,
+			                      oas, iro, ic);
 		all_local_data.push_back(new_data);
 	}
 

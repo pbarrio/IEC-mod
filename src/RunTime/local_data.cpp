@@ -48,7 +48,6 @@ int binary_search(int* const array, const int n, const int value){
  *
  * \param mn Identifier of the global array
  * \param np The original array is split into these many parts for comms
- * \param md Identifier of the local communicator
  * \param pid Identifier of the current process
  * \param st Size of each position in the array (in array units, not bytes)
  * \param dni Nets corresponding to all the positions in the array
@@ -56,11 +55,10 @@ int binary_search(int* const array, const int n, const int value){
  * \param iro True if the data is read-only
  * \param ic Unused in quake
  */
-local_data::local_data(int mn, int np, int md, int pid, int st, const net** dni,
+local_data::local_data(int mn, int np, int pid, int st, const net** dni,
                        int oas, bool iro, bool ic):
 	my_num(mn),
 	nparts(np),
-	myid(md),
 	stride(st),
 	proc_id(pid),
 	data_net_info(dni),
@@ -133,10 +131,8 @@ void local_data::InsertIndirectAccess
 void local_data::SetupLocalArray(){
 
 	if (is_constrained){
-		const int block_start = (orig_array_size / nparts) * myid;
-		const int block_stop = (myid == nparts - 1 ?
-		                        orig_array_size :
-		                        (orig_array_size / nparts) * (myid + 1));
+		const int block_start = 0;
+		const int block_stop = orig_array_size;
 		assert(direct_access.size() == 0);
 		for (int i = block_start; i < block_stop; i++)
 			indirect_access.insert(i);
@@ -176,9 +172,6 @@ int local_data::GetLocalIndex(int global_index) const{
 		assert(indirect_access_size > 0);
 		local_index = binary_search(indirect_access_array, indirect_access_size,
 		                            global_index);
-		if( local_index == -1 )
-			printf("ID:%d, Couldnt find %d of array %d\n", myid, global_index,
-			       my_num);
 		assert(local_index != -1);
 		local_index += direct_access_size;
 	}
@@ -239,21 +232,13 @@ void local_data::GenerateGhosts(){
 		for (int i = 0; i < direct_access_size; i++, total_counter++){
 			int curr_index = direct_access_array[i];
 			const net* curr_net = data_net_info[curr_index];
-			if( curr_net->home == myid ){
-				l_to_g[total_counter] = curr_index;
-			}
-			else
-				global_ghosts[curr_net->home].insert(curr_index);
+			l_to_g[total_counter] = curr_index;
 		}
 		for (int i = 0; i < indirect_access_size; i++, total_counter++){
 			int curr_index = indirect_access_array[i];
 			const net* curr_net = data_net_info[curr_index];
 			assert(curr_net->home >= 0 && curr_net->home < nparts);
-			if( curr_net->home == myid ){
-				l_to_g[total_counter] = curr_index;
-			}
-			else
-				global_ghosts[curr_net->home].insert(curr_index);
+			l_to_g[total_counter] = curr_index;
 		}
 
 		if (is_constrained){
@@ -318,7 +303,8 @@ void local_data::GenerateOwned(){
 local_data_double::local_data_double(int mn, int np, int pid, int st,
                                      const net** dni, int oas, bool iro,
                                      bool ic):
-	local_data(mn, np, md, pid, st / sizeof(double), dni, oas, iro, ic){
+
+	local_data(mn, np, pid, st / sizeof(double), dni, oas, iro, ic){
 
 	orig_array = NULL;
 	local_array = NULL;
@@ -538,13 +524,13 @@ void local_data_double::PopulateLocalGhosts
 	double* source_local_array = source_array_double->local_array;
 
 	if (stride == 1)
-		for (int j = ghosts_offset[source], k = source_owned_offset[myid];
+		for (int j = ghosts_offset[source], k = source_owned_offset[0];
 		     j < ghosts_offset[source + 1]; j++, k++){
 
 			local_array[ghosts[j]] = source_local_array[source_owned[k]];
 		}
 	else
-		for (int j = ghosts_offset[source], k = source_owned_offset[myid];
+		for (int j = ghosts_offset[source], k = source_owned_offset[0];
 		     j < ghosts_offset[source + 1]; j++, k++){
 			for (int l = 0; l < stride; l++)
 				local_array[ghosts[j] * stride + l] =
@@ -560,11 +546,11 @@ void local_data_double::UpdateLocalOwned(local_data* source_array, int source){
 	int* source_ghosts = source_array_double->ghosts;
 	double* source_local_array = source_array_double->local_array;
 	if (stride == 1)
-		for (int j = owned_offset[source], k = source_ghosts_offset[myid];
+		for (int j = owned_offset[source], k = source_ghosts_offset[0];
 		     j < owned_offset[source + 1]; j++, k++)
 			local_array[owned[j]] += source_local_array[source_ghosts[k]];
 	else
-		for (int j = owned_offset[source], k = source_ghosts_offset[myid];
+		for (int j = owned_offset[source], k = source_ghosts_offset[0];
 		     j < owned_offset[source + 1]; j++, k++)
 			for (int l = 0; l < stride; l++)
 				local_array[owned[j] * stride + l] +=

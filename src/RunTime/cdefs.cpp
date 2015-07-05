@@ -247,9 +247,8 @@ extern "C" {
 		int *buf, *displ, *count;
 		Inspector* inspector = Inspector::instance();
 		inspector->GetLocalAccesses(an, &buf, &displ, &count);
-
-		int nprocs = Inspector::instance()->GetNProcs();
-		for (int j = 0; j < nprocs; j++){
+		int team_size = Inspector::instance()->GetTeamSize();
+		for (int j = 0; j < team_size; j++){
 			inspector->InsertDirectAccess(an, buf + displ[j * 2], count[j * 2]);
 			inspector->InsertIndirectAccess(an, buf + displ[j * 2 + 1],
 			                                count[j * 2 + 1]);

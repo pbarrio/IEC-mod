@@ -40,9 +40,6 @@ protected:
 	/// Number of parts in which this array will be divided
 	const int nparts;
 
-	/// Identifier of this local data
-	const int myid;
-
 	/// The id of this process
 	const int proc_id;
 
@@ -101,7 +98,7 @@ public:
 	// Data on all arrays owned by this process
 	std::set<int> *global_owned;
 
-	local_data(int, int, int, int, int, const net**, int, bool, bool);
+	local_data(int, int, int, int, const net**, int, bool, bool);
 
 	virtual ~local_data();
 
@@ -175,8 +172,8 @@ private:
 
 public:
 
-	local_data_double(int, int, int, int, int, const net** const, int, bool, bool);
-  
+	local_data_double(int, int, int, int, const net** const, int, bool, bool);
+
 	~local_data_double();
 
 	void PopulateLocalArray(double*, double*, int);
