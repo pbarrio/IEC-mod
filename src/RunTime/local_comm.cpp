@@ -35,16 +35,16 @@ local_comm::local_comm(int mn, int np, int pid):
 	read_send_count(new int[np]),
 	read_recv_count(new int[np]),
 	write_send_count(new int[np]),
-	write_recv_count(new int[np])
-{ 
-	memset(read_send_count,0,sizeof(int)*nprocs);
-	memset(read_send_offset,0,sizeof(int)*nprocs);
-	memset(read_recv_count,0,sizeof(int)*nprocs);
-	memset(read_recv_offset,0,sizeof(int)*nprocs);
-	memset(write_send_count,0,sizeof(int)*nprocs);
-	memset(write_send_offset,0,sizeof(int)*nprocs);
-	memset(write_recv_count,0,sizeof(int)*nprocs);
-	memset(write_recv_offset,0,sizeof(int)*nprocs);
+	write_recv_count(new int[np]){
+
+	memset(read_send_count, 0, sizeof(int) * nprocs);
+	memset(read_send_offset, 0, sizeof(int) * nprocs);
+	memset(read_recv_count, 0, sizeof(int) * nprocs);
+	memset(read_recv_offset, 0, sizeof(int) * nprocs);
+	memset(write_send_count, 0, sizeof(int) * nprocs);
+	memset(write_send_offset, 0, sizeof(int) * nprocs);
+	memset(write_recv_count, 0, sizeof(int) * nprocs);
+	memset(write_recv_offset, 0, sizeof(int) * nprocs);
 #ifdef COMM_TIME
 	read_comm_time = 0.0;
 	write_comm_time = 0.0;
@@ -58,8 +58,8 @@ local_comm::local_comm(int mn, int np, int pid):
 
 }
 
-local_comm::~local_comm()
-{
+local_comm::~local_comm(){
+
 #ifdef COMM_TIME
 	if( thread_id == 0 && read_comm_time > 0.0 )
 		printf("MXC:GID:%d,CommNum:%d,ReadCommTime:%5.4le\n",myid,my_num,read_comm_time);
@@ -79,31 +79,33 @@ local_comm::~local_comm()
 /**
  * \brief Unused in quake
  */
-int local_comm::GetReadSendCount(const int dest, const int curr_offset)
-{
+int local_comm::GetReadSendCount(const int dest, const int curr_offset){
+
 	assert(read_send_count[dest] == 0);
 	read_send_offset[dest] = curr_offset;
 	int send_count = 0;
-	for( vector<local_data*>::iterator it = read_arrays.begin() ; it != read_arrays.end() ; it++ )
+	for (vector<local_data*>::iterator it = read_arrays.begin();
+	     it != read_arrays.end(); it++)
 		send_count += (*it)->GetOwnedCount(dest);
 	read_send_count[dest] = send_count;
-  
-	if( dest == proc_id )
+
+	if (dest == proc_id)
 		return 0;
 	else
 		return send_count;
 }
 
-int local_comm::GetReadRecvCount(const int source, const int curr_offset )
-{
+int local_comm::GetReadRecvCount(const int source, const int curr_offset){
+
 	assert(read_recv_count[source] == 0);
 	read_recv_offset[source] = curr_offset;
 	int recv_count = 0;
-	for( vector<local_data*>::iterator it = read_arrays.begin() ; it != read_arrays.end() ; it++ )
+	for (vector<local_data*>::iterator it = read_arrays.begin();
+	     it != read_arrays.end(); it++)
 		recv_count += (*it)->GetGhostsCount(source);
 	read_recv_count[source] = recv_count;
 
-	if( source == proc_id )
+	if (source == proc_id)
 		return 0;
 	else
 		return recv_count;
@@ -121,33 +123,35 @@ int local_comm::GetReadRecvCount(const int source, const int curr_offset )
  * \param dest Destination process (owner of the ghosts)
  * \param curr_offset Size of the array so far -> start of this batch
  */
-int local_comm::GetWriteSendCount(const int dest, const int curr_offset)
-{
+int local_comm::GetWriteSendCount(const int dest, const int curr_offset){
+
 	assert(write_send_count[dest] == 0);
 	write_send_offset[dest] = curr_offset;
 	int send_count = 0;
-	for( vector<local_data*>::iterator it = write_arrays.begin() ; it != write_arrays.end() ; it++){
+	for (vector<local_data*>::iterator it = write_arrays.begin();
+	     it != write_arrays.end(); it++){
 		send_count += (*it)->GetGhostsCount(dest);
 	}
 	write_send_count[dest] = send_count;
 
-	if( dest == proc_id )
+	if (dest == proc_id)
 		return 0;
 	else
 		return send_count;
 }
 
 
-int local_comm::GetWriteRecvCount(const int source, const int curr_offset)
-{
+int local_comm::GetWriteRecvCount(const int source, const int curr_offset){
+
 	assert(write_recv_count[source] == 0);
 	write_recv_offset[source] = curr_offset;
 	int recv_count = 0;
-	for( vector<local_data*>::iterator it = write_arrays.begin(); it != write_arrays.end() ; it++ )
+	for (vector<local_data*>::iterator it = write_arrays.begin();
+	     it != write_arrays.end(); it++)
 		recv_count += (*it)->GetOwnedCount(source);
 	write_recv_count[source] = recv_count;
 
-	if( source == proc_id )
+	if (source == proc_id)
 		return 0;
 	else
 		return recv_count;
@@ -161,7 +165,7 @@ int local_comm::GetWriteRecvCount(const int source, const int curr_offset)
  * that use this data.
  *
  * \param send_buffer The buffer to be populated.
- * \param buffer_size 
+ * \param buffer_size
  */
 void local_comm::PopulateReadSendBuffer(char* send_buffer){
 
@@ -210,7 +214,7 @@ void local_comm::PopulateWriteSendBuffer(char* send_buffer){
 /**
  * \brief Get received data owned by us in order to update local copy
  *
- * Since we are the owners of all that data, our copy is the important 
+ * Since we are the owners of all that data, our copy is the important
  * one!
  *
  * \param send_buffer The receive buffer where preliminary results
@@ -225,68 +229,10 @@ void local_comm::ExtractWriteRecvBuffer(char* recv_buffer){
 }
 
 
-void local_comm::InitWriteGhosts()
-{
+void local_comm::InitWriteGhosts(){
+
 	for (vector<local_data*>::iterator it = write_arrays.begin();
 	     it != write_arrays.end(); it++)
 
 		(*it)->InitWriteGhosts();
-}
-
-void local_comm::print_comm(FILE* comm_file)
-{
-#ifndef NDEBUG
-	assert(comm_file);
-	fprintf(comm_file,"Local Communicator %d\n",my_num);
-
-	if( read_arrays.size() != 0 ) {
-
-		fprintf(comm_file,"Read Arrays:");
-		for (vector<local_data*>::iterator it = read_arrays.begin();
-		     it != read_arrays.end(); it++ )
-
-			fprintf(comm_file," %d",(*it)->GetMyNum());
-
-		fprintf(comm_file,"\n");
-		fprintf(comm_file,"\tReadSendCount :");
-		for(int i = 0 ; i < nprocs ; i++ )
-			fprintf(comm_file," %d",read_send_count[i]);
-		fprintf(comm_file,"\n");
-		fprintf(comm_file,"\tReadSendOffset :");
-		for(int i = 0 ; i < nprocs; i++ )
-			fprintf(comm_file," %d",read_send_offset[i]);
-		fprintf(comm_file,"\n");
-		fprintf(comm_file,"\tReadRecvCount :");
-		for(int i = 0 ; i < nprocs; i++ )
-			fprintf(comm_file," %d",read_recv_count[i]);
-		fprintf(comm_file,"\n");
-		fprintf(comm_file,"\tReadRecvOffset :");
-		for(int i = 0 ; i < nprocs; i++ )
-			fprintf(comm_file," %d",read_recv_offset[i]);
-		fprintf(comm_file,"\n");
-	}
-	if( write_arrays.size() != 0 ){
-		fprintf(comm_file,"Write Arrays:");
-		for( vector<local_data*>::iterator it = write_arrays.begin() ; it != write_arrays.end() ; it++ )
-			fprintf(comm_file," %d",(*it)->GetMyNum());
-		fprintf(comm_file,"\n");
-		fprintf(comm_file,"\tWriteSendCount :");
-		for(int i = 0 ; i < nprocs; i++ )
-			fprintf(comm_file," %d",write_send_count[i]);
-		fprintf(comm_file,"\n");
-		fprintf(comm_file,"\tWriteSendOffset :");
-		for(int i = 0 ; i < nprocs; i++ )
-			fprintf(comm_file," %d",write_send_offset[i]);
-		fprintf(comm_file,"\n");
-		fprintf(comm_file,"\tWriteRecvCount :");
-		for(int i = 0 ; i < nprocs; i++ )
-			fprintf(comm_file," %d",write_recv_count[i]);
-		fprintf(comm_file,"\n");
-		fprintf(comm_file,"\tWriteRecvOffset :");
-		for(int i = 0 ; i < nprocs; i++ )
-			fprintf(comm_file," %d",write_recv_offset[i]);
-		fprintf(comm_file,"\n");
-	}
-	fflush(comm_file);
-#endif
 }

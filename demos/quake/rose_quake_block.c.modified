@@ -440,7 +440,7 @@ int main(int argc,char **argv){
 
 	int iter_num_count[2] = {ARCHnodes - 0, ARCHnodes - 0};
 
-	int data_num_count[3] = { ARCHnodes , ARCHnodes ,  ARCHmatrixlen };
+	int data_num_count[3] = {ARCHnodes, ARCHnodes, ARCHmatrixlen};
 	int ro_mask[3] = {0, 1, 1};
 
 	create_inspector(__proc_id__, __nprocs__, myTeam, idInMyTeam, teamSize, 2,
@@ -660,25 +660,23 @@ int main(int argc,char **argv){
 
 	// Loop 0
 	for (i = 0; i < ARCHnodes; i++) {
-		if (get_vertex_home(0,i) == __myid__) {
-			__body_0__ = __body_0__ + 1;;
+		if (get_vertex_home(0, i) == __myid__){
+			__body_0__ = __body_0__ + 1;
 		}
 	}
 
 	// Loop 1
-	for (i = 0; i < ARCHnodes; i++) {
-		if (get_vertex_home(0,i) == __myid__) {{
-				Anext = get_elem(1,i);
-				for (j = (get_elem(1,i) + 1); j < get_elem(1,i + 1); j++) {{
-						col = get_elem(0,j);;
-					}
-					__body_i_6__ = __body_i_6__ + 1;;
-				}
-				__loop_i_6__ = __loop_i_6__ + 1;;
+	for (i = 0; i < ARCHnodes; i++){
+		if (get_vertex_home(0, i) == __myid__){
+			Anext = get_elem(1, i);
+			for (j = get_elem(1, i) + 1; j < get_elem(1, i + 1); j++){
+				col = get_elem(0, j);
+				__body_i_6__ = __body_i_6__ + 1;
 			}
-			__body_1__ = __body_1__ + 1;;
+			__loop_i_6__ = __loop_i_6__ + 1;
+			__body_1__ = __body_1__ + 1;
 		}
-	};
+	}
 	int *__i_disp0_j_5_ = (int *)(malloc(__body_i_6__ * sizeof(int )));
 	int *__i_disp1_j_4_ = (int *)(malloc(__body_i_6__ * sizeof(int )));
 	int *__i_K_i_1_ = (int *)(malloc(__body_1__ * sizeof(int )));
@@ -1026,19 +1024,25 @@ int main(int argc,char **argv){
 	free_2d_double(__local_K__);
 	free(__lb_j_i_6__);
 	free(__ub_j_i_6__);
-	delete_inspector();;
+	delete_inspector();
 
 	fprintf(stderr,"Time step %d\n",iter);
 	if (Src.sourcenode <= ARCHmine)
-		printf("%d: %.2e %.2e %.2e\n",ARCHglobalnode[Src.sourcenode],disp0[Src.sourcenode][0],disp0[Src.sourcenode][1],disp0[Src.sourcenode][2]);
+		printf("%d: %.2e %.2e %.2e\n",
+		       ARCHglobalnode[Src.sourcenode], disp0[Src.sourcenode][0],
+		       disp0[Src.sourcenode][1], disp0[Src.sourcenode][2]);
 	if (Src.epicenternode <= ARCHmine)
-		printf("%d: %.2e %.2e %.2e\n",ARCHglobalnode[Src.epicenternode],disp0[Src.epicenternode][0],disp0[Src.epicenternode][1],disp0[Src.epicenternode][2]);
-	fprintf(stderr,"%s: %d nodes %d elems %d timesteps\n",progname,ARCHglobalnodes,ARCHglobalelems,timesteps);
+		printf("%d: %.2e %.2e %.2e\n",
+		       ARCHglobalnode[Src.epicenternode], disp0[Src.epicenternode][0],
+		       disp0[Src.epicenternode][1], disp0[Src.epicenternode][2]);
+	fprintf(stderr,"%s: %d nodes %d elems %d timesteps\n",
+	        progname, ARCHglobalnodes, ARCHglobalelems, timesteps);
 	fprintf(stderr,"\n");
 	fflush(stderr);
 	if (!(options.quiet != 0)) {
 		fprintf(stderr,"%s: Done. Terminating the simulation.\n",progname);
 	}
+
 	ARMCI_Finalize();
 	MPI_Finalize();
 	return 0;
@@ -1796,6 +1800,12 @@ void mem_init()
 		fflush(stderr);
 		exit(0);
 	}
+
+	/*
+	 * The following allocations make sure that multidimensional arrays
+	 * are allocated in contiguous memory
+	 */
+
 	/* Velocity array */
 	double *vel_temp = (double *)(malloc(((ARCHnodes * 3) * sizeof(double ))));
 	vel = ((double **)(malloc((ARCHnodes * sizeof(double *)))));
@@ -1908,6 +1918,7 @@ void mem_init()
 			exit(0);
 		}
 	}
+
 	double *disp1_temp = (double *)(malloc(((ARCHnodes * 3) * sizeof(double ))));
 	disp1 = ((double **)(malloc((ARCHnodes * sizeof(double *)))));
 	if (disp1 == ((double **)((double **)((void *)0)))) {
@@ -1954,6 +1965,7 @@ void mem_init()
 			exit(0);
 		}
 	}
+
 	{
 		/* Initializations */
 		for (i = 0; i < ARCHnodes; i++) {

@@ -19,17 +19,16 @@
 #include "RunTime/local_data.hpp"
 #include "mpi.h"
 #include <string.h>
-#include "omp.h"
 
 using namespace std;
 
-int binary_search( int* const array, const int n, const int value){
+int binary_search(int* const array, const int n, const int value){
 
 	int left = 0, right = n - 1;
 	int mid;
-	while( left <= right ){
+	while (left <= right){
 		mid = (left + right) / 2;
-		if (array[mid] ==value)
+		if (array[mid] == value)
 			break;
 		else if (array[mid] < value){
 			left = mid + 1;
@@ -37,7 +36,7 @@ int binary_search( int* const array, const int n, const int value){
 		else
 			right = mid - 1;
 	}
-	if(left > right)
+	if (left > right)
 		return -1;
 	else
 		return mid;
@@ -51,7 +50,7 @@ int binary_search( int* const array, const int n, const int value){
  * \param np The original array is split into these many parts for comms
  * \param md Identifier of the local communicator
  * \param pid Identifier of the current process
- * \param st Size of each position in the array (e.g. int = 4 bytes)
+ * \param st Size of each position in the array (in array units, not bytes)
  * \param dni Nets corresponding to all the positions in the array
  * \param oas Size of the original array
  * \param iro True if the data is read-only
@@ -66,12 +65,11 @@ local_data::local_data(int mn, int np, int md, int pid, int st, const net** dni,
 	proc_id(pid),
 	data_net_info(dni),
 	orig_array_size(oas),
-	ghosts_offset(new int[np+1]),
-	owned_offset(new int[np+1]),
+	ghosts_offset(new int[np + 1]),
+	owned_offset(new int[np + 1]),
 	local_array_size(-1),
 	is_read_only(iro),
-	is_constrained(ic)
-{
+	is_constrained(ic){
 
 	ghosts = NULL;
 	owned = NULL;
@@ -84,8 +82,8 @@ local_data::local_data(int mn, int np, int md, int pid, int st, const net** dni,
 }
 
 
-local_data::~local_data()
-{
+local_data::~local_data(){
+
 	delete[] ghosts_offset;
 	delete[] owned_offset;
 	if(ghosts)
@@ -99,66 +97,81 @@ local_data::~local_data()
 }
 
 
-void local_data::AddIndexAccessed(int index, int access_type)
-{
-	if( access_type == 1 ){
+void local_data::AddIndexAccessed(int index, int access_type){
+
+	if (access_type == 1){
 		set<int>::iterator it = indirect_access.find(index);
-		if( it != indirect_access.end() )
+		if (it != indirect_access.end())
 			indirect_access.erase(it);
 		direct_access.insert(index);
 	}
 	else{
 		set<int>::iterator it = direct_access.find(index);
-		if( it == direct_access.end() )
+		if (it == direct_access.end())
 			indirect_access.insert(index);
 	}
 }
 
-void local_data::InsertDirectAccess(const int* read_buffer, const int num_vals)
-{
-	direct_access.insert(read_buffer,read_buffer+num_vals);
+void local_data::InsertDirectAccess(const int* read_buffer, const int num_vals){
+
+	direct_access.insert(read_buffer, read_buffer + num_vals);
 }
 
-void local_data::InsertIndirectAccess(const int* read_buffer, const int num_vals)
-{
-	indirect_access.insert(read_buffer,read_buffer+num_vals);
+
+/**
+ * \brief Insert indirect access from this process to a region of data
+ *
+ * \param read_buffer Pointer to the start of the data
+ * \param num_vals Size of the data to be indirectly accessed
+ */
+void local_data::InsertIndirectAccess
+(const int* read_buffer, const int num_vals){
+
+	indirect_access.insert(read_buffer, read_buffer + num_vals);
 }
 
-void local_data::SetupLocalArray()
-{
+void local_data::SetupLocalArray(){
+
 	if (is_constrained){
-		const int block_start = (orig_array_size/nparts) * myid;
-		const int block_stop = ( myid == nparts - 1 ? orig_array_size : (orig_array_size / nparts ) * (myid+1) );
-		assert(direct_access.size() == 0 );
-		for( int i = block_start ; i < block_stop ; i++ )
+		const int block_start = (orig_array_size / nparts) * myid;
+		const int block_stop = (myid == nparts - 1 ?
+		                        orig_array_size :
+		                        (orig_array_size / nparts) * (myid + 1));
+		assert(direct_access.size() == 0);
+		for (int i = block_start; i < block_stop; i++)
 			indirect_access.insert(i);
 	}
-	int counter = 0 ;
 	direct_access_size = direct_access.size();
 	direct_access_array = new int[direct_access_size];
 	indirect_access_size = indirect_access.size();
 	indirect_access_array = new int[indirect_access_size];
 
+	int i = 0;
 	for (set<int>::const_iterator it = direct_access.begin();
-	     it != direct_access.end(); it++, counter++)
-		direct_access_array[counter] = *it;
-
+	     it != direct_access.end(); it++, i++)
+		direct_access_array[i] = *it;
+	i = 0;
 	for (set<int>::const_iterator it = indirect_access.begin();
-	     it != indirect_access.end(); it++, counter++)
-		indirect_access_array[counter-direct_access_size] = *it;
-
-	assert(counter == direct_access_size + indirect_access_size);
+	     it != indirect_access.end(); it++, i++)
+		indirect_access_array[i] = *it;
 
 	direct_access.clear();
 	indirect_access.clear();
 }
 
-int local_data::GetLocalIndex(int global_index) const {
+/**
+ * \brief Find the local index corresponding to a global index
+ *
+ * \param global_index The global index to look for
+ */
+int local_data::GetLocalIndex(int global_index) const{
 
 	int local_index = -1;
+
 	if (direct_access_size > 0)
 		local_index = binary_search(direct_access_array, direct_access_size,
 		                            global_index);
+
 	if (local_index == -1){
 		assert(indirect_access_size > 0);
 		local_index = binary_search(indirect_access_array, indirect_access_size,
@@ -169,6 +182,7 @@ int local_data::GetLocalIndex(int global_index) const {
 		assert(local_index != -1);
 		local_index += direct_access_size;
 	}
+
 	return local_index;
 }
 
@@ -209,7 +223,7 @@ void local_data::RenumberOffsetArray(int array_size, int* offset_array,
 void local_data::GenerateGhosts(){
 
 	assert(local_array_size == -1);
-	if( !is_read_only ){
+	if (!is_read_only){
 		assert(data_net_info);
 
 		// Various initializations
@@ -218,11 +232,11 @@ void local_data::GenerateGhosts(){
 		local_array_size = direct_access_size + indirect_access_size;
 		assert(l_to_g == NULL);
 		l_to_g = new int[local_array_size];
-		for( int i = 0 ; i < local_array_size ; i++ )
+		for (int i = 0; i < local_array_size; i++)
 			l_to_g[i] = -1;
 
 		int total_counter = 0;
-		for( int i = 0 ; i < direct_access_size ; i++ ,total_counter++ ){
+		for (int i = 0; i < direct_access_size; i++, total_counter++){
 			int curr_index = direct_access_array[i];
 			const net* curr_net = data_net_info[curr_index];
 			if( curr_net->home == myid ){
@@ -231,7 +245,7 @@ void local_data::GenerateGhosts(){
 			else
 				global_ghosts[curr_net->home].insert(curr_index);
 		}
-		for( int i = 0 ; i < indirect_access_size ; i++ , total_counter++ ){
+		for (int i = 0; i < indirect_access_size; i++, total_counter++){
 			int curr_index = indirect_access_array[i];
 			const net* curr_net = data_net_info[curr_index];
 			assert(curr_net->home >= 0 && curr_net->home < nparts);
@@ -242,14 +256,14 @@ void local_data::GenerateGhosts(){
 				global_ghosts[curr_net->home].insert(curr_index);
 		}
 
-		if( is_constrained ){
+		if (is_constrained){
 			block_owned_offset = 0;
-			for( int i = 0 ; i < local_array_size ; i++ )
-				if( l_to_g[i] == -1 )
+			for (int i = 0; i < local_array_size; i++)
+				if (l_to_g[i] == -1)
 					block_owned_offset++;
 				else
 					break;
-		} 
+		}
 	}
 }
 
@@ -289,60 +303,26 @@ void local_data::GenerateOwned(){
 }
 
 
-void local_data::print_data(FILE* data_file){
-
-#ifndef NDEBUG
-	fprintf(data_file,"Array %d, localsize %d, stride %d\n",my_num,local_array_size,stride);
-// 	fprintf(data_file,"\tDirect(%d) :",direct_access_size);
-	fprintf(data_file,"\tDirect(%ld) :",direct_access_size);
-#ifdef HIGH_DETAILS
-	for( int i =0 ; i < direct_access_size ; i++)
-		fprintf(data_file," %d",direct_access_array[i]);
-#endif
-	fprintf(data_file,"\n\tIndirect(%d) :",indirect_access_size);
-#ifdef HIGH_DETAILS
-	for( int i = 0 ; i < indirect_access_size ; i++ )
-		fprintf(data_file," %d",indirect_access_array[i]);
-#endif
-	fprintf(data_file,"\n");
-	if( !is_read_only ){
-#ifdef HIGH_DETAILS
-		fprintf(data_file,"\n\tLtoG :");
-		for( int i = 0 ; i < local_array_size ; i++ )
-			fprintf(data_file," %d",l_to_g[i]);
-		fprintf(data_file,"\n");
-#endif
-		fprintf(data_file,"\tGhosts offset :");
-		for( int i = 0 ;i  < nparts+1 ; i++ )
-			fprintf(data_file," %d",ghosts_offset[i]);
-		fprintf(data_file,"\n\tGhosts :");
-#ifdef HIGH_DETAILS
-		for( int i = 0 ; i < ghosts_offset[nparts] ; i++ )
-			fprintf(data_file," %d",ghosts[i]);
-#endif
-		fprintf(data_file,"\n\tOwned offset :");
-		for( int i = 0 ;i  < nparts+1 ; i++ )
-			fprintf(data_file," %d",owned_offset[i]);
-		fprintf(data_file,"\n\tOwned :");
-#ifdef HIGH_DETAILS
-		for( int i = 0 ; i < owned_offset[nparts] ; i++ )
-			fprintf(data_file," %d",owned[i]);
-#endif
-		fprintf(data_file,"\n");
-	}
-	fflush(data_file);
-#endif
-}
-
-
-local_data_double::local_data_double(int mn, int np, int md, int pid, int st,
+/**
+ * \brief Constructor
+ *
+ * \param mn Identifier of the global array
+ * \param np The original array is split into these many parts for comms
+ * \param pid Identifier of the current process
+ * \param st Size of each position in the array (e.g. int = 4 bytes)
+ * \param dni Nets corresponding to all the positions in the array
+ * \param oas Size of the original array
+ * \param iro True if the data is read-only
+ * \param ic Unused in quake
+ */
+local_data_double::local_data_double(int mn, int np, int pid, int st,
                                      const net** dni, int oas, bool iro,
                                      bool ic):
 	local_data(mn, np, md, pid, st / sizeof(double), dni, oas, iro, ic){
 
 	orig_array = NULL;
 	local_array = NULL;
-} 
+}
 
 
 local_data_double::~local_data_double(){}
@@ -351,35 +331,35 @@ local_data_double::~local_data_double(){}
 /**
  * \param local_base Allocated clean array to be populated
  * \param orig Original array
- * \param st Stride. Not sure what this is.
+ * \param st Stride. See populate_local_array() in cdefs.cpp for more info.
  */
-void local_data_double::PopulateLocalArray(double* local_base, double* orig,
-                                           int st){
+void local_data_double::PopulateLocalArray(double* local_base,
+                                           double* orig, int st){
 
 	assert(stride == st && orig_array == NULL && local_array == NULL);
 	orig_array = orig;
 	local_array = local_base;
 
-	int counter = 0 ;
-    
-	if( stride != 1 ){
+	int counter = 0;
+
+	if (stride != 1){
 		for (int j = 0; j < direct_access_size; j++, counter++){
 			int orig_offset = direct_access_array[j] * stride;
 			for (int i = 0; i < stride; i++)
 				local_array[counter * stride + i] = orig_array[orig_offset + i];
 		}
+
 		for (int j = 0; j < indirect_access_size; j++, counter++){
 
 			int orig_offset = indirect_access_array[j] * stride;
-			for( int i = 0 ; i < stride ; i++ )
-				local_array[counter*stride+i] = orig_array[orig_offset+i];
+			for (int i = 0; i < stride; i++)
+				local_array[counter * stride + i] = orig_array[orig_offset + i];
 		}
 	}
 	else{
-
-		for(int i = 0 ; i < direct_access_size ; i++ , counter++ )
+		for(int i = 0; i < direct_access_size; i++, counter++)
 			local_array[counter] = orig_array[direct_access_array[i]];
-		for( int i = 0 ; i < indirect_access_size ; i++ , counter++ )
+		for (int i = 0; i < indirect_access_size; i++, counter++)
 		  local_array[counter] = orig_array[indirect_access_array[i]];
 	}
 }
@@ -397,22 +377,26 @@ void local_data_double::PopulateLocalArray(double* local_base, double* orig,
 void local_data_double::SendOwnedData(char* send_buffer,
                                       const int* offset){
 
-	for( int i = 0 ; i < nparts ; i++ )
-		if( i != proc_id ){
+	for (int i = 0; i < nparts; i++)
+		if (i != proc_id){
 
 			int curr_offset = offset[i];
 			double* buffer =
 				reinterpret_cast<double*>(send_buffer + curr_offset);
 			int counter = 0;
-			if( stride == 1 )
-				for( int j = owned_offset[i] ; j < owned_offset[i+1] ; j++ , counter++){
+			if (stride == 1)
+				for (int j = owned_offset[i]; j < owned_offset[i + 1];
+				     j++, counter++)
+
 					buffer[counter] = local_array[owned[j]];
-				}
 			else
-				for( int j = owned_offset[i] ; j < owned_offset[i+1] ; j++ , counter++ ){
-					for( int k = 0 ; k < stride ; k++ )
-						buffer[counter*stride+k] = local_array[owned[j]*stride+k];
-				}
+				for (int j = owned_offset[i]; j < owned_offset[i + 1];
+				     j++, counter++)
+
+					for (int k = 0; k < stride; k++)
+						buffer[counter * stride + k] =
+							local_array[owned[j] * stride + k];
+
 			curr_offset += counter * stride * sizeof(double);
 		}
 }
@@ -504,125 +488,100 @@ void local_data_double::SendGhostData(char* send_buffer,
  *        buffer, of the chunk coming from each process that used
  *        our data.
  */
-void local_data_double::RecvOwnedData(char* recv_buffer,
-                                      const int* offset){
+void local_data_double::RecvOwnedData(char* recv_buffer, const int* offset){
 
-	for( int i = 0 ; i < nparts ; i++ )
-		if( i != proc_id ){
+	for (int i = 0; i < nparts; i++)
+		if (i != proc_id){
 
 			int curr_offset = offset[i];
 			double* buffer =
 				reinterpret_cast<double*>(recv_buffer + curr_offset);
 			int counter = 0;
-			if( stride == 1 )
-				for( int j = owned_offset[i] ; j < owned_offset[i+1] ; j++ , counter++){
+			if (stride == 1)
+				for (int j = owned_offset[i]; j < owned_offset[i + 1];
+				     j++, counter++)
+
 					local_array[owned[j]] += buffer[counter];
-				}
 			else
-				for( int j = owned_offset[i] ; j < owned_offset[i+1] ; j++ , counter++ ){
+				for (int j = owned_offset[i]; j < owned_offset[i + 1];
+				     j++, counter++)
 					for( int k = 0 ; k < stride ; k++ )
-						local_array[owned[j]*stride+k] += buffer[counter*stride+k];
-				}
+
+						local_array[owned[j] * stride + k] +=
+							buffer[counter * stride + k];
 			curr_offset += counter * stride * sizeof(double);
 		}
 }
 
 
-void local_data_double::InitWriteGhosts()
-{
-	for( int i = 0 ; i < nparts ; i++ ){
-		if( stride == 1 )
-			for(int j = ghosts_offset[i] ; j < ghosts_offset[i+1] ; j++ )
+void local_data_double::InitWriteGhosts(){
+
+	for (int i = 0; i < nparts; i++){
+		if (stride == 1)
+			for (int j = ghosts_offset[i]; j < ghosts_offset[i + 1]; j++)
 				local_array[ghosts[j]] = 0.0;
 		else
-			for(int j = ghosts_offset[i] ; j < ghosts_offset[i+1] ; j++ )
-				for(int k = 0 ; k < stride ; k++ )
-					local_array[ghosts[j]*stride+k] = 0.0;
+			for (int j = ghosts_offset[i]; j < ghosts_offset[i + 1]; j++)
+				for (int k = 0; k < stride; k++)
+					local_array[ghosts[j] * stride + k] = 0.0;
 	}
 }
 
 
-void local_data_double::PopulateLocalGhosts(local_data* source_array, int source)
-{
+void local_data_double::PopulateLocalGhosts
+(local_data* source_array, int source){
 
-	local_data_double* source_array_double = reinterpret_cast<local_data_double*>(source_array);
+	local_data_double* source_array_double =
+		reinterpret_cast<local_data_double*>(source_array);
 	int* source_owned_offset = source_array_double->owned_offset;
 	int* source_owned = source_array_double->owned;
 	double* source_local_array = source_array_double->local_array;
 
-	if( stride == 1 )
-		for( int j = ghosts_offset[source], k = source_owned_offset[myid]; j < ghosts_offset[source+1] ; j++,k++ ){
+	if (stride == 1)
+		for (int j = ghosts_offset[source], k = source_owned_offset[myid];
+		     j < ghosts_offset[source + 1]; j++, k++){
 
 			local_array[ghosts[j]] = source_local_array[source_owned[k]];
 		}
 	else
-		for( int j = ghosts_offset[source], k = source_owned_offset[myid] ; j < ghosts_offset[source+1] ; j++,k++ ){
-			for( int l = 0 ; l < stride ; l++)
-				local_array[ghosts[j]*stride+l] = source_local_array[source_owned[k]*stride+l];
+		for (int j = ghosts_offset[source], k = source_owned_offset[myid];
+		     j < ghosts_offset[source + 1]; j++, k++){
+			for (int l = 0; l < stride; l++)
+				local_array[ghosts[j] * stride + l] =
+					source_local_array[source_owned[k] * stride + l];
 		}
 }
 
+void local_data_double::UpdateLocalOwned(local_data* source_array, int source){
 
-void local_data_double::UpdateLocalOwned(local_data* source_array,int source)
-{
-	local_data_double* source_array_double = reinterpret_cast<local_data_double*>(source_array);
+	local_data_double* source_array_double =
+		reinterpret_cast<local_data_double*>(source_array);
 	int* source_ghosts_offset = source_array_double->ghosts_offset;
 	int* source_ghosts = source_array_double->ghosts;
 	double* source_local_array = source_array_double->local_array;
-	if( stride == 1 )
-		for( int j = owned_offset[source] , k = source_ghosts_offset[myid] ; j < owned_offset[source+1] ; j++, k++ )
+	if (stride == 1)
+		for (int j = owned_offset[source], k = source_ghosts_offset[myid];
+		     j < owned_offset[source + 1]; j++, k++)
 			local_array[owned[j]] += source_local_array[source_ghosts[k]];
 	else
-		for( int j = owned_offset[source] , k = source_ghosts_offset[myid] ; j < owned_offset[source+1] ; j++, k++ )
-			for( int l = 0 ; l < stride ; l++ )
-				local_array[owned[j]*stride+l] += source_local_array[source_ghosts[k]*stride+l];
+		for (int j = owned_offset[source], k = source_ghosts_offset[myid];
+		     j < owned_offset[source + 1]; j++, k++)
+			for (int l = 0; l < stride; l++)
+				local_array[owned[j] * stride + l] +=
+					source_local_array[source_ghosts[k] * stride + l];
 }
 
-void local_data_double::PopulateGlobalArray()
-{
-	if( !is_read_only && !is_constrained ){
-#pragma omp master
-		{
-			memset((void*)orig_array,0,orig_array_size*stride*sizeof(double));
-		}
-#pragma omp barrier
+void local_data_double::PopulateGlobalArray(){
+
+	if (!is_read_only && !is_constrained){
+		memset((void*)orig_array,0,orig_array_size*stride*sizeof(double));
 		for( int i = 0 ; i < local_array_size ; i++ ){
 			int global_index = l_to_g[i];
 			if( global_index != -1 )
 				for( int j = 0 ; j < stride ; j++ )
 					orig_array[global_index*stride+j] = local_array[i*stride+j];
 		}
-#pragma omp barrier
-
-#pragma omp master
-		{
-			MPI_Allreduce(MPI_IN_PLACE,orig_array,orig_array_size*stride,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-		}
-
-#pragma omp barrier
+		MPI_Allreduce(MPI_IN_PLACE, orig_array, orig_array_size * stride,
+		              MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	}
-}	
-  
-
-
-void local_data_double::print_data(FILE* data_file)
-{
-	local_data::print_data(data_file);
-#ifdef HIGH_DETAILS
-	if( !is_constrained ){
-		fprintf(data_file,"\n\tLocal Array :");
-		if( stride == 1 ){
-			for(int i = 0 ; i < direct_access_size + indirect_access_size ; i++ )
-				fprintf(data_file," %lf",local_array[i]);
-		}
-		else{
-			for(int i = 0 ; i < direct_access_size + indirect_access_size ; i++ ){
-				fprintf(data_file,"\n\t\t");
-				for( int j = 0 ; j < stride ; j++ )
-					fprintf(data_file," %lf",local_array[i*stride+j]);
-			}
-		}
-		fprintf(data_file,"\n");
-	}
-#endif
 }

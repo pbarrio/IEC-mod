@@ -119,29 +119,23 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 		data_num_offset[i+1] = data_num_offset[i] + data_num_count[i];
 	}
 
-	// Set up the global communicator for each loop
+	// Set up the global IEC communicator for each loop
 	// TODO: we should get rid of multiple global communicators (use only one).
-	for( int i = 0 ; i < nc ; i++ ){
+	for (int i = 0; i < nc; i++){
 		global_comm* new_comm = new global_comm(i, nprocs, proc_id);
 		all_comm.push_back(new_comm);
 	}
 
-	/// Indirection arrays (called access data).
-	for( int i = 0 ; i < nad ; i++ ){
+	// Indirection arrays (called access data).
+	for (int i = 0; i < nad; i++){
 		access_data* new_access_data =
 			new access_data(i, proc_id, nprocs, pid_team, teamsize);
 		all_access_data.push_back(new_access_data);
 	}
 
-	send_info = new set<int>*[nprocs*2];
-	for( int i = 0; i < nprocs*2 ; i++ )
+	send_info = new set<int>*[nprocs * 2];
+	for (int i = 0; i < nprocs * 2; i++)
 		send_info[i] = new set<int>;
-
-#ifndef NDEBUG
-	char access_file_name[20];
-	sprintf(access_file_name,"access_data_%d.dat",proc_id);
-	access_file = fopen(access_file_name,"w");
-#endif
 
 	MPI_Barrier(global_comm::global_iec_communicator);
 }
@@ -288,7 +282,7 @@ void Inspector::GetDontHave(){
 	MPI_Alltoallv(sendbuf, send_count, send_offset, MPI_INT, recvbuf,
 	              recv_count, recv_offset, MPI_INT,
 	              global_comm::global_iec_communicator);
-  
+
 	// Populate the receive buffer with the values of all indices requested
 	// by this process.
 	for (int i = 0; i < team_size; i++)
@@ -299,11 +293,11 @@ void Inspector::GetDontHave(){
 
 		(*it)->GetRequestedValue(recvbuf, recv_offset[team_size], curr_offset,
 		                         send_n_elems, stride);
-  
+
 	MPI_Alltoallv(recvbuf, recv_count, recv_offset, MPI_INT, sendbuf,
 	              send_count, send_offset, MPI_INT,
 	              global_comm::global_iec_communicator);
-  
+
 	///Add to set of elements that are known on each process
 	for (int i = 0; i < team_size; i++)
 		curr_offset[i] = send_offset[i];
@@ -912,6 +906,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	delete[] is_direct;
 	delete[] flags;
 
+	// Calculate data counts and displacements
 	int* const sendcount = new int[team_size * 2];
 	int* const curr_displ = new int[team_size * 2 + 1];
 	int* const senddispl = new int[team_size + 1];
@@ -920,6 +915,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	for (int i = 0; i < team_size; i++){
 		sendcount_mpi[i] = 0;
 		for (int k = 0; k < 2; k++){
+
 			sendcount[i * 2 + k] = send_info[i * 2 + k]->size();
 			curr_displ[i * 2 + k + 1] =
 				curr_displ[i * 2 + k] + sendcount[i * 2 + k];
@@ -937,14 +933,17 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 
 	int* const sendbuffer = new int[senddispl[team_size]];
 
-	// Send the actual elements
+	// Populate the send buffer with the actual elements
 	int counter = 0;
 	for (int i = 0; i < team_size; i++)
-		for (int k = 0; k < 2; k++)
-			for (set<int>::iterator it = send_info[i * 2 + k]->begin();
-			     it != send_info[i * 2 + k]->end(); it++)
 
+		// k takes values 0 (direct accesses) or 1 (indirect accesses)
+		for (int k = 0; k < 2; k++){
+			set<int>* send_info_item = send_info[i * 2 + k];
+			for (set<int>::iterator it = send_info_item->begin();
+			     it != send_info_item->end(); it++)
 				sendbuffer[counter++] = (*it);
+		}
 
 	assert(counter == senddispl[team_size]);
 
@@ -990,7 +989,7 @@ void Inspector::GetBufferSize(){
 	global_comm::max_nprocs_write_send = 0;
 	global_comm::max_nprocs_read_send = 0;
 
-	for( int iter_num = 0 ; iter_num < all_comm.size(); iter_num++ ){
+	for (int iter_num = 0 ; iter_num < all_comm.size(); iter_num++){
 		global_comm* curr_global_comm = all_comm[iter_num];
 		int send_read_count = 0, recv_read_count = 0;
 		int send_write_count = 0, recv_write_count = 0;
@@ -1000,74 +999,87 @@ void Inspector::GetBufferSize(){
 		curr_global_comm->write_send_offset[0] = 0;
 		curr_global_comm->write_recv_offset[0] = 0;
 
-		for( int i = 0 ; i < nprocs ; i++ ){
+		for (int i = 0; i < nprocs; i++){
 
 			local_comm* local_recv_comm = all_local_comm[iter_num];
 			local_comm* local_send_comm = all_local_comm[iter_num];
 			send_read_count +=
-				local_send_comm->GetReadSendCount(i,send_read_count);
+				local_send_comm->GetReadSendCount(i, send_read_count);
 			recv_read_count +=
-				local_recv_comm->GetReadRecvCount(i,recv_read_count);
+				local_recv_comm->GetReadRecvCount(i, recv_read_count);
 			send_write_count +=
-				local_send_comm->GetWriteSendCount(i,send_write_count);
+				local_send_comm->GetWriteSendCount(i, send_write_count);
 			recv_write_count +=
-				local_recv_comm->GetWriteRecvCount(i,recv_write_count);
+				local_recv_comm->GetWriteRecvCount(i, recv_write_count);
 			curr_global_comm->read_send_count[i] =
 				send_read_count - curr_global_comm->read_send_offset[i];
-			curr_global_comm->read_send_offset[i+1] = send_read_count;
+			curr_global_comm->read_send_offset[i + 1] = send_read_count;
 			curr_global_comm->read_recv_count[i] =
 				recv_read_count - curr_global_comm->read_recv_offset[i];
-			curr_global_comm->read_recv_offset[i+1] = recv_read_count;
+			curr_global_comm->read_recv_offset[i + 1] = recv_read_count;
 			curr_global_comm->write_send_count[i] =
 				send_write_count - curr_global_comm->write_send_offset[i];
-			curr_global_comm->write_send_offset[i+1] = send_write_count;
-			curr_global_comm->write_recv_count[i] = recv_write_count - curr_global_comm->write_recv_offset[i];
-			curr_global_comm->write_recv_offset[i+1] = recv_write_count;
+			curr_global_comm->write_send_offset[i + 1] = send_write_count;
+			curr_global_comm->write_recv_count[i] =
+				recv_write_count - curr_global_comm->write_recv_offset[i];
+			curr_global_comm->write_recv_offset[i + 1] = recv_write_count;
 		}
-    
-		global_comm::max_send_size = ( global_comm::max_send_size > curr_global_comm->write_send_offset[nprocs] ? global_comm::max_send_size : curr_global_comm->write_send_offset[nprocs] );
-		global_comm::max_send_size = ( global_comm::max_send_size > curr_global_comm->read_send_offset[nprocs] ? global_comm::max_send_size : curr_global_comm->read_send_offset[nprocs] );
-		global_comm::max_recv_size = ( global_comm::max_recv_size > curr_global_comm->write_recv_offset[nprocs] ? global_comm::max_recv_size : curr_global_comm->write_recv_offset[nprocs] );
-		global_comm::max_recv_size = ( global_comm::max_recv_size > curr_global_comm->read_recv_offset[nprocs] ? global_comm::max_recv_size : curr_global_comm->read_recv_offset[nprocs] );
 
-		MPI_Alltoall(curr_global_comm->read_recv_offset,1,MPI_INT,curr_global_comm->read_put_displ,1,MPI_INT,global_comm::global_iec_communicator);
-		MPI_Alltoall(curr_global_comm->write_recv_offset,1,MPI_INT,curr_global_comm->write_put_displ,1,MPI_INT,global_comm::global_iec_communicator);
+		global_comm::max_send_size =
+			MAX(global_comm::max_send_size,
+			    MAX(curr_global_comm->write_send_offset[nprocs],
+			        curr_global_comm->read_send_offset[nprocs]));
+		global_comm::max_recv_size =
+			    MAX(global_comm::max_recv_size,
+			        MAX(curr_global_comm->write_recv_offset[nprocs],
+			            curr_global_comm->read_recv_offset[nprocs]));
 
-		for( int i = 0 ; i < nprocs ; i++ ){
-			if( curr_global_comm->read_send_count[i] != 0 )
+		MPI_Alltoall(curr_global_comm->read_recv_offset, 1, MPI_INT,
+		             curr_global_comm->read_put_displ, 1, MPI_INT,
+		             global_comm::global_iec_communicator);
+		MPI_Alltoall(curr_global_comm->write_recv_offset, 1, MPI_INT,
+		             curr_global_comm->write_put_displ, 1, MPI_INT,
+		             global_comm::global_iec_communicator);
+
+		for (int i = 0; i < nprocs; i++){
+			if (curr_global_comm->read_send_count[i] != 0)
 				curr_global_comm->nprocs_read_send++;
-			if( curr_global_comm->read_recv_count[i] != 0 )
+			if (curr_global_comm->read_recv_count[i] != 0)
 				curr_global_comm->nprocs_read_recv++;
-			if( curr_global_comm->write_send_count[i] != 0 )
+			if (curr_global_comm->write_send_count[i] != 0)
 				curr_global_comm->nprocs_write_send++;
-			if( curr_global_comm->write_recv_count[i] != 0 )
+			if (curr_global_comm->write_recv_count[i] != 0)
 				curr_global_comm->nprocs_write_recv++;
 		}
 
-		if( curr_global_comm->nprocs_read_send  != 0 )
-			curr_global_comm->proc_id_read_send = new int[curr_global_comm->nprocs_read_send];
-		if( curr_global_comm->nprocs_read_recv  != 0 )
-			curr_global_comm->proc_id_read_recv = new int[curr_global_comm->nprocs_read_recv];
-		if( curr_global_comm->nprocs_write_send  != 0 )
-			curr_global_comm->proc_id_write_send = new int[curr_global_comm->nprocs_write_send];
-		if( curr_global_comm->nprocs_write_recv  != 0 )
-			curr_global_comm->proc_id_write_recv = new int[curr_global_comm->nprocs_write_recv];
+		if (curr_global_comm->nprocs_read_send != 0)
+			curr_global_comm->proc_id_read_send =
+				new int[curr_global_comm->nprocs_read_send];
+		if (curr_global_comm->nprocs_read_recv != 0)
+			curr_global_comm->proc_id_read_recv =
+				new int[curr_global_comm->nprocs_read_recv];
+		if (curr_global_comm->nprocs_write_send != 0)
+			curr_global_comm->proc_id_write_send =
+				new int[curr_global_comm->nprocs_write_send];
+		if (curr_global_comm->nprocs_write_recv != 0)
+			curr_global_comm->proc_id_write_recv =
+				new int[curr_global_comm->nprocs_write_recv];
 
 		int r_s_count = 0,r_r_count = 0,w_s_count =0,w_r_count = 0;
-		for( int i = 0 ; i < nprocs ; i++ ){
-			if( curr_global_comm->read_send_count[i] != 0 )
+		for (int i = 0; i < nprocs; i++){
+			if (curr_global_comm->read_send_count[i] != 0)
 				curr_global_comm->proc_id_read_send[r_s_count++] = i;
-			if( curr_global_comm->read_recv_count[i] != 0 )
+			if (curr_global_comm->read_recv_count[i] != 0)
 				curr_global_comm->proc_id_read_recv[r_r_count++] = i;
-			if( curr_global_comm->write_send_count[i] != 0 )
+			if (curr_global_comm->write_send_count[i] != 0)
 				curr_global_comm->proc_id_write_send[w_s_count++] = i;
-			if( curr_global_comm->write_recv_count[i] != 0 )
+			if (curr_global_comm->write_recv_count[i] != 0)
 				curr_global_comm->proc_id_write_recv[w_r_count++] = i;
 		}
-		assert( r_s_count == curr_global_comm->nprocs_read_send );
-		assert( r_r_count == curr_global_comm->nprocs_read_recv );
-		assert( w_s_count == curr_global_comm->nprocs_write_send );
-		assert( w_r_count == curr_global_comm->nprocs_write_recv );
+		assert(r_s_count == curr_global_comm->nprocs_read_send);
+		assert(r_r_count == curr_global_comm->nprocs_read_recv);
+		assert(w_s_count == curr_global_comm->nprocs_write_send);
+		assert(w_r_count == curr_global_comm->nprocs_write_recv);
 
 		global_comm::max_nprocs_read_send = MAX( curr_global_comm->nprocs_read_send, global_comm::max_nprocs_read_send);
 		global_comm::max_nprocs_read_recv = MAX( curr_global_comm->nprocs_read_recv, global_comm::max_nprocs_read_recv);

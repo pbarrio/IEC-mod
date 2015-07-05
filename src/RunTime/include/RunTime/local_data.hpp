@@ -23,7 +23,7 @@
 #include <cassert>
 #include "RunTime/hypergraph.hpp"
 
-int binary_search(int * const, const int , const int );
+int binary_search(int* const, const int, const int);
 
 
 /**
@@ -48,6 +48,7 @@ protected:
 
 	const int stride;
 
+	/// Id of this local array
 	const int my_num;
 
 	const net** const data_net_info;
@@ -57,19 +58,23 @@ protected:
 	const bool is_read_only;
 
 	const bool is_constrained;
-  
+
 	int local_array_size;
 
+	/// Temp structure used to calculate the direct accesses
 	std::set<int> direct_access;
-
-	std::set<int> indirect_access;
-
+	/// Number of direct accesses
 	long direct_access_size;
- 
+	/// Mapping from local to global indices for direct accesses. If
+	/// direct_access_array[a] = b, then index 'b' in the global array
+	/// corresponds to a local index 'a'.
 	int* direct_access_array;
 
-	int indirect_access_size; 
- 
+	/// Temp structure used to calculate the indirect accesses
+	std::set<int> indirect_access;
+	/// Number of indirect accesses
+	int indirect_access_size;
+	/// Same as direct_access_array but for indirect accesses
 	int* indirect_access_array;
 
 	int* const ghosts_offset;
@@ -78,22 +83,22 @@ protected:
 	int* ghosts;
 
 	int* const owned_offset;
-  
+
 	/// Indices to the positions of this local data owned by this process.
 	int* owned;
 
 	int* l_to_g;
-  
+
 	int GetLocalIndex(int global_index) const;
 
 	int block_owned_offset;
 
 public:
 
-	// Ghosts of all arrays in this process (real array values, not indices)
+	// Ghosts of all arrays in this process
 	std::set<int> *global_ghosts;
 
-	// Data on all arrays owned by this process (real array values, not indices)
+	// Data on all arrays owned by this process
 	std::set<int> *global_owned;
 
 	local_data(int, int, int, int, int, const net**, int, bool, bool);
@@ -109,7 +114,7 @@ public:
 	virtual void PopulateGlobalArray() = 0;
 
 	inline int GetLocalSize() const {
-		return direct_access_size +indirect_access_size;
+		return direct_access_size + indirect_access_size;
 	}
 
 	void AddIndexAccessed(int, int);
@@ -136,13 +141,11 @@ public:
 
 	virtual void RecvOwnedData(char*, const int*) = 0;
 
-	virtual void PopulateLocalGhosts(local_data*,int) = 0;
+	virtual void PopulateLocalGhosts(local_data*, int) = 0;
 
-	virtual void UpdateLocalOwned(local_data*,int) = 0;
+	virtual void UpdateLocalOwned(local_data*, int) = 0;
 
 	virtual void InitWriteGhosts() = 0;
-
-	virtual void print_data(FILE*);
 
 	virtual int get_size() const = 0;
 
@@ -175,21 +178,23 @@ public:
 	local_data_double(int, int, int, int, int, const net** const, int, bool, bool);
   
 	~local_data_double();
-  
-	void PopulateLocalArray(double*,double*,int);
+
+	void PopulateLocalArray(double*, double*, int);
 
 	inline int get_size() const{return sizeof(double);}
 
-	inline int get_stride_size() const{return sizeof(double)*stride;}
+	inline int get_stride_size() const{return sizeof(double) * stride;}
 
 	void print_data();
 
 	int GetGhostsCount(int source) const{
-		return (ghosts_offset[source+1]-ghosts_offset[source])*stride*sizeof(double);
+		return (ghosts_offset[source + 1] - ghosts_offset[source]) * stride *
+			sizeof(double);
 	}
 
 	int GetOwnedCount (int dest) const{
-		return (owned_offset[dest+1]-owned_offset[dest])*stride*sizeof(double);
+		return (owned_offset[dest + 1] - owned_offset[dest]) * stride *
+			sizeof(double);
 	}
 
 	void SendOwnedData(char*, const int*);
@@ -199,22 +204,20 @@ public:
 	void SendGhostData(char*, const int*);
 
 	void RecvOwnedData(char*, const int*);
-  
+
 	void InitWriteGhosts();
 
 	void PopulateLocalGhosts(local_data*,int);
 
 	void UpdateLocalOwned(local_data*,int);
 
-	void PopulateGlobalArray(); 
+	void PopulateGlobalArray();
 
 	inline void SetLocalArray(void* la){
 		assert( is_constrained && local_array == NULL );
 		local_array = static_cast<double*>(la);
 	}
 
-	void print_data(FILE*);
-  
 	friend class Inspector;
 };
 

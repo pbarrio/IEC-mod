@@ -217,16 +217,16 @@ extern "C" {
 	}
 
 	void set_array_stride(int an, int st) {
-		Inspector::instance()->SetStride(an,st);
+		Inspector::instance()->SetStride(an, st);
 	}
 
 
 	void set_array_stride_(int* an, int* st) {
-		Inspector::instance()->SetStride(*an,*st);
+		Inspector::instance()->SetStride(*an, *st);
 	}
 
 	int get_vertex_home(int in ,int iv){
-		return Inspector::instance()->GetVertexHome(in,iv);
+		return Inspector::instance()->GetVertexHome(in, iv);
 	}
 
 	void get_vertex_home_(int* in ,int* iv, int* out){
@@ -287,7 +287,7 @@ extern "C" {
 
 	void add_index_from_proc(int data_num, int index, int access_type){
 		Inspector::instance()->
-			AddIndexAccessed(data_num,index,access_type);
+			AddIndexAccessed(data_num, index, access_type);
 	}
 	void add_index_from_proc_(int *data_num, int *index, int *access_type){
 		Inspector::instance()->
@@ -295,18 +295,22 @@ extern "C" {
 	}
 
 	/**
+	 * \brief Populates a local array from its corresponding global array
+	 *
 	 * \param an ID of the local array to be populated
 	 * \param lb Allocated clean array to be populated
 	 * \param oa Original array
-	 * \param st Stride. Not sure what this is.
+	 * \param st Stride. e.g. A bidimensional array containing 100 coordinates
+	 *           (x, y, z) would be a[100][3] and the stride would be 3. Knowing
+	 *           the stride allows the program to use contiguous memory for
+	 *           N-dimensional arrays. The stride comes from the IEC pragmas.
 	 */
 	void populate_local_array(int an, double* lb, double* oa, int st){
 		Inspector::instance()->PopulateLocalArray(an, lb, oa, st);
 	}
-	void populate_local_array_(int *an, double*lb, double*oa, int *st){
+	void populate_local_array_(int* an, double* lb, double* oa, int* st){
 		Inspector::instance()->PopulateLocalArray(*an, lb, oa, *st);
 	}
-
 
 	void renumber_access_array(int an, int as, int* aa){
 		Inspector::instance()->RenumberAccessArray(an, as, aa);
@@ -329,7 +333,7 @@ extern "C" {
 	 */
 	void setup_executor(){
 		Inspector::instance()->GenerateGhosts();
-    
+
 #ifndef NDEBUG
 		printf("LocalGhostsDone\n");
 		fflush(stdout);
@@ -345,8 +349,9 @@ extern "C" {
 
 		Inspector::instance()->GetBufferSize();
 		inspector_stop = rtclock();
-		if (Inspector::instance()->get_proc_id() == 0 )
-			fprintf(stderr,"[IEC]:InspectorTime:%lf\n",inspector_stop-inspector_start);
+		if (Inspector::instance()->get_proc_id() == 0)
+			fprintf(stderr,"[IEC]:InspectorTime:%lf\n",
+			        inspector_stop-inspector_start);
 
 		executor_start = rtclock();
 	}
@@ -418,20 +423,6 @@ extern "C" {
 		delete_inspector();
 	}
 
-	void print_access(){
-#ifndef NDEBUG
-		printf("PID:%d,PrintingAccess\n",Inspector::instance()->get_proc_id());
-		fflush(stdout);
-		MPI_Barrier(MPI_COMM_WORLD);
-		Inspector::instance()->print_access();
-#endif
-	}
-
-	void print_access_(){
-		print_access();
-	}
-
-  
 	// dim1 = number of rows, dim2 number of columns.
 	// Row major (colums is fastest varying)
 	double** malloc_2d_double(int dim1, int dim2){

@@ -106,16 +106,12 @@ private:
 	          int nl, int nd, int nc, int nad, int* iter_num_count,
 	          int* data_num_count, int* ro);
 
-	///Singleton inspector object. There is one inspector per process.
+	/// Singleton inspector object. There is one inspector per process.
 	static Inspector* singleton_inspector;
 
-	///For a given iteration, the vertex value is set first, all subsequent
-	///calls to add nets uses the curr_vertex value
+	/// For a given iteration, the vertex value is set first, all subsequent
+	/// calls to add nets uses the curr_vertex value
 	vertex* curr_vertex;
-
-#ifndef NDEBUG
-	FILE* access_file;
-#endif
 
 	std::set<int>** send_info;
 
@@ -148,13 +144,13 @@ public:
 		return all_loops[loop_id]->GetVertexHome(iter);
 	}
 
-	inline int GetNProcs() const { return nprocs; }
+	inline int GetNProcs() const {return nprocs;}
 
 	inline void SetStride(int an, int st){
 		all_data[an]->SetStride(st);
 	}
 
-	inline int GetProcLocal(int in) const { return all_loops[in]->nproc_local; }
+	inline int GetProcLocal(int in) const {return all_loops[in]->nproc_local;}
 
 	void init_loop(int, std::vector<int>);
 	void AddVertex(int, int);
@@ -265,18 +261,9 @@ public:
 	/**
 	 * \brief Unimportant for the quake benchmark
 	 */
-	void SetConstraint(int an) {
+	void SetConstraint(int an){
 		all_data[an]->SetConstraint();
 	}
-
-#ifndef NDEBUG
-	inline void print_access(){
-		for (std::deque<access_data*>::iterator it = all_access_data.begin();
-		     it != all_access_data.end(); it++)
-
-			(*it)->print_access(access_file);
-	}
-#endif
 
 	inline void print_solver(){
 		char file_name[15];
@@ -291,7 +278,7 @@ public:
 	 * STOLEN FROM LOCAL INSPECTOR
 	 */
 
-	inline void SetupLocalArray(int dn) {
+	inline void SetupLocalArray(int dn){
 		all_local_data[dn]->SetupLocalArray();
 	}
 
@@ -303,7 +290,7 @@ public:
 	 * \brief Add local array corresponding to a global_data
 	 *
 	 * \param mn ID of the global_data
-	 * \param stride_size Size of a position (e.g. int = 4)
+	 * \param stride_size Number of array positions in the "pragma" stride
 	 * \param ddni Nets for all the positions of the global data
 	 * \param oas Size of the original array
 	 * \param iro True if the array is read-only
@@ -327,7 +314,7 @@ public:
 	}
 
 	inline void AddIndexAccessed(int dn, int ind, int at){
-		all_local_data[dn]->AddIndexAccessed(ind,at);
+		all_local_data[dn]->AddIndexAccessed(ind, at);
 	}
 
 	/**
@@ -339,15 +326,15 @@ public:
 	 * \param st Stride. Not sure what this is.
 	 */
 	inline void PopulateLocalArray(int an, double* lb, double* oa, int st){
-		all_local_data[an]->PopulateLocalArray(lb,oa,st);
+		all_local_data[an]->PopulateLocalArray(lb, oa, st);
 	}
 
 	inline void InsertDirectAccess(int an, int* v, int n){
-		all_local_data[an]->InsertDirectAccess(v,n);
+		all_local_data[an]->InsertDirectAccess(v, n);
 	}
 
 	inline void InsertIndirectAccess(int an, int* v, int n){
-		all_local_data[an]->InsertIndirectAccess(v,n);
+		all_local_data[an]->InsertIndirectAccess(v, n);
 	}
 
 	/**
@@ -356,15 +343,15 @@ public:
 	 * \param aa Array that will be used to index this local array
 	 */
 	inline void RenumberAccessArray(int an, int as, int* aa){
-		all_local_data[an]->RenumberAccessArray(as,aa);
+		all_local_data[an]->RenumberAccessArray(as, aa);
 	}
 
 	inline void RenumberOffsetArray(int an, int as, int* aa, int* la){
-		all_local_data[an]->RenumberOffsetArray(as,aa,la);
+		all_local_data[an]->RenumberOffsetArray(as, aa, la);
 	}
 
 	inline void GenerateGhosts(){
-		int counter =0;
+		int counter = 0;
 		for (std::deque<local_data*>::iterator it = all_local_data.begin();
 		     it != all_local_data.end(); it++, counter++)
 
