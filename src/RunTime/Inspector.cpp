@@ -958,9 +958,9 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	for (int i = 0; i < team_size; i++){
 		recvcount_mpi[i] = 0;
 		for (int k = 0; k < 2; k++){
-			*count[i * 2 + k] = recvcount[i * 2 + k];
+			(*count)[i * 2 + k] = recvcount[i * 2 + k];
 			recvcount_mpi[i] += recvcount[i * 2 + k];
-			*displ[i * 2 + k] = curr_recv_displ;
+			(*displ)[i * 2 + k] = curr_recv_displ;
 			curr_recv_displ += recvcount[i * 2 + k];
 		}
 		recvdispl[i + 1] = recvdispl[i] + recvcount_mpi[i];
