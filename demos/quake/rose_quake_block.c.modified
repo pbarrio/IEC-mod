@@ -738,17 +738,23 @@ int main(int argc,char **argv){
 	communicate_writes_for(0);
 
 	// Initialize disp1
-	int __localsize_disp1__ = get_local_size(1);
-	double **__local_disp1__ = malloc_2d_double(__localsize_disp1__, 3);
-	populate_local_array(1, __local_disp1__[0], disp1[0], 3);
-	renumber_access_array(1, __body_i_6__, __i_disp1_j_4_);
+	double **__local_disp1__ = NULL;
+	if (myTeam == 1){
+		int __localsize_disp1__ = get_local_size(1);
+		__local_disp1__ = malloc_2d_double(__localsize_disp1__, 3);
+		populate_local_array(1, __local_disp1__[0], disp1[0], 3);
+		renumber_access_array(1, __body_i_6__, __i_disp1_j_4_);
+	}
 
 	// Initialize K
-	int __localsize_K__ = get_local_size(2);
-	double **__local_K__ = malloc_2d_double(__localsize_K__, 9);
-	populate_local_array(2, __local_K__[0], K[0], 9);
-	renumber_access_array(2, __body_1__, __i_K_i_1_);
-	renumber_offset_array(2, __loop_i_6__, __o_K_j_3_, __lb_j_i_6__);
+	double** __local_K__ = NULL;
+	if (myTeam == 1){
+		int __localsize_K__ = get_local_size(2);
+		__local_K__ = malloc_2d_double(__localsize_K__, 9);
+		populate_local_array(2, __local_K__[0], K[0], 9);
+		renumber_access_array(2, __body_1__, __i_K_i_1_);
+		renumber_offset_array(2, __loop_i_6__, __o_K_j_3_, __lb_j_i_6__);
+	}
 
 	/*
 	 * EXECUTOR
