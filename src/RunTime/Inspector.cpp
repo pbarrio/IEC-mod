@@ -835,21 +835,23 @@ void Inspector::AfterPartition(int loop){
 
 	/// Take all global data and intialize the corresponding local data
 	// It might be possible to get rid of this
-	for (deque<global_data*>::iterator it = all_data.begin();
-	     it != all_data.end(); it++){
+	if (loop == team_num){
+		for (deque<global_data*>::iterator it = all_data.begin();
+		     it != all_data.end(); it++){
 
-		if ((*it)->data_net_info[loop] == NULL)
-			continue;
+			if ((*it)->data_net_info[loop] == NULL)
+				continue;
 
-		int array_id = (*it)->id;
-		int stride_size = (*it)->stride_size;
-		int orig_array_size = (*it)->orig_array_size;
-		bool read_only_flag =(*it)->is_read_only;
-		bool is_constrained = (*it)->is_constrained; // Irrelevant for "quake"
-		const net** data_net_info =
-			const_cast<const net**>((*it)->data_net_info[loop]);
-		add_local_data(array_id, stride_size, data_net_info, orig_array_size,
-		               read_only_flag, is_constrained);
+			int array_id = (*it)->id;
+			int stride_size = (*it)->stride_size;
+			int orig_array_size = (*it)->orig_array_size;
+			bool read_only_flag =(*it)->is_read_only;
+			bool is_constrained = (*it)->is_constrained; // Irrelevant in quake
+			const net** data_net_info =
+				const_cast<const net**>((*it)->data_net_info[loop]);
+			add_local_data(array_id, stride_size, data_net_info,
+			               orig_array_size, read_only_flag, is_constrained);
+		}
 	}
 }
 
