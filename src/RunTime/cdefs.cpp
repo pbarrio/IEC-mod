@@ -450,8 +450,10 @@ extern "C" {
 	}
 
 	void free_2d_double(double** actual_array){
-		free(actual_array[0]);
-		free(actual_array);
+		if (actual_array){
+			free(actual_array[0]);
+			free(actual_array);
+		}
 	}
 
 	void free_2d_float(float** actual_array){
@@ -467,7 +469,7 @@ extern "C" {
 	void init_solver_(int *s, int *sn){
 		*sn = Inspector::instance()->InitSolver(*s);
 	}
-  
+
 	void add_unknown(int sn, int an, int idx, int rn, int l){
 		assert(sn == 0);
 		Inspector::instance()->AddUnknown(sn, an, idx, rn, l);
