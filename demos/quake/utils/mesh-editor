@@ -238,6 +238,12 @@ class Contents:
         self.n_node_own -= 1
         self.n_node_priv -= 1
 
+    def delete_multiple_nodes(self, from_node, to_node):
+        if from_node > to_node:
+            raise Exception("Invalid range of nodes")
+        for i in range(from_node, to_node + 1):
+            self.delete_node(i)
+
     def delete_elem(self, i):
         if i in self.elem_map:
             del self.elem_map[i]
@@ -324,6 +330,8 @@ class MeshShell(cmd.Cmd):
         args = args.split()
         if args[0] == 'node':
             self.contents.delete_node(int(args[1]))
+        elif args[0] == 'nodes':
+            self.contents.delete_multiple_nodes(int(args[1]), int(args[2]))
 
 
 if __name__ == '__main__':
