@@ -1,0 +1,335 @@
+#! /usr/bin/python
+
+import cmd
+import sys
+
+
+class Node:
+
+    def __init__(self, coords):
+        self.elems = list()
+        self.coords = coords
+
+    def get_coords(self):
+        return self.coords
+
+    def add_member_elem(self, elem):
+        self.elems.append(elem)
+
+
+class Contents:
+
+    def __init__(self, f_name):
+        self.node_map = dict()
+        self.elem_map = dict()
+        self.matrix = dict()
+        self.node_ty = list()
+
+        self.deleted_nodes = list()
+        self.deleted_elems = list()
+
+        with open(f_name) as f:
+
+            # Header
+            line = f.readline()[:-1].split()
+            self.set_num_nodes(line[0])
+            self.set_num_dim(line[1])
+
+            line = f.readline()[:-1].split()
+            self.set_num_elems(line[0])
+            self.set_num_corners(line[1])
+
+            line = f.readline()[:-1].split()
+            self.set_num_subdomains(line[0])
+
+            line = f.readline()[:-1].split()
+            self.set_duration(line[0])
+
+            # Node section
+            line = None
+            while not line:
+                line = f.readline()[:-1].split()
+            self.set_num_node_types(line)
+
+            for i in range(1, self.n_node + 1):
+                line = f.readline()[:-1].split()
+                self.add_node(i, line)
+
+            # Element section
+            line = None
+            while not line:
+                line = f.readline()[:-1].split()
+            if int(line[0]) != self.n_elem:
+                raise Exception("Incorrect format: number of elements not coherent")
+
+            for i in range(1, self.n_elem + 1):
+                line = f.readline()[:-1].split()
+                self.add_elem(i, line)
+
+            # Sparse matrix details
+            line = None
+            while not line:
+                line = f.readline()[:-1].split()
+            self.set_matrix_len(line)
+
+            for i in range(self.matrix_len):
+                line = f.readline()[:-1].split()
+                self.add_matrix_item(line)
+
+            # Multidomain section
+            line = None
+            while not line:
+                line = f.readline()[:-1].split()
+            self.set_multidomain(line)
+
+            # Vector of node types
+            line = None
+            while not line:
+                line = f.readline()[:-1].split()
+            self.set_nodevector_header(line)
+
+            for i in range(self.n_node):
+                line = f.readline()[:-1].split()
+                self.set_node_type(line)
+
+    def save(self, f_name):
+
+        self.fix_numbers()
+        self.fix_adj_matrix()
+        self.fix_type_list()
+
+        with open(f_name, 'w') as f:
+
+            # Header
+            f.write("%d %d\n" % (self.n_node, self.n_dim))
+            f.write("%d %d\n" % (self.n_elem, self.n_corner))
+            f.write("%d\n" % self.n_subdom)
+            f.write("%f\n" % self.duration)
+
+            # Node section
+            f.write("\n%d %d %d\n" %
+                    (self.n_node, self.n_node_own, self.n_node_priv))
+            for node_id, node in self.node_map.iteritems():
+                coords = node.get_coords()
+                f.write("%d " % (node_id + 1))
+                for coord in coords:
+                    f.write("%f " % coord)
+                f.write("\n")
+
+            # Element section
+            f.write("\n%d\n" % self.n_elem)
+            for elem_id, corners in self.elem_map.iteritems():
+                f.write("%d " % (elem_id + 1))
+                for corner in corners:
+                    f.write("%d " % corner)
+                f.write("\n")
+
+            # Sparse matrix details
+            f.write("\n%d %d\n" % (self.matrix_len, self.cholesky_len))
+            for row, items in self.matrix.iteritems():
+                for item in items:
+                    f.write("%d %d\n" % (row, item))
+
+            # Multidomain section
+            f.write("\n%d %d\n" % (self.md1, self.md2))
+
+            # Vector of node types
+            f.write("\n%d %d\n" % (self.node_single_ty, self.node_attr))
+            for ty in self.node_ty:
+                f.write("%d\n" % ty)
+
+            # Print three zeros at the end to show that we're done
+            f.write("\n0\n0\n0\n")
+
+    def set_num_nodes(self, n):
+        self.n_node = int(n)
+        self.n_node_orig = self.n_node
+
+    def set_num_dim(self, d):
+        self.n_dim = int(d)
+
+    def set_num_elems(self, n):
+        self.n_elem = int(n)
+        self.n_elem_orig = self.n_elem
+
+    def set_num_corners(self, n):
+        self.n_corner = int(n)
+
+    def set_num_subdomains(self, n):
+        self.n_subdom = int(n)
+
+    def set_duration(self, d):
+        self.duration = float(d)
+
+    def set_num_node_types(self, l):
+        if int(l[0]) != self.n_node:
+            raise Exception("Incorrect format: number of nodes not coherent")
+        self.n_node_own = int(l[1])
+        self.n_node_priv = int(l[2])
+
+    def add_node(self, node_id, l):
+        if node_id != int(l[0]):
+            raise Exception("Incorrect node numbering")
+        coords = [float(l[i]) for i in range(1, self.n_dim + 1)]
+        self.node_map[node_id - 1] = Node(coords)
+
+    def add_elem(self, elem_id, l):
+        if elem_id != int(l[0]):
+            raise Exception("Incorrect element numbering")
+        elem = [int(l[i]) for i in range(1, self.n_corner + 1)]
+        self.elem_map[elem_id - 1] = elem
+        for node in elem:
+            self.node_map[node].add_member_elem(elem_id - 1)
+
+    def set_matrix_len(self, l):
+        self.matrix_len = int(l[0])
+        self.cholesky_len = int(l[1])
+
+    def add_matrix_item(self, l):
+        row = int(l[0])
+        col = int(l[1])
+        if row not in self.matrix:
+            self.matrix[row] = list()
+        self.matrix[row].append(col)
+
+    def set_multidomain(self, l):
+        self.md1 = int(l[0])
+        self.md2 = int(l[1])
+
+    def set_nodevector_header(self, l):
+        self.node_single_ty = int(l[0])
+        self.node_attr = int(l[1])
+
+    def set_node_type(self, l):
+        self.node_ty.append(int(l[0]))
+
+    def get_new_node_id(self, node_id):
+        """Calculates the new ID of a node by looking at all the nodes that have
+        been deleted. Assumes that deleted_nodes is sorted.
+        """
+        if len(self.deleted_nodes) == 0 or node_id < self.deleted_nodes[0]:
+            return node_id
+        elif node_id > self.deleted_nodes[-1]:
+            return node_id - len(self.deleted_nodes)
+
+        # Binary search
+        lower = 0
+        upper = len(self.deleted_nodes) - 1
+        middle = upper / 2
+
+        while lower + 1 < upper:
+
+            if self.deleted_nodes[middle] < node_id:
+                lower = middle
+            elif self.deleted_nodes[middle] > node_id:
+                upper = middle
+            else:
+                raise Exception("Unknown error in binary search")
+
+        return node_id - lower - 1
+
+    # MESH MODIFIER METHODS
+    def delete_node(self, i):
+        for elem in self.node_map[i].elems:
+            self.delete_elem(elem)
+        del self.node_map[i]
+        self.deleted_nodes.append(i)
+        self.n_node -= 1
+        self.n_node_own -= 1
+        self.n_node_priv -= 1
+
+    def delete_elem(self, i):
+        if i in self.elem_map:
+            del self.elem_map[i]
+            self.deleted_elems.append(i)
+            self.n_elem -= 1
+
+    def fix_numbers(self):
+        """Fixes the ids of nodes and elements according to the deleted nodes
+        """
+        self.deleted_nodes.append(self.n_node_orig - 1)
+        self.deleted_nodes.sort()
+        offset = 0
+        begin = self.deleted_nodes[0]
+        for end in self.deleted_nodes[1:]:
+            for i in range(begin, end - 1):
+                self.node_map[i - offset] = self.node_map[i + 1]
+                del self.node_map[i + 1]
+            begin = end
+            offset += 1
+        self.deleted_nodes.pop()
+
+        self.deleted_elems.append(self.n_elem_orig)
+        self.deleted_elems.sort()
+        begin = self.deleted_elems[0]
+        next_pos = begin
+        for end in self.deleted_elems[1:]:
+            for i in range(begin + 1, end):
+                self.elem_map[next_pos] = self.elem_map[i]
+                del self.elem_map[i]
+                next_pos += 1
+
+            begin = end
+        self.deleted_elems.pop()
+
+        for elem_id, nodes in self.elem_map.iteritems():
+            new_node_list = list()
+            for node in nodes:
+                new_node_list.append(self.get_new_node_id(node))
+            self.elem_map[elem_id] = new_node_list
+
+    def fix_adj_matrix(self):
+
+        new_matrix = dict()
+
+        for row, cols in self.matrix.iteritems():
+            if row in self.deleted_nodes:
+                self.matrix_len -= len(cols)
+            else:
+                new_cols = [self.get_new_node_id(col) for col in cols
+                            if col not in self.deleted_nodes]
+                if len(new_cols) != 0:
+                    new_matrix[self.get_new_node_id(row)] = new_cols
+                    self.matrix = new_matrix
+                self.matrix_len -= len(cols) - len(new_cols)
+
+    def fix_type_list(self):
+        '''Cleans up the node-type list, removing the types
+        for the removed nodes.
+        '''
+        for node in reversed(sorted(self.deleted_nodes)):
+            del self.node_ty[node]
+
+
+class MeshShell(cmd.Cmd):
+
+    prompt = 'mesh > '
+
+    def __init__(self, f_name):
+        cmd.Cmd.__init__(self)
+        self.contents = Contents(f_name)
+
+    def do_quit(self, args):
+        print "Goodbye!"
+        sys.exit()
+
+    def do_EOF(self, args):
+        self.do_quit(args)
+
+    def do_save(self, f_name):
+        self.contents.save(f_name)
+        sys.exit()
+
+    def do_delete(self, args):
+        args = args.split()
+        if args[0] == 'node':
+            self.contents.delete_node(int(args[1]))
+
+
+if __name__ == '__main__':
+
+    if len(sys.argv) != 2:
+        print "Usage: %s <input>" % sys.argv[0]
+        exit()
+
+    MeshShell(sys.argv[1]).cmdloop()
