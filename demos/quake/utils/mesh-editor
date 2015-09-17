@@ -92,13 +92,19 @@ class Contents:
                 line = f.readline()[:-1].split()
                 self.set_node_type(line)
 
-    def save(self, f_name):
+    def save(self, f_name=None):
+
+        def smart_open(f_name):
+            if f_name is None:
+                return sys.stdout
+            else:
+                return open(f_name, 'w')
 
         self.fix_numbers()
         self.fix_adj_matrix()
         self.fix_type_list()
 
-        with open(f_name, 'w') as f:
+        with smart_open(f_name) as f:
 
             # Header
             f.write("%d %d\n" % (self.n_node, self.n_dim))
@@ -336,8 +342,35 @@ class MeshShell(cmd.Cmd):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) != 2:
-        print "Usage: %s <input>" % sys.argv[0]
-        exit()
+    n_params = len(sys.argv)
 
-    MeshShell(sys.argv[1]).cmdloop()
+    if n_params < 2:
+        print "Basic usage: %s <input>" % sys.argv[0]
+        print "Otherwise, please give me a command with parameters."
+        sys.exit(-1)
+
+    if n_params == 2:
+        shell = MeshShell(sys.argv[1])
+        try:
+            shell.cmdloop()
+        except KeyboardInterrupt:
+            shell.do_quit(None)
+
+    # Use commands directly without the shell prompt
+    else:
+        contents = Contents(sys.argv[1])
+        if sys.argv[2] == 'delete':
+            if n_params < 4:
+                print 'Error: "delete" command requires a subcommand'
+                sys.exit(-1)
+            if sys.argv[3] == 'nodes':
+                if n_params != 6:
+                    print 'Command usage: %s <input> delete nodes <start> <end>' \
+                        % sys.argv[0]
+                    sys.exit(-1)
+                contents.delete_multiple_nodes(
+                    int(sys.argv[4]),
+                    int(sys.argv[5])
+                )
+
+        contents.save()
