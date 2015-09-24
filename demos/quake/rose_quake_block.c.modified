@@ -776,9 +776,9 @@ int main(int argc,char **argv){
 					__local_disp0__[i][j] = 0.0;
 				};
 
+				// No need to communicate ghosts to team, only data to consumers
+				communicate_to_next();
 			}
-			// No need to communicate ghosts to team, only data to consumers
-			communicate_to_next();
 		}
 
 		if (myTeam == 1){
@@ -787,13 +787,13 @@ int main(int argc,char **argv){
 			 * LOOP 1
 			 */
 
-			get_from_previous();
-
 			__body_1__ = 0;
 			__loop_i_6__ = 0;
 			__body_i_6__ = 0;
 			init_write_ghosts(1);
 			for (i = 0; i < __nlocal_1__; ++i) {
+
+				get_from_previous();
 
 				sum0 =
 					(((__local_K__[__i_K_i_1_[i]][0] *
@@ -879,8 +879,6 @@ int main(int argc,char **argv){
 				__local_disp0__[i][1] += sum1;
 				__local_disp0__[i][2] += sum2;;
 			}
-			// TODO? Communicate written data to team
-			communicate_to_next(); //Communicate to process 0 for next iteration
 		}
 
 		time = (iter * Exc_dt);
