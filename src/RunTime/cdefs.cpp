@@ -166,21 +166,22 @@ extern "C" {
 	 * \param data_num Identifier of the data array
 	 * \param index Position in the array
 	 * \param loop The pin is meaningful in the context of this loop.
+	 * \param iter Iteration of the loop where this data is used.
 	 * \param isdirect !=0 if the addressing is affine; =0 if depends on
 	 *        indirection array.
 	 * \param isploop !=0 if the access comes from a partitionable loop.
 	 */
 	void add_pin_to_net
-	(int data_num, int index, int loop, int isdirect, int isploop){
+	(int data_num, int index, int loop, int iter, int isdirect, int isploop){
 
 		Inspector* my_inspect = Inspector::instance();
-		my_inspect->AddPinToNet(data_num, index, loop, isdirect, isploop);
+		my_inspect->AddPinToNet(data_num, index, loop, iter, isdirect, isploop);
 	}
 
 	void add_pin_to_net_
-	(int* data_num, int* index, int* loop, int* id, int* isploop){
+	(int* data_num, int* index, int* loop, int* iter, int* id, int* isploop){
 
-		add_pin_to_net(*data_num, *index, *loop, *id, *isploop);
+		add_pin_to_net(*data_num, *index, *loop, *iter, *id, *isploop);
 	}
 
 	/**

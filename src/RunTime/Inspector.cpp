@@ -396,17 +396,20 @@ void Inspector::AddVertex(int loopID, int iterValue){
  * \param arrayID Identifier of the array to be referenced.
  * \param index Index in the array to be referenced.
  * \param loop The pin is meaningful in the context of this loop.
+ * \param iter Iteration of the loop where this data is used.
  * \param is_direct !=0 if addressing is affine; =0 if it depends on indirection
  *                  array.
  * \param is_ploop !=0 if the access is direct from the partitionable loops.
  */
 void Inspector::AddPinToNet
-(int data_num, int index, int loop, int is_direct, int is_ploop){
+(int data_num, int index, int loop, int iter, int is_direct, int is_ploop){
 
 	assert(arrayID < allData.size());
 
 	///Get the current net
 	net* net_num = all_data[data_num]->data_net_info[loop][index];
+
+	vertex* curr_vertex = all_loops[loop]->iter_vertex[iter];
 
 	pin_info new_pin(curr_vertex, is_direct != 0 ? true : false);
 

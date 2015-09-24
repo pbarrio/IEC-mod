@@ -112,10 +112,6 @@ private:
 	/// Singleton inspector object. There is one inspector per process.
 	static Inspector* singleton_inspector;
 
-	/// For a given iteration, the vertex value is set first, all subsequent
-	/// calls to add nets uses the curr_vertex value
-	vertex* curr_vertex;
-
 	std::set<int>** send_info;
 
 	void AfterPartition(int loop);
@@ -158,7 +154,7 @@ public:
 
 	void init_loop(int, std::vector<int>);
 	void AddVertex(int, int);
-	void AddPinToNet(int, int, int, int, int);
+	void AddPinToNet(int, int, int, int, int, int);
 
 	void print_comm(){
 #ifndef NDEBUG

@@ -49,7 +49,7 @@ extern int get_elem(int, int);
 extern void set_array_stride(int, int);
 extern void partition_hypergraph(enum partition_type);
 extern int add_vertex(int, int);
-extern void add_pin_to_net(int, int, int, int, int);
+extern void add_pin_to_net(int, int, int, int, int, int);
 extern void add_index_from_proc(int, int, int, int);
 extern int get_vertex_home(int, int);
 extern int get_local_size(int);
