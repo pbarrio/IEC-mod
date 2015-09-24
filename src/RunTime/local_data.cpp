@@ -95,6 +95,16 @@ local_data::~local_data(){
 }
 
 
+/**
+ * \brief Mark an access to a position of the array as "direct" or "indirect"
+ *
+ * A direct access is that done with a number as the index (e.g. a[1]). An
+ * indirect access is that done by means of another array (e.g. a[b[3]], where
+ * "a" is the accessed array and "b" is the indirection array).
+ *
+ * \param index Index accessed in the array
+ * \param access_type 1 if direct access, else indirect
+ */
 void local_data::AddIndexAccessed(int index, int access_type){
 
 	if (access_type == 1){
@@ -110,8 +120,14 @@ void local_data::AddIndexAccessed(int index, int access_type){
 	}
 }
 
-void local_data::InsertDirectAccess(const int* read_buffer, const int num_vals){
 
+/**
+ * \brief Insert direct access from this process to a region of data
+ *
+ * \param read_buffer Pointer to the start of the data
+ * \param num_vals Size of the data to be directly accessed
+ */
+void local_data::InsertDirectAccess(const int* read_buffer, const int num_vals){
 	direct_access.insert(read_buffer, read_buffer + num_vals);
 }
 
@@ -128,6 +144,13 @@ void local_data::InsertIndirectAccess
 	indirect_access.insert(read_buffer, read_buffer + num_vals);
 }
 
+
+/**
+ * \brief Initializes important attributes of the local array
+ *
+ * This function DOES NOT populate the local array from the global array.
+ * There is a function PopulateLocalArray for that.
+ */
 void local_data::SetupLocalArray(){
 
 	if (is_constrained){
@@ -179,7 +202,15 @@ int local_data::GetLocalIndex(int global_index) const{
 	return local_index;
 }
 
+
 /**
+ * \brief Renumber an access array from the global indexes to the local ones
+ *
+ * An access array contains the precomputed access indexes for arrays that are
+ * accessed through indirection arrays. These indexes computed in the inspector
+ * refer to the global array. This function translates them to the corresponding
+ * local indexes.
+ *
  * \param array_size Size of this local array
  * \param access_array Array that will be used to index this local array
  */
@@ -188,6 +219,7 @@ void local_data::RenumberAccessArray(int array_size, int* access_array){
 	for (int i = 0; i < array_size; i++)
 		access_array[i] = GetLocalIndex(access_array[i]);
 }
+
 
 void local_data::RenumberOffsetArray(int array_size, int* offset_array,
                                      int* lower_bound){
@@ -315,6 +347,8 @@ local_data_double::~local_data_double(){}
 
 
 /**
+ * \brief Populate local array with the contents of the global array
+ *
  * \param local_base Allocated clean array to be populated
  * \param orig Original array
  * \param st Stride. See populate_local_array() in cdefs.cpp for more info.
@@ -329,6 +363,7 @@ void local_data_double::PopulateLocalArray(double* local_base,
 	int counter = 0;
 
 	if (stride != 1){
+
 		for (int j = 0; j < direct_access_size; j++, counter++){
 			int orig_offset = direct_access_array[j] * stride;
 			for (int i = 0; i < stride; i++)
@@ -336,14 +371,13 @@ void local_data_double::PopulateLocalArray(double* local_base,
 		}
 
 		for (int j = 0; j < indirect_access_size; j++, counter++){
-
 			int orig_offset = indirect_access_array[j] * stride;
 			for (int i = 0; i < stride; i++)
 				local_array[counter * stride + i] = orig_array[orig_offset + i];
 		}
 	}
 	else{
-		for(int i = 0; i < direct_access_size; i++, counter++)
+		for (int i = 0; i < direct_access_size; i++, counter++)
 			local_array[counter] = orig_array[direct_access_array[i]];
 		for (int i = 0; i < indirect_access_size; i++, counter++)
 		  local_array[counter] = orig_array[indirect_access_array[i]];

@@ -38,6 +38,7 @@ global_data::global_data(int mn, int oas, int of, bool iro):
 	is_constrained = false;
 }
 
+
 global_data::~global_data(){
 
 	for (LoopNets::iterator netIt = data_net_info.begin(),
@@ -51,8 +52,9 @@ global_data::~global_data(){
 	}
 }
 
+
 /**
- * \brief Mark the data as used in a loop and initialize some required info
+ * \brief Mark the array as used in a loop and initialize some required info
  */
 void global_data::use_in_loop(int loopID){
 

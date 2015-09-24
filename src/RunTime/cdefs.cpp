@@ -149,9 +149,9 @@ extern "C" {
 		my_inspect->AddVertex(loop, iter_value);
 	}
 
-	void add_vertex_(int* iter_num, int* iter_value){
+	void add_vertex_(int* loop, int* iter_value){
 		Inspector* my_inspect = Inspector::instance();
-		my_inspect->AddVertex(*iter_num,*iter_value);
+		my_inspect->AddVertex(*loop, *iter_value);
 	}
 
 	/**
@@ -239,6 +239,7 @@ extern "C" {
 	 *
 	 * This is the size of the array portion that is locally used
 	 * by this process.
+	 * This function also fills in the direct and indirect access lists.
 	 *
 	 * \param an Array ID
 	 */
@@ -291,6 +292,7 @@ extern "C" {
 		Inspector::instance()->AddWriteArray(*an);
 	}
 
+
 	void add_index_from_proc(int data_num, int index, int access_type){
 		Inspector::instance()->
 			AddIndexAccessed(data_num, index, access_type);
@@ -318,6 +320,14 @@ extern "C" {
 		Inspector::instance()->PopulateLocalArray(*an, lb, oa, *st);
 	}
 
+
+	/**
+	 * \brief Renumbers ther access array from local to global indexes
+	 *
+	 * \param an ID of the local array
+	 * \param as Size of this local array
+	 * \param aa Array that will be used to index this local array
+	 */
 	void renumber_access_array(int an, int as, int* aa){
 		Inspector::instance()->RenumberAccessArray(an, as, aa);
 	}

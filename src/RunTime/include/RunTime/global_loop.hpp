@@ -25,31 +25,31 @@
 class inspector;
 
 class global_loop{
- private:
+private:
 
-  vertex** iter_vertex;
+	vertex** iter_vertex;
 
-  const int my_num;
+	const int my_num;
 
-  const int num_iters;
+	const int num_iters;
 
-  int nproc_local;
+	int nproc_local;
 
- public:
-  
-  global_loop(int,int,int);
+public:
 
-  ~global_loop();
+	global_loop(int, int, int);
 
-  /**
-   * \param iter_value Iteration of the loop
-   */
-  inline int GetVertexHome(int iter_value) const{
-    return iter_vertex[iter_value]->home;
-  }
+	~global_loop();
 
-  friend class Inspector;
-  
+	/**
+	 * \param iter_value Iteration of the loop
+	 */
+	inline int GetVertexHome(int iter_value) const{
+		return iter_vertex[iter_value]->home;
+	}
+
+	friend class Inspector;
+
 };
 
 #endif

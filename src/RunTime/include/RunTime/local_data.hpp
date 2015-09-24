@@ -19,9 +19,10 @@
 #ifndef __LOCAL_DATA_HPP__
 #define __LOCAL_DATA_HPP__
 
+#include "RunTime/hypergraph.hpp"
+
 #include <cstdio>
 #include <cassert>
-#include "RunTime/hypergraph.hpp"
 
 int binary_search(int* const, const int, const int);
 
@@ -60,8 +61,10 @@ protected:
 
 	/// Temp structure used to calculate the direct accesses
 	std::set<int> direct_access;
+
 	/// Number of direct accesses
 	long direct_access_size;
+
 	/// Mapping from local to global indices for direct accesses. If
 	/// direct_access_array[a] = b, then index 'b' in the global array
 	/// corresponds to a local index 'a'.
@@ -69,8 +72,10 @@ protected:
 
 	/// Temp structure used to calculate the indirect accesses
 	std::set<int> indirect_access;
+
 	/// Number of indirect accesses
 	int indirect_access_size;
+
 	/// Same as direct_access_array but for indirect accesses
 	int* indirect_access_array;
 

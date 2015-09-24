@@ -62,10 +62,10 @@ private:
 	int pins_size;
 
 	/// All arrays in pragma, except for indirection arrays.
-	std::deque<global_data*> all_data;
+	std::deque<global_data*> allData;
 
 	/// Same as above but for local data. I wonder if I could get rid of these!
-	std::deque<local_data*> all_local_data;
+	std::deque<local_data*> allLocalData;
 
 
 	/*
@@ -73,21 +73,21 @@ private:
 	 */
 
 	/// All loops specified as parallel
-	std::deque<global_loop*> all_loops;
+	std::deque<global_loop*> allLoops;
 
 	/// Loop that we process
-	global_loop* my_loop;
+	global_loop* myLoop;
 
 	/// Loops that give us data (we are consumers of them)
-	std::map<int, global_loop*> producer_loops;
+	std::map<int, global_loop*> producerLoops;
 
 	/// Loops that wait for our data (we are producers for them)
-	std::map<int, global_loop*> consumer_loops;
+	std::map<int, global_loop*> consumerLoops;
 
 	/*-----------------*/
 
 
-	///All solvers
+	/// All solvers
 	std::deque<petsc_solve*> all_solvers;
 
 	int* const iter_num_offset;
@@ -144,17 +144,17 @@ public:
 	inline int get_proc_id() const{return proc_id;}
 
 	inline int GetVertexHome(int loop_id, int iter) const{
-		return all_loops[loop_id]->GetVertexHome(iter);
+		return allLoops[loop_id]->GetVertexHome(iter);
 	}
 
 	inline int GetNProcs() const {return nprocs;}
 	inline int GetTeamSize() const {return team_size;}
 
 	inline void SetStride(int an, int st){
-		all_data[an]->SetStride(st);
+		allData[an]->SetStride(st);
 	}
 
-	inline int GetProcLocal(int in) const {return all_loops[in]->nproc_local;}
+	inline int GetProcLocal(int in) const {return allLoops[in]->nproc_local;}
 
 	void init_loop(int, std::vector<int>);
 	void AddVertex(int, int);
@@ -266,7 +266,7 @@ public:
 	 * \brief Unimportant for the quake benchmark
 	 */
 	void SetConstraint(int an){
-		all_data[an]->SetConstraint();
+		allData[an]->SetConstraint();
 	}
 
 	inline void print_solver(){
@@ -283,11 +283,11 @@ public:
 	 */
 
 	inline void SetupLocalArray(int dn){
-		all_local_data[dn]->SetupLocalArray();
+		allLocalData[dn]->SetupLocalArray();
 	}
 
 	inline int GetLocalDataSize(int dn) const{
-		return all_local_data[dn]->GetLocalSize();
+		return allLocalData[dn]->GetLocalSize();
 	}
 
 	/**
@@ -306,7 +306,7 @@ public:
 		local_data* new_data =
 			new local_data_double(mn, team_size, proc_id, stride_size, ddni,
 			                      oas, iro, ic);
-		all_local_data.push_back(new_data);
+		allLocalData.push_back(new_data);
 	}
 
 	/*
@@ -315,7 +315,7 @@ public:
 	 * \param an Id of the array
 	 */
 	inline void AddReadArray(int an){
-		team_comm->read_arrays.push_back(all_local_data[an]);
+		team_comm->read_arrays.push_back(allLocalData[an]);
 	}
 
 	/*
@@ -324,11 +324,12 @@ public:
 	 * \param an Id of the array
 	 */
 	inline void AddWriteArray(int an){
-		team_comm->write_arrays.push_back(all_local_data[an]);
+		team_comm->write_arrays.push_back(allLocalData[an]);
 	}
 
+
 	inline void AddIndexAccessed(int dn, int ind, int at){
-		all_local_data[dn]->AddIndexAccessed(ind, at);
+		allLocalData[dn]->AddIndexAccessed(ind, at);
 	}
 
 	/**
@@ -344,12 +345,14 @@ public:
 	}
 
 	inline void InsertDirectAccess(int an, int* v, int n){
-		all_local_data[an]->InsertDirectAccess(v, n);
+		allLocalData[an]->InsertDirectAccess(v, n);
 	}
 
+
 	inline void InsertIndirectAccess(int an, int* v, int n){
-		all_local_data[an]->InsertIndirectAccess(v, n);
+		allLocalData[an]->InsertIndirectAccess(v, n);
 	}
+
 
 	/**
 	 * \param an ID of the local array to be populated
@@ -357,25 +360,28 @@ public:
 	 * \param aa Array that will be used to index this local array
 	 */
 	inline void RenumberAccessArray(int an, int as, int* aa){
-		all_local_data[an]->RenumberAccessArray(as, aa);
+		allLocalData[an]->RenumberAccessArray(as, aa);
 	}
 
+
 	inline void RenumberOffsetArray(int an, int as, int* aa, int* la){
-		all_local_data[an]->RenumberOffsetArray(as, aa, la);
+		allLocalData[an]->RenumberOffsetArray(as, aa, la);
 	}
+
 
 	inline void GenerateGhosts(){
 		int counter = 0;
-		for (std::deque<local_data*>::iterator it = all_local_data.begin();
-		     it != all_local_data.end(); it++, counter++)
+		for (std::deque<local_data*>::iterator it = allLocalData.begin();
+		     it != allLocalData.end(); it++, counter++)
 
 			(*it)->GenerateGhosts();
 	}
 
+
 	inline void GenerateOwned(){
 		int counter = 0;
-		for (std::deque<local_data*>::iterator it = all_local_data.begin();
-		     it != all_local_data.end(); it++, counter++)
+		for (std::deque<local_data*>::iterator it = allLocalData.begin();
+		     it != allLocalData.end(); it++, counter++)
 
 			(*it)->GenerateOwned();
 	}
@@ -385,11 +391,11 @@ public:
 	}
 
 	inline void SetLocalArray(int an, void* la) {
-		all_local_data[an]->SetLocalArray(la);
+		allLocalData[an]->SetLocalArray(la);
 	}
 
 	inline int GetLocalBlockOffset(int an) {
-		return all_local_data[an]->GetLocalBlockOffset();
+		return allLocalData[an]->GetLocalBlockOffset();
 	}
 
 	void print_local_data();

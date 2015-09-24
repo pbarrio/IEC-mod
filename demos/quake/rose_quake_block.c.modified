@@ -83,7 +83,7 @@ int **ARCHvertex;
 int *ARCHmatrixcol;
 int *ARCHmatrixindex;
 /* functions */
-void arch_init(int argc,char **argv,struct options *op);
+void arch_init(int argc, char **argv, struct options *op);
 void mem_init();
 void arch_readnodevector(double *v,int n);
 void slip(double *u,double *v,double *w);
@@ -127,6 +127,7 @@ int main(int argc,char **argv){
 	ARMCI_Init();
 	MPI_Comm_rank(MPI_COMM_WORLD,&__proc_id__);
 	MPI_Comm_size(MPI_COMM_WORLD,&__nprocs__);
+
 	int i;
 	int j;
 	int k;
@@ -159,6 +160,7 @@ int main(int argc,char **argv){
 	double uf[3UL];
 	double vertices[4UL][3UL];
 	struct properties prop;
+
 	/* NOTE: There are 5 possible flag values for the node data:
 	   1 if the node is in the interior
 	   4 if the node is on a x=const boundary surface
@@ -168,12 +170,12 @@ int main(int argc,char **argv){
 	*/
 	/*------------------------------------------------------------------------*/
 	/* Read in data from the pack file */
-	arch_init(argc,argv,&options);
+	arch_init(argc, argv, &options);
 	/* Dynamic memory allocations and initializations */
 	mem_init();
-	arch_readnodevector(nodekindf,ARCHnodes);
+	arch_readnodevector(nodekindf, ARCHnodes);
 	if (!(options.quiet != 0))
-		fprintf(stderr,"%s: Beginning simulation.\n",argv[0]);
+		fprintf(stderr, "%s: Beginning simulation.\n", argv[0]);
 
 	/* Excitation characteristics */
 	Exc.dt = 0.0024;
@@ -572,10 +574,10 @@ int main(int argc,char **argv){
 	partition_hypergraph(2);
 	free(__0_status__);
 	__0_status__ = ((int*)(malloc(sizeof(int) * get_proc_iter_size(0))));
-	memset(__0_status__, 0, sizeof(int ) * get_proc_iter_size(0));
+	memset(__0_status__, 0, sizeof(int) * get_proc_iter_size(0));
 	free(__1_status__);
 	__1_status__ = ((int*)(malloc(sizeof(int) * get_proc_iter_size(0))));
-	memset(__1_status__, 0, sizeof(int ) * get_proc_iter_size(0));
+	memset(__1_status__, 0, sizeof(int) * get_proc_iter_size(0));
 
 	/* STAGE 2: Create data structures? */
 	do {
@@ -584,10 +586,10 @@ int main(int argc,char **argv){
 		int __0_status_counter__ = 0;
 		for (i = 0; i < ARCHnodes; i++) {
 
-			if (get_vertex_home(0,i) == __proc_id__) {
+			if (get_vertex_home(0, i) == __proc_id__) {
 
 				if (__0_status__[__0_status_counter__] == 0) {
-					__0_status__[__0_status_counter__] = 1;;
+					__0_status__[__0_status_counter__] = 1;
 				}
 				++__0_status_counter__;
 			}
@@ -598,7 +600,7 @@ int main(int argc,char **argv){
 		__shadow_0__ = 0;
 		__shadow_1__ = 0;
 		for (i = 0; i < ARCHnodes; i++) {
-			if (get_vertex_home(0,i) == __proc_id__) {
+			if (get_vertex_home(0, i) == __proc_id__) {
 
 				if (__1_status__[__1_status_counter__] == 0) {
 					__1_status__[__1_status_counter__] = 1;
@@ -1474,40 +1476,42 @@ void arch_parsecommandline(int argc,char **argv,struct options *op)
 		exit(0);
 	}
 }
-/*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
-/*
- * arch_readnodevector - read a vector of nodal data from the pack file
- *                       called by READNODEVECTOR.stub               
- */
 
-void arch_readnodevector(double *v,int n)
-{
+/**
+ * \brief Read a vector of nodal data from the pack file
+ *
+ * FORMAT
+ *   <Type> <Attributes>
+ *   <Node>
+ *   ...
+ */
+void arch_readnodevector(double *v, int n){
+
 	int i;
 	int type;
 	int attributes;
-	fscanf(packfile,"%d %d\n",&type,&attributes);
+	fscanf(packfile, "%d %d\n", &type, &attributes);
 	if (type != 2) {
-		fprintf(stderr,"READNODEVECTOR: unexpected data type\n");
+		fprintf(stderr, "READNODEVECTOR: unexpected data type\n");
 		arch_bail();
 	}
 	if (attributes != 1) {
-		fprintf(stderr,"READNODEVECTOR: unexpected number of attributes\n");
+		fprintf(stderr, "READNODEVECTOR: unexpected number of attributes\n");
 		arch_bail();
 	}
 	for (i = 0; i < n; i++) {
-		fscanf(packfile,"%lf",(v + i));
+		fscanf(packfile, "%lf", (v + i));
 	}
 }
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 /*
  * arch_readelemvector - read a vector of element data from the pack file
- *                       called by READELEMVECTOR.stub               
+ *                       called by READELEMVECTOR.stub
  */
 
-void arch_readelemvector(double *v,int n)
-{
+void arch_readelemvector(double *v, int n){
+
 	int i;
 	int type;
 	int attributes;
@@ -1529,141 +1533,176 @@ void arch_readelemvector(double *v,int n)
 /*
  * arch_readdouble - read a floating point number from the pack file
  */
+void arch_readdouble(double *v){
 
-void arch_readdouble(double *v)
-{
 	int type;
 	int attributes;
-	fscanf(packfile,"%d %d\n",&type,&attributes);
+	fscanf(packfile, "%d %d\n", &type, &attributes);
 	if (type != 3) {
-		fprintf(stderr,"READDOUBLE: unexpected data type\n");
+		fprintf(stderr, "READDOUBLE: unexpected data type\n");
 		arch_bail();
 	}
 	if (attributes != 1) {
-		fprintf(stderr,"READDOUBLE: unexpected number of attributes\n");
+		fprintf(stderr, "READDOUBLE: unexpected number of attributes\n");
 		arch_bail();
 	}
-	fscanf(packfile,"%lf",(v + 0));
+	fscanf(packfile, "%lf", (v + 0));
 }
-/*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
 
-void readpackfile(FILE *packfile,struct options *op)
-{
+
+/**
+ * \brief Read input file with the unstructured mesh
+ *
+ * FILE FORMAT
+ *
+ *   (Header)
+ *   <#Nodes> <Mesh dimension>
+ *   <#Elements> <#Corners per element>
+ *   <#Subdomains>
+ *   <Duration>
+ *
+ *   (Node section)
+ *   <#Nodes> <#My nodes> <#Private nodes>
+ *   <Node ID> <Coord X> <Coord Y> <Coord Z>
+ *   ...
+ *
+ *   (Element section)
+ *   <Element ID> <Vertex 1> <Vertex 2> <Vertex 3> <Vertex 4>
+ *   ...
+ *
+ *   (Sparse matrix details)
+ *   <Matrix length> <Cholesky length>
+ *   <CSR row> <CSR column>
+ *   ...
+ *
+ *   (Multidomain section - Not used I think)
+ *   <N1> <N2>
+ *
+ * The rest of the input file is read in function arch_readnodevector
+ */
+void readpackfile(FILE *packfile, struct options *op){
+
 	int oldrow;
 	int newrow;
 	int i;
 	int j;
 	int temp1;
 	int temp2;
-	fscanf(packfile,"%d",&ARCHglobalnodes);
-	fscanf(packfile,"%d",&ARCHmesh_dim);
-	fscanf(packfile,"%d",&ARCHglobalelems);
-	fscanf(packfile,"%d",&ARCHcorners);
-	fscanf(packfile,"%d",&ARCHsubdomains);
-	fscanf(packfile,"%lf",&ARCHduration);
+	fscanf(packfile, "%d", &ARCHglobalnodes);
+	fscanf(packfile, "%d", &ARCHmesh_dim);
+	fscanf(packfile, "%d", &ARCHglobalelems);
+	fscanf(packfile, "%d", &ARCHcorners);
+	fscanf(packfile, "%d", &ARCHsubdomains);
+	fscanf(packfile, "%lf", &ARCHduration);
+
 	/* only one subdomain allowed */
 	if (ARCHsubdomains != 1) {
-		fprintf(stderr,"%s: too many subdomains(%d), rerun slice using -s1\n",progname,ARCHsubdomains);
+		fprintf(stderr, "%s: too many subdomains(%d), rerun slice using -s1\n",
+		        progname, ARCHsubdomains);
 		arch_bail();
 	}
+
 	/* read nodes */
 	if (!((op -> quiet) != 0)) {
-		fprintf(stderr,"%s: Reading nodes.\n",progname);
+		fprintf(stderr, "%s: Reading nodes.\n", progname);
 	}
-	fscanf(packfile,"%d %d %d",&ARCHnodes,&ARCHmine,&ARCHpriv);
-	ARCHglobalnode = ((int *)(malloc((ARCHnodes * sizeof(int )))));
+	fscanf(packfile, "%d %d %d", &ARCHnodes, &ARCHmine, &ARCHpriv);
+	ARCHglobalnode = (int *)malloc(ARCHnodes * sizeof(int));
 	if (ARCHglobalnode == ((int *)((int *)((void *)0)))) {
-		fprintf(stderr,"malloc failed for ARCHglobalnode\n");
+		fprintf(stderr, "malloc failed for ARCHglobalnode\n");
 		fflush(stderr);
 		exit(0);
 	}
 	ARCHcoord = ((double **)(malloc((ARCHnodes * sizeof(double *)))));
-	for (i = 0; i < ARCHnodes; i++) 
+	for (i = 0; i < ARCHnodes; i++)
 		ARCHcoord[i] = ((double *)(malloc((3 * sizeof(double )))));
 	for (i = 0; i < ARCHnodes; i++) {
-		fscanf(packfile,"%d",(ARCHglobalnode + i));
+		fscanf(packfile, "%d", (ARCHglobalnode + i));
 		for (j = 0; j < ARCHmesh_dim; j++) {
-			fscanf(packfile,"%lf",(ARCHcoord[i] + j));
+			fscanf(packfile, "%lf", (ARCHcoord[i] + j));
 		}
 	}
+
 	/* read elements */
-	if (!((op -> quiet) != 0)) 
-		fprintf(stderr,"%s: Reading elements.\n",progname);
-	fscanf(packfile,"%d",&ARCHelems);
+	if (!((op -> quiet) != 0))
+		fprintf(stderr, "%s: Reading elements.\n", progname);
+	fscanf(packfile, "%d", &ARCHelems);
 	ARCHglobalelem = ((int *)(malloc((ARCHelems * sizeof(int )))));
-	if (ARCHglobalelem == ((int *)((int *)((void *)0)))) {
-		fprintf(stderr,"malloc failed for ARCHglobalelem\n");
+	if (ARCHglobalelem == ((int*)((int*)((void*)0)))) {
+		fprintf(stderr, "malloc failed for ARCHglobalelem\n");
 		fflush(stderr);
 		exit(0);
 	}
-	ARCHvertex = ((int **)(malloc((ARCHelems * sizeof(int *)))));
-	for (i = 0; i < ARCHelems; i++) 
-		ARCHvertex[i] = ((int *)(malloc((4 * sizeof(int )))));
+	ARCHvertex = ((int**)(malloc((ARCHelems * sizeof(int*)))));
+	for (i = 0; i < ARCHelems; i++)
+		ARCHvertex[i] = ((int*)(malloc((4 * sizeof(int)))));
 	for (i = 0; i < ARCHelems; i++) {
-		fscanf(packfile,"%d",(ARCHglobalelem + i));
+		fscanf(packfile, "%d", (ARCHglobalelem + i));
 		for (j = 0; j < ARCHcorners; j++) {
-			fscanf(packfile,"%d",(ARCHvertex[i] + j));
+			fscanf(packfile, "%d", (ARCHvertex[i] + j));
 		}
 	}
+
 	/* read sparse matrix structure and convert from tuples to CSR */
-	if (!((op -> quiet) != 0)) 
+	if (!((op -> quiet) != 0))
 		fprintf(stderr,"%s: Reading sparse matrix structure.\n",progname);
-	fscanf(packfile,"%d %d",&ARCHmatrixlen,&ARCHcholeskylen);
-	ARCHmatrixcol = ((int *)(malloc(((ARCHmatrixlen + 1) * sizeof(int )))));
-	if (ARCHmatrixcol == ((int *)((int *)((void *)0)))) {
-		fprintf(stderr,"malloc failed for ARCHmatrixcol\n");
+	fscanf(packfile, "%d %d", &ARCHmatrixlen, &ARCHcholeskylen);
+	ARCHmatrixcol = (int*)malloc((ARCHmatrixlen + 1) * sizeof(int));
+	if (ARCHmatrixcol == ((int*)((int*)((void*)0)))) {
+		fprintf(stderr, "malloc failed for ARCHmatrixcol\n");
 		fflush(stderr);
 		exit(0);
 	}
-	ARCHmatrixindex = ((int *)(malloc(((ARCHnodes + 1) * sizeof(int )))));
-	if (ARCHmatrixindex == ((int *)((int *)((void *)0)))) {
-		fprintf(stderr,"malloc failed for ARCHmatrixindex\n");
+	ARCHmatrixindex = (int*)malloc((ARCHnodes + 1) * sizeof(int));
+	if (ARCHmatrixindex == ((int*)((int*)((void*)0)))){
+		fprintf(stderr, "malloc failed for ARCHmatrixindex\n");
 		fflush(stderr);
 		exit(0);
 	}
-	{
-		oldrow = -1;
-	}
-	for (i = 0; i < ARCHmatrixlen; i++) {
-		fscanf(packfile,"%d",&newrow);
-		fscanf(packfile,"%d",(ARCHmatrixcol + i));
-		while(oldrow < newrow){
-			if ((oldrow + 1) >= (ARCHnodes + 1)) {
-				printf("%s: error: (1)idx buffer too small (%d >= %d)\n",progname,(oldrow + 1),(ARCHnodes + 1));
+	oldrow = -1;
+	for (i = 0; i < ARCHmatrixlen; i++){
+		fscanf(packfile, "%d", &newrow);
+		fscanf(packfile, "%d", ARCHmatrixcol + i);
+		while (oldrow < newrow){
+			if (oldrow + 1 >= ARCHnodes + 1){
+				printf("%s: error: (1)idx buffer too small (%d >= %d)\n",
+				       progname, (oldrow + 1), (ARCHnodes + 1));
 				arch_bail();
 			}
 			ARCHmatrixindex[++oldrow] = i;
 		}
 	}
-	while(oldrow < ARCHnodes){
+	while (oldrow < ARCHnodes){
 		ARCHmatrixindex[++oldrow] = ARCHmatrixlen;
 	}
+
 	/* read comm info (which nodes are shared between subdomains) */
-	fscanf(packfile,"%d %d",&temp1,&temp2);
+	fscanf(packfile, "%d %d", &temp1, &temp2);
 }
+
+
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
-/* 
- * arch_init - initialize the Archimedes simulation 
+/*
+ * arch_init - initialize the Archimedes simulation
  *             called by ARCHIMEDES_INIT.stub
  */
+void arch_init(int argc, char **argv, struct options *op){
 
-void arch_init(int argc,char **argv,struct options *op)
-{
 	/* parse the command line options */
 	progname = argv[0];
-	arch_parsecommandline(argc,argv,op);
+	arch_parsecommandline(argc, argv, op);
 	/* read the pack file */
-	packfile = fopen(argv[1],"r");
-	readpackfile(packfile,op);
+	packfile = fopen(argv[1], "r");
+	readpackfile(packfile, op);
 }
+
+
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 /* Matrix vector product - basic version                                    */
+void smvp(int nodes,double ***A,int *Acol,int *Aindex,double **v,double **w){
 
-void smvp(int nodes,double ***A,int *Acol,int *Aindex,double **v,double **w)
-{
 	int i;
 	int Anext;
 	int Alast;
@@ -1780,11 +1819,12 @@ void smvp_opt(nodes,A,Acol,Aindex,v,w)
 /*--------------------------------------------------------------------------*/
 /* Dynamic memory allocations and initializations                           */
 
-void mem_init()
-{
+void mem_init(){
+
 	int i;
 	int j;
 	int k;
+
 	/* Node vector */
 	nodekindf = ((double *)(malloc((ARCHnodes * sizeof(double )))));
 	if (nodekindf == ((double *)((double *)((void *)0)))) {
@@ -1792,6 +1832,7 @@ void mem_init()
 		fflush(stderr);
 		exit(0);
 	}
+
 	/* Node vector */
 	nodekind = ((int *)(malloc((ARCHnodes * sizeof(int )))));
 	if (nodekind == ((int *)((int *)((void *)0)))) {
@@ -1799,6 +1840,7 @@ void mem_init()
 		fflush(stderr);
 		exit(0);
 	}
+
 	/* Element vector */
 	source_elms = ((int *)(malloc((ARCHelems * sizeof(int )))));
 	if (source_elms == ((int *)((int *)((void *)0)))) {
@@ -1820,6 +1862,7 @@ void mem_init()
 		fflush(stderr);
 		exit(0);
 	}
+
 	for (i = 0; i < ARCHnodes; i++) {
 		vel[i] = (vel_temp + (i * 3));
 		if (vel[i] == ((double *)((double *)((void *)0)))) {
@@ -1828,6 +1871,7 @@ void mem_init()
 			exit(0);
 		}
 	}
+
 	/* Mass matrix */
 	double *M_temp = (double *)(malloc(((ARCHnodes * 3) * sizeof(double ))));
 	M = ((double **)(malloc((ARCHnodes * sizeof(double *)))));
@@ -1844,6 +1888,7 @@ void mem_init()
 			exit(0);
 		}
 	}
+
 	/* Damping matrix */
 	double *C_temp = (double *)(malloc(((ARCHnodes * 3) * sizeof(double ))));
 	C = ((double **)(malloc((ARCHnodes * sizeof(double *)))));
@@ -1853,7 +1898,6 @@ void mem_init()
 		exit(0);
 	}
 	for (i = 0; i < ARCHnodes; i++) {
-		//(double *) malloc(3 * sizeof(double));
 		C[i] = (C_temp + (i * 3));
 		if (C[i] == ((double *)((double *)((void *)0)))) {
 			fprintf(stderr,"malloc failed for C[%d]\n",i);
@@ -1861,6 +1905,7 @@ void mem_init()
 			exit(0);
 		}
 	}
+
 	/* Auxiliary mass matrix */
 	double *M23_temp = (double *)(malloc(((ARCHnodes * 3) * sizeof(double ))));
 	M23 = ((double **)(malloc((ARCHnodes * sizeof(double *)))));
@@ -1877,6 +1922,7 @@ void mem_init()
 			exit(0);
 		}
 	}
+
 	/* Auxiliary damping matrix */
 	double *C23_temp = (double *)(malloc(((ARCHnodes * 3) * sizeof(double ))));
 	C23 = ((double **)(malloc((ARCHnodes * sizeof(double *)))));
@@ -1893,6 +1939,7 @@ void mem_init()
 			exit(0);
 		}
 	}
+
 	/* Auxiliary vector */
 	double *V23_temp = (double *)(malloc(((ARCHnodes * 3) * sizeof(double ))));
 	V23 = ((double **)(malloc((ARCHnodes * sizeof(double *)))));
@@ -1955,6 +2002,7 @@ void mem_init()
 			exit(0);
 		}
 	}
+
 	/* Stiffness matrix K[ARCHmatrixlen][3][3] */
 	double *K_temp = (double *)(malloc((sizeof(double ) * 9 * ARCHmatrixlen)));
 	K = ((double **)(malloc((ARCHmatrixlen * sizeof(double **)))));

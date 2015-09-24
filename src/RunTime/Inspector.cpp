@@ -16,7 +16,9 @@
  * @file: Inspector.cpp
  * @author: Mahesh Ravishankar <ravishan@cse.ohio-state.edu>
  */
+
 #include "RunTime/Inspector.hpp"
+
 #include "armci.h"
 #include "mpi.h"
 #include "omp.h"
@@ -79,7 +81,7 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 	team_size(teamsize),
 	nprocs(np),
 	pins_size(-1),
-	my_loop(NULL),
+	myLoop(NULL),
 	iter_num_offset(new int[nl + 1]), // The first '1' is for my loop
 	data_num_offset(new int[nd + 1]){
 
@@ -102,7 +104,7 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 			new global_loop(iLoop,
 			                iter_num_count[iLoop],
 			                iter_num_offset[iLoop]);
-		all_loops.push_back(new_loop);
+		allLoops.push_back(new_loop);
 		iter_num_offset[iLoop + 1] =
 			iter_num_offset[iLoop] + iter_num_count[iLoop];
 	}
@@ -114,7 +116,7 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 		new_data = new global_data_double(i, data_num_count[i],
 		                                  data_num_offset[i],
 		                                  ro[i] == 1? true : false);
-		all_data.push_back(new_data);
+		allData.push_back(new_data);
 
 		data_num_offset[i+1] = data_num_offset[i] + data_num_count[i];
 	}
@@ -146,20 +148,20 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 
 Inspector::~Inspector(){
 
-	for (deque<global_loop*>::iterator it = all_loops.begin();
-	     it != all_loops.end() ; it++)
+	for (deque<global_loop*>::iterator it = allLoops.begin();
+	     it != allLoops.end(); it++)
 
 		delete (*it);
 
 	delete[] iter_num_offset;
-	all_loops.clear();
-	for (deque<global_data*>::iterator it = all_data.begin();
-	     it != all_data.end(); it++ )
+	allLoops.clear();
+	for (deque<global_data*>::iterator it = allData.begin();
+	     it != allData.end(); it++)
 
 		delete (*it);
 
 	delete[] data_num_offset;
-	all_data.clear();
+	allData.clear();
 	int counter = 0;
 	for (deque<global_comm*>::iterator it = all_comm.begin();
 	     it != all_comm.end(); it++ , counter++){
@@ -209,7 +211,7 @@ Inspector::~Inspector(){
 	if (send_info){
 		for( int i = 0 ; i < nprocs * 2 ; i++ ){
 			send_info[i]->clear();
-					delete send_info[i];
+			delete send_info[i];
 		}
 		delete[] send_info;
 	}
@@ -370,30 +372,28 @@ void Inspector::init_loop(int loopID, vector<int> dataIDs){
  * supply data to this process (producer) or wait for data to be communicated by
  * this process (consumers).
  *
- * \param loop_id The vertex will be added to this loop.
- * \param iter_value The vertex represents this iteration number.
+ * \param loopID The vertex will be added to this loop.
+ * \param iterValue The vertex represents this iteration number.
  */
-void Inspector::AddVertex(int loop_id, int iter_value){
+void Inspector::AddVertex(int loopID, int iterValue){
 
-	assert(loop_id < all_loops.size());
+	assert(loopID < allLoops.size());
 
 	// Loop classification
-	global_loop* curr_loop = all_loops[loop_id];
-	if (loop_id == team_num)
-		my_loop = curr_loop;
-	else if (loop_id < team_num)
-		producer_loops[loop_id] = curr_loop;
-	else if (loop_id > team_num)
-		consumer_loops[loop_id] = curr_loop;
-
-	curr_vertex = curr_loop->iter_vertex[iter_value];
+	global_loop* currLoop = allLoops[loopID];
+	if (loopID == team_num)
+		myLoop = currLoop;
+	else if (loopID < team_num)
+		producerLoops[loopID] = currLoop;
+	else if (loopID > team_num)
+		consumerLoops[loopID] = currLoop;
 }
 
 
 /**
  * \brief Adds a pin from the current vertex to a network representing some data
  *
- * \param data_num Identifier of the array to be referenced.
+ * \param arrayID Identifier of the array to be referenced.
  * \param index Index in the array to be referenced.
  * \param loop The pin is meaningful in the context of this loop.
  * \param is_direct !=0 if addressing is affine; =0 if it depends on indirection
@@ -403,14 +403,14 @@ void Inspector::AddVertex(int loop_id, int iter_value){
 void Inspector::AddPinToNet
 (int data_num, int index, int loop, int is_direct, int is_ploop){
 
-	assert(data_num < all_data.size());
+	assert(arrayID < allData.size());
 
 	///Get the current net
 	net* net_num = all_data[data_num]->data_net_info[loop][index];
 
 	pin_info new_pin(curr_vertex, is_direct != 0 ? true : false);
 
-	/// If access is from a partitionable loop and is direct access
+	// If access is from a partitionable loop and is direct access
 	if (is_ploop && is_direct){
 		// The compile time analysis should ensure that there are not other
 		// "direct accesses" to this array. The direct_vertex field should be
@@ -420,7 +420,7 @@ void Inspector::AddPinToNet
 		net_num->direct_vertex = curr_vertex;
 	}
 
-	///Check for the pin already existing in the set
+	// Check for the pin already existing in the set
 	set<pin_info,pin_comparator>::iterator it = net_num->pins.find(new_pin);
 	if( it != net_num->pins.end() ){
 		// If it is not a direct access, and current access is direct,
@@ -438,9 +438,9 @@ void Inspector::AddPinToNet
 void Inspector::AddUnknown
 (int solver_num, int array_num, int index, int row_num, int loop){
 
-	assert(array_num < all_data.size() && solver_num < all_solvers.size());
-	assert(index < all_data[array_num]->orig_array_size);
-	net* curr_net = all_data[array_num]->data_net_info[index][loop];
+	assert(array_num < allData.size() && solver_num < all_solvers.size());
+	assert(index < allData[array_num]->orig_array_size);
+	net* curr_net = allData[array_num]->data_net_info[index][loop];
 
 	assert(all_solvers[solver_num]->orig_net[row_num] == NULL ||
 	       all_solvers[solver_num]->orig_net[row_num] == curr_net);
@@ -451,7 +451,7 @@ void Inspector::AddUnknown
 void Inspector::PatohPrePartition(int loop){
 
 	if( nprocs > 1 ) {
-		const int ia_size = data_num_offset[all_data.size()];
+		const int ia_size = data_num_offset[allData.size()];
 
 		int** armci_net_ia = new int*[nprocs];
 		ARMCI_Malloc((void**)armci_net_ia, (ia_size + 1) * sizeof(int));
@@ -461,10 +461,10 @@ void Inspector::PatohPrePartition(int loop){
 		int counter = 0;
 
 		// Store the pin information for nets in CSR format, compute the ia
-		for (int i = 0; i < all_data.size(); i++)
-			for (int j = 0; j < all_data[i]->orig_array_size; j++){
+		for (int i = 0; i < allData.size(); i++)
+			for (int j = 0; j < allData[i]->orig_array_size; j++){
 				net_ia[counter + 1] = net_ia[counter] +
-					all_data[i]->data_net_info[loop][j]->pins.size() * 2 + 1;
+					allData[i]->data_net_info[loop][j]->pins.size() * 2 + 1;
 				counter++;
 			}
 		assert(counter == ia_size);
@@ -487,9 +487,9 @@ void Inspector::PatohPrePartition(int loop){
 
 		///Populate the pin information on the local process
 		counter = 0;
-		for (int i = 0; i < all_data.size(); i++)
-			for (int j = 0; j < all_data[i]->orig_array_size; j++){
-				net* curr_net = all_data[i]->data_net_info[loop][j];
+		for (int i = 0; i < allData.size(); i++)
+			for (int j = 0; j < allData[i]->orig_array_size; j++){
+				net* curr_net = allData[i]->data_net_info[loop][j];
 
 				for (set<pin_info, pin_comparator>::iterator it =
 					     curr_net->pins.begin();
@@ -527,8 +527,8 @@ void Inspector::PatohPrePartition(int loop){
 			          recv_ia[ia_size] * sizeof(int), source_id);
 
 			counter = 0;
-			for (deque<global_data*>::iterator of_data = all_data.begin();
-			     of_data != all_data.end(); of_data++){
+			for (deque<global_data*>::iterator of_data = allData.begin();
+			     of_data != allData.end(); of_data++){
 
 				global_data* curr_data = (*of_data);
 
@@ -542,12 +542,12 @@ void Inspector::PatohPrePartition(int loop){
 
 						int vertex_num = recv_ja[j];
 						int k = 0;
-						for( k = 0 ; k < all_loops.size() ; k++ )
+						for( k = 0 ; k < allLoops.size() ; k++ )
 							if( iter_num_offset[k+1] > vertex_num )
 								break;
-						assert(k != all_loops.size());
+						assert(k != allLoops.size());
 						pin_info new_pin
-							(all_loops[k]->iter_vertex[vertex_num -
+							(allLoops[k]->iter_vertex[vertex_num -
 							                           iter_num_offset[k]],
 							 (recv_ja[j + 1] != 0 ? true : false));
 						curr_net->pins.insert(new_pin);
@@ -555,11 +555,11 @@ void Inspector::PatohPrePartition(int loop){
 					if( recv_ja[recv_ia[counter+1]-1] != -1 ){
 						int vertex_num = recv_ja[recv_ia[counter+1]-1];
 						int k = 0;
-						for( k = 0 ; k < all_loops.size() ; k++ )
+						for( k = 0 ; k < allLoops.size() ; k++ )
 							if( iter_num_offset[k+1] > vertex_num )
 								break;
-						assert(k != all_loops.size());
-						curr_net->direct_vertex = all_loops[k]->
+						assert(k != allLoops.size());
+						curr_net->direct_vertex = allLoops[k]->
 							iter_vertex[vertex_num - iter_num_offset[k]];
 					}
 					counter++;
@@ -585,7 +585,7 @@ void Inspector::PatohPrePartition(int loop){
 
 void Inspector::PatohPartitionAll(){
 
-	for (int loop = 0; loop < all_loops.size(); ++loop)
+	for (int loop = 0; loop < allLoops.size(); ++loop)
 		PatohPartition(loop);
 }
 
@@ -607,22 +607,22 @@ void Inspector::PatohPartition(int loop){
 		                            PATOH_SUGPARAM_QUALITY);
 
 		//Number of vertices
-		patoh_c = iter_num_offset[all_loops.size()];
+		patoh_c = iter_num_offset[allLoops.size()];
 		//number of nets
 		patoh_n = 0;
-		for( i = 0 ; i < all_data.size() ; i++ )
-			if( !all_data[i]->is_read_only )
-				patoh_n += all_data[i]->orig_array_size;
+		for( i = 0 ; i < allData.size() ; i++ )
+			if( !allData[i]->is_read_only )
+				patoh_n += allData[i]->orig_array_size;
 		//Number of constraints
-		patoh_nc = all_loops.size();
+		patoh_nc = allLoops.size();
 		//Number of partitions
 		patoh._k = nprocs;
 
 		//Weight for cells
 		patoh_cellwts = new int[patoh_c*patoh_nc];
 		int counter = 0;
-		for( i = 0 ; i < all_loops.size() ; i++ )
-			for( j = 0 ; j < all_loops[i]->num_iters ; j++ )  {
+		for( i = 0 ; i < allLoops.size() ; i++ )
+			for( j = 0 ; j < allLoops[i]->num_iters ; j++ )  {
 				for( k = 0 ; k < patoh_nc ; k++ )
 					patoh_cellwts[counter*patoh_nc + k] = 0;
 				patoh_cellwts[ counter*patoh_nc + i ] = 1;
@@ -634,13 +634,13 @@ void Inspector::PatohPartition(int loop){
 		patoh_xpins = new int[patoh_n+1];
 		patoh_xpins[0] = 0;
 		counter = 0;
-		for( i = 0 ; i < all_data.size() ; i++ )
-			if( !all_data[i]->is_read_only)
-				for( j = 0 ; j < all_data[i]->orig_array_size ; j++ ) {
+		for( i = 0 ; i < allData.size() ; i++ )
+			if( !allData[i]->is_read_only)
+				for( j = 0 ; j < allData[i]->orig_array_size ; j++ ) {
 					patoh_netwts[counter] =
-						all_data[i]->data_net_info[loop][j]->weight;
+						allData[i]->data_net_info[loop][j]->weight;
 					patoh_xpins[counter + 1] = patoh_xpins[counter] +
-						all_data[i]->data_net_info[loop][j]->pins.size();
+						allData[i]->data_net_info[loop][j]->pins.size();
 					counter++;
 				}
 
@@ -648,13 +648,13 @@ void Inspector::PatohPartition(int loop){
 		pins_size = patoh_xpins[patoh_n];
 		patoh_pins = new int[patoh_xpins[patoh_n]];
 		counter = 0;
-		for( i = 0 ; i < all_data.size() ; i++ )
-			if( !all_data[i]->is_read_only )
-				for( j = 0 ; j < all_data[i]->orig_array_size ; j++ ) {
+		for( i = 0 ; i < allData.size() ; i++ )
+			if( !allData[i]->is_read_only )
+				for( j = 0 ; j < allData[i]->orig_array_size ; j++ ) {
 					set<pin_info, pin_comparator>::iterator jt =
-						all_data[i]->data_net_info[loop][j]->pins.begin();
+						allData[i]->data_net_info[loop][j]->pins.begin();
 					for (;
-					     jt != all_data[i]->data_net_info[loop][j]->pins.end();
+					     jt != allData[i]->data_net_info[loop][j]->pins.end();
 					     jt++)
 						patoh_pins[counter++] = (*jt).pin->my_num;
 				}
@@ -671,11 +671,11 @@ void Inspector::PatohPartition(int loop){
 		           patoh_partvec, patoh_partwts, &patoh_cutsize);
 
 		counter = 0;
-		for( i = 0 ; i < all_loops.size() ; i++ )
-			for( j = 0 ; j < all_loops[i]->num_iters ; j++ ){
+		for( i = 0 ; i < allLoops.size() ; i++ )
+			for( j = 0 ; j < allLoops[i]->num_iters ; j++ ){
 				if( patoh_partvec[counter] == proc_id )
-					all_loops[i]->nproc_local++;
-				all_loops[i]->iter_vertex[j]->home = patoh_partvec[counter++];
+					allLoops[i]->nproc_local++;
+				allLoops[i]->iter_vertex[j]->home = patoh_partvec[counter++];
 			}
 
 		delete[] patoh_cellwts;
@@ -688,10 +688,10 @@ void Inspector::PatohPartition(int loop){
 		PaToH_Free();
 	}
 	else{
-		for( int i = 0 ; i < all_loops.size() ; i++ )
-			for( int j = 0 ; j < all_loops[i]->num_iters ; j++ ){
-				all_loops[i]->nproc_local++;
-				all_loops[i]->iter_vertex[j]->home = 0;
+		for( int i = 0 ; i < allLoops.size() ; i++ )
+			for( int j = 0 ; j < allLoops[i]->num_iters ; j++ ){
+				allLoops[i]->nproc_local++;
+				allLoops[i]->iter_vertex[j]->home = 0;
 			}
 	}
 
@@ -703,8 +703,8 @@ void Inspector::PatohAfterPartition(int loop){
 	//Decide homes for the nets
 	int possible[nprocs];
 
-	for (deque<global_data*>::iterator it = all_data.begin();
-	     it != all_data.end();
+	for (deque<global_data*>::iterator it = allData.begin();
+	     it != allData.end();
 	     it++)
 
 		if( !(*it)->is_read_only ){
@@ -773,8 +773,8 @@ void Inspector::AfterPartition(int loop){
 
 	/// What are exactly the solvers?
 	for (deque<petsc_solve*>::iterator it = all_solvers.begin();
-	    it != all_solvers.end();
-	    it++ ){
+	     it != all_solvers.end();
+	     it++ ){
 
 		//Replicate the net info
 		petsc_solve* curr_solver = (*it);
@@ -808,21 +808,21 @@ void Inspector::AfterPartition(int loop){
 				int net_num = recv_buf[j];
 				if (net_num != -1){
 					int k = 0;
-					for (; k < all_data.size(); k++)
+					for (; k < allData.size(); k++)
 						if (data_num_offset[k + 1] > net_num)
 							break;
-					if (k == all_data.size())
+					if (k == allData.size())
 						printf("ID=%d,Source=%d,net_num=%d,k=%d\n", proc_id,
 						       source_proc, net_num, k);
-					assert(k != all_data.size());
-					assert(!all_data[k]->is_read_only);
+					assert(k != allData.size());
+					assert(!allData[k]->is_read_only);
 					assert(curr_solver->orig_net[j] == NULL ||
 					       curr_solver->orig_net[j] ==
-					       all_data[k]->data_net_info[loop][net_num -
+					       allData[k]->data_net_info[loop][net_num -
 					                                        data_num_offset[k]
 					                                        ]);
 					curr_solver->orig_net[j] =
-						all_data[k]->data_net_info[loop][net_num -
+						allData[k]->data_net_info[loop][net_num -
 						                                 data_num_offset[k]];
 				}
 			}
@@ -836,8 +836,8 @@ void Inspector::AfterPartition(int loop){
 	/// Take all global data and intialize the corresponding local data
 	// It might be possible to get rid of this
 	if (loop == team_num){
-		for (deque<global_data*>::iterator it = all_data.begin();
-		     it != all_data.end(); it++){
+		for (deque<global_data*>::iterator it = allData.begin();
+		     it != allData.end(); it++){
 
 			if ((*it)->data_net_info[loop] == NULL)
 				continue;
@@ -859,7 +859,7 @@ void Inspector::AfterPartition(int loop){
 void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
                                  int** count){
 
-	const global_data* curr_array = all_data[array_num];
+	const global_data* curr_array = allData[array_num];
 	net** const curr_nets = curr_array->data_net_info.at(team_num);
 	const int curr_array_size = curr_array->orig_array_size;
 	const int curr_split = curr_array_size / team_size;
@@ -920,7 +920,6 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	for (int i = 0; i < team_size; i++){
 		sendcount_mpi[i] = 0;
 		for (int k = 0; k < 2; k++){
-
 			sendcount[i * 2 + k] = send_info[i * 2 + k]->size();
 			curr_displ[i * 2 + k + 1] =
 				curr_displ[i * 2 + k] + sendcount[i * 2 + k];
@@ -1034,9 +1033,9 @@ void Inspector::GetBufferSize(){
 			    MAX(curr_global_comm->write_send_offset[nprocs],
 			        curr_global_comm->read_send_offset[nprocs]));
 		global_comm::max_recv_size =
-			    MAX(global_comm::max_recv_size,
-			        MAX(curr_global_comm->write_recv_offset[nprocs],
-			            curr_global_comm->read_recv_offset[nprocs]));
+			MAX(global_comm::max_recv_size,
+			    MAX(curr_global_comm->write_recv_offset[nprocs],
+			        curr_global_comm->read_recv_offset[nprocs]));
 
 		MPI_Alltoall(curr_global_comm->read_recv_offset, 1, MPI_INT,
 		             curr_global_comm->read_put_displ, 1, MPI_INT,
@@ -1162,8 +1161,8 @@ void Inspector::CommunicateGhosts(){
 	// Number of R/W arrays
 	int n_data = 0;
 
-	for (deque<global_data*>::iterator it = all_data.begin();
-	     it != all_data.end(); it++ )
+	for (deque<global_data*>::iterator it = allData.begin();
+	     it != allData.end(); it++ )
 
 		if (!(*it)->is_read_only)
 			n_data++;
@@ -1183,8 +1182,8 @@ void Inspector::CommunicateGhosts(){
 		int d = 0;
 
 		// Count #send-ghosts for all arrays
-		for (deque<local_data*>::iterator it = all_local_data.begin();
-		     it != all_local_data.end(); it++)
+		for (deque<local_data*>::iterator it = allLocalData.begin();
+		     it != allLocalData.end(); it++)
 
 			if (!(*it)->is_read_only){
 				int nghosts = (*it)->global_ghosts[dest_proc].size();
@@ -1230,8 +1229,8 @@ void Inspector::CommunicateGhosts(){
 	for (int i = 0; i < team_size; i++){
 
 		int d = 0;
-		for (deque<local_data*>::iterator it = all_local_data.begin();
-		     it != all_local_data.end(); it++)
+		for (deque<local_data*>::iterator it = allLocalData.begin();
+		     it != allLocalData.end(); it++)
 
 			if (!(*it)->is_read_only){
 				for (set<int>::iterator jt = (*it)->global_ghosts[i].begin();
@@ -1256,8 +1255,8 @@ void Inspector::CommunicateGhosts(){
 	for (int i = 0; i < team_size; i++){
 
 		int d = 0;
-		for (deque<local_data*>::iterator it = all_local_data.begin();
-		     it != all_local_data.end(); it++)
+		for (deque<local_data*>::iterator it = allLocalData.begin();
+		     it != allLocalData.end(); it++)
 
 			if (!(*it)->is_read_only){
 				int nghosts = recvghosts_count[i * n_data + d];
@@ -1325,8 +1324,7 @@ void Inspector::CommunicateReads(int comm_num){
 			team_comm->read_arrays.begin();
 
 		for (; it != team_comm->read_arrays.end(); it++)
-			(*it)->PopulateLocalGhosts
-				(all_local_data[(*it)->my_num], proc_id);
+			(*it)->PopulateLocalGhosts(allLocalData[(*it)->my_num], proc_id);
 	}
 
 	ARMCI_WaitAll();
