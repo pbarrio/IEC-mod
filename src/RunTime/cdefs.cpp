@@ -384,14 +384,6 @@ extern "C" {
 		Inspector::instance()->CommunicateReads(*cn);
 	}
 
-	void communicate_to_next(){
-		Inspector::instance()->CommunicateToNext();
-	}
-
-	void get_from_previous(){
-		Inspector::instance()->GetFromPrevious();
-	}
-
 	void init_write_ghosts(int cn){
 		Inspector::instance()->InitWriteGhosts(cn);
 	}
@@ -568,4 +560,20 @@ extern "C" {
 		Inspector::instance()->pipe_endExternalIter();
 	}
 
+
+	/**
+	 * \brief Communicates to consumers and gets from producers
+	 *
+	 * This function must be called before the start of the iteration. It will
+	 * take care of sending data calculated in the previous iteration to the
+	 * consumers and receive data needed for the next iteration from the
+	 * producers. This function assumes for now that each process only computes
+	 * one loop. All other loops are consumers, producers or unrelated loops.
+	 *
+	 * \param iter The iteration of the loop that is about to start.
+	 */
+	void pipe_communicate(int iter){
+
+		Inspector::instance()->pipe_communicate(iter);
+	}
 }

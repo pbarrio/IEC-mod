@@ -84,6 +84,7 @@ extern void free_2d_float(float**);
  */
 extern void pipe_initLoop(int, int[], int);
 extern void pipe_endExternalIter();
+extern void pipe_communicate(int);
 
 
 #endif

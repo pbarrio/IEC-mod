@@ -19,12 +19,17 @@
 #ifndef __GLOBAL_LOOP_HPP__
 #define __GLOBAL_LOOP_HPP__
 
-#include <map>
+#include <set>
 #include "RunTime/hypergraph.hpp"
 
 class inspector;
 
 class global_loop{
+
+public:
+	typedef std::set<int> ArrayIDList;
+	typedef std::map<int, ArrayIDList> ArraysPerProcess;
+
 private:
 
 	vertex** iter_vertex;
@@ -34,6 +39,12 @@ private:
 	const int num_iters;
 
 	int nproc_local;
+
+	/// Arrays needed in this loop (per producer)
+	ArraysPerProcess usedArrays;
+
+	/// Arrays calculated in this loop (per consumer)
+	ArraysPerProcess computedArrays;
 
 public:
 
@@ -48,8 +59,32 @@ public:
 		return iter_vertex[iter_value]->home;
 	}
 
-	friend class Inspector;
 
+	void add_used_array(int proc, int arrayID){
+		usedArrays[proc].insert(arrayID);
+	}
+
+	void add_computed_array(int proc, int arrayID){
+		computedArrays[proc].insert(arrayID);
+	}
+
+	ArrayIDList::iterator computed_arrays_begin(int proc){
+		return computedArrays[proc].begin();
+	}
+
+	ArrayIDList::iterator computed_arrays_end(int proc){
+		return computedArrays[proc].end();
+	}
+
+	ArrayIDList::iterator used_arrays_begin(int proc){
+		return usedArrays[proc].begin();
+	}
+
+	ArrayIDList::iterator used_arrays_end(int proc){
+		return usedArrays[proc].end();
+	}
+
+	friend class Inspector;
 };
 
 #endif

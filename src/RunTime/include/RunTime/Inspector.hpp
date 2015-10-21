@@ -114,8 +114,14 @@ private:
 
 	std::set<int>** send_info;
 
+	/// Temporary buffers for pipeline comms. They belong to the Inspector
+	/// so that they are only allocated once.
+	int *pipeSendCounts, *pipeSendDispls, *pipeRecvCounts, *pipeRecvDispls;
+	char *pipeSendBuf, *pipeRecvBuf;
+
 	void AfterPartition(int loop);
 
+	void pipe_reset_counts_and_displs();
 
 public:
 	~Inspector();
@@ -186,15 +192,9 @@ public:
 
 	void GetBufferSize();
 
-	/*
-	 * These are the communication functions. The first two communicate
-	 * data among processes in the same team. The last two communicate
-	 * data between producers and consumers.
-	 */
+	// These are the communication functions among processes in the same team
 	void CommunicateReads(int);
 	void CommunicateGhosts();
-	void CommunicateToNext();
-	void GetFromPrevious();
 
 
 	/**
@@ -328,17 +328,6 @@ public:
 		allLocalData[dn]->AddIndexAccessed(ind, at);
 	}
 
-	/**
-	 * \brief Populates a local array from its corresponding global array
-	 *
-	 * \param an ID of the local array to be populated
-	 * \param lb Allocated clean array to be populated
-	 * \param oa Original array
-	 * \param st Stride. Not sure what this is.
-	 */
-	inline void PopulateLocalArray(int an, double* lb, double* oa, int st){
-		all_local_data[an]->PopulateLocalArray(lb, oa, st);
-	}
 
 	inline void InsertDirectAccess(int an, int* v, int n){
 		allLocalData[an]->InsertDirectAccess(v, n);
@@ -396,7 +385,7 @@ public:
 
 	void print_local_data();
 	void PopulateGlobalArrays();
-	void print_local_inspector_data();
+	void PopulateLocalArray(int, double*, double*, int);
 
 
 	/*
@@ -408,6 +397,8 @@ public:
 		MPI_Barrier(global_comm::global_iec_communicator);
 	}
 
+	// Communication function between producers and consumers
+	void pipe_communicate(int iter);
 };
 
 

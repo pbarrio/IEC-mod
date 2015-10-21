@@ -23,6 +23,7 @@
 
 #include <cstdio>
 #include <cassert>
+#include <vector>
 
 int binary_search(int* const, const int, const int);
 
@@ -35,6 +36,11 @@ int binary_search(int* const, const int, const int);
  * possible to get rid of them.
  */
 class local_data{
+
+private:
+
+	typedef std::map<int, std::map<int, int> > CountsPerProcPerIter;
+	typedef std::map<int, std::map<int, std::vector<int> > > IdxsPerProcPerIter;
 
 protected:
 
@@ -91,9 +97,23 @@ protected:
 
 	int* l_to_g;
 
-	int GetLocalIndex(int global_index) const;
-
 	int block_owned_offset;
+
+	/// For each iteration and producer, the receive size in bytes.
+	CountsPerProcPerIter pipeRecvCounts;
+
+	/// For each iteration and consumer, the send size in bytes.
+	CountsPerProcPerIter pipeSendCounts;
+
+	/// For each iteration and producer, a list of positions in the local array
+	/// that we need to receive from the the producer.
+	IdxsPerProcPerIter pipeRecvIndexes;
+
+	/// For each iteration and consumer, a list of positions in the local array
+	/// that we need to send to the consumer.
+	IdxsPerProcPerIter pipeSendIndexes;
+
+	int GetLocalIndex(int global_index) const;
 
 public:
 
@@ -162,6 +182,17 @@ public:
 
 	virtual void SetLocalArray(void*) = 0;
 
+	int pipe_get_sendcounts(int iter, int proc){
+		return pipeSendCounts[iter][proc];
+	}
+
+	int pipe_get_recvcounts(int iter, int proc){
+		return pipeRecvCounts[iter][proc];
+	}
+
+	virtual int pipe_populate_send_buf(int, int, char*) = 0;
+	virtual void pipe_update(int, int, char*) = 0;
+
 	friend class Inspector;
 };
 
@@ -219,6 +250,12 @@ public:
 		assert( is_constrained && local_array == NULL );
 		local_array = static_cast<double*>(la);
 	}
+
+	int pipe_get_sendcounts(int iter, int proc){}
+
+	int pipe_populate_send_buf(int, int, char*);
+
+	void pipe_update(int, int, char*);
 
 	friend class Inspector;
 };

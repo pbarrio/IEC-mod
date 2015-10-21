@@ -605,3 +605,27 @@ void local_data_double::PopulateGlobalArray(){
 		              MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	}
 }
+
+
+int local_data_double::pipe_populate_send_buf(int iter, int proc, char* buf){
+
+	std::vector<int> indexes = pipeSendIndexes[iter][proc];
+	for (std::vector<int>::iterator idxIt = indexes.begin(),
+		     idxEnd = indexes.end();
+	     idxIt != idxEnd;
+	     ++idxIt)
+
+		memcpy(buf, local_array + *idxIt, sizeof(double));
+}
+
+
+void local_data_double::pipe_update(int iter, int proc, char* buf){
+
+	std::vector<int> indexes = pipeRecvIndexes[iter][proc];
+	for (std::vector<int>::iterator idxIt = indexes.begin(),
+		     idxEnd = indexes.end();
+	     idxIt != idxEnd;
+	     ++idxIt)
+
+		memcpy(local_array + *idxIt, buf, sizeof(double));
+}

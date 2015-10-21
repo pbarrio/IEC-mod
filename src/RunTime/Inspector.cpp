@@ -17,6 +17,7 @@
  * @author: Mahesh Ravishankar <ravishan@cse.ohio-state.edu>
  */
 
+#include "RunTime/global_loop.hpp"
 #include "RunTime/Inspector.hpp"
 
 #include "armci.h"
@@ -138,6 +139,12 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 		all_access_data.push_back(new_access_data);
 	}
 
+	// Allocate arrays for the pipeline communications
+	pipeSendCounts = new int[np];
+	pipeSendDispls = new int[np];
+	pipeRecvCounts = new int[np];
+	pipeRecvDispls = new int[np];
+
 	send_info = new set<int>*[nprocs * 2];
 	for (int i = 0; i < nprocs * 2; i++)
 		send_info[i] = new set<int>;
@@ -215,6 +222,12 @@ Inspector::~Inspector(){
 		}
 		delete[] send_info;
 	}
+
+	// Free pipeline buffers
+	delete [] pipeSendCounts;
+	delete [] pipeSendDispls;
+	delete [] pipeRecvCounts;
+	delete [] pipeRecvDispls;
 
 	// Deallocate MPI communicator common to all participating processes
 	// in the inspector/executor.
@@ -859,6 +872,18 @@ void Inspector::AfterPartition(int loop){
 }
 
 
+/**
+ * \brief Zeroes all pipeline communication control arrays (counts, displs)
+ */
+void Inspector::pipe_reset_counts_and_displs(){
+
+	for (int i = 0; i < nprocs; ++i){
+		pipeSendCounts[i] = pipeSendDispls[i] = 0;
+		pipeRecvCounts[i] = pipeRecvDispls[i] = 0;
+	}
+}
+
+
 void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
                                  int** count){
 
@@ -1361,30 +1386,115 @@ void Inspector::CommunicateReads(int comm_num){
 }
 
 
-/**
- * \brief Sends data to all consumer processes.
- */
-void Inspector::CommunicateToNext(){
-
-	assert(0 && "CommunicateToNext not implemented yet");
-}
-
-/**
- * \brief Receives data from producer processes
- */
-void Inspector::GetFromPrevious(){
-	assert(0 && "GetFromPrevious not implemented yet");
-}
-
-
 /*
  * FUNCTIONS STOLEN FROM local_inspector
  */
 
 void Inspector::PopulateGlobalArrays(){
 
-	for (deque<local_data*>::iterator it = all_local_data.begin();
-	     it != all_local_data.end(); it++)
+	for (deque<local_data*>::iterator it = allLocalData.begin();
+	     it != allLocalData.end(); it++)
 
 		(*it)->PopulateGlobalArray();
+}
+
+
+/**
+ * \brief Populates a local array from its corresponding global array
+ *
+ * \param an ID of the local array to be populated
+ * \param lb Allocated clean array to be populated
+ * \param oa Original array
+ * \param st Stride. Not sure what this is.
+ */
+void Inspector::PopulateLocalArray(int an, double* lb, double* oa, int st){
+
+	local_data* local = allLocalData[an];
+	local->PopulateLocalArray(lb, oa, st);
+}
+
+
+/*
+ * NEW PIPELINING FUNCTIONS
+ */
+
+
+
+/**
+ * \brief Communicates to consumers and gets from producers
+ *
+ * This function must be called before the start of the iteration. It will
+ * take care of sending data calculated in the previous iteration to the
+ * consumers and receive data needed for the next iteration from the
+ * producers. This function assumes for now that each process only computes
+ * one loop. All other loops are consumers, producers or unrelated loops.
+ *
+ * \param iter The iteration of the loop that is about to start.
+ */
+void Inspector::pipe_communicate(int iter){
+
+	pipe_reset_counts_and_displs();
+
+	// Prepare structures for sendreceiving
+	for (int iProc = 0; iProc < nprocs; ++iProc){
+
+		// This is the "send" part
+		for (global_loop::ArrayIDList::iterator
+			     arrayIt = myLoop->computed_arrays_begin(iProc),
+			     arrayEnd = myLoop->computed_arrays_end(iProc);
+		     arrayIt != arrayEnd;
+		     ++arrayIt){
+
+			local_data* localArray = allLocalData[*arrayIt];
+
+			pipeSendCounts[iProc] +=
+				localArray->pipe_get_sendcounts(iter, iProc);
+
+			localArray->pipe_populate_send_buf
+				(iter,
+				 iProc,
+				 pipeSendBuf + pipeSendDispls[iProc] + pipeSendCounts[iProc]);
+		}
+		// Update the send displacements for the next process
+		if (iProc + 1 < nprocs)
+			pipeSendDispls[iProc + 1] =
+				pipeSendDispls[iProc] + pipeSendCounts[iProc];
+
+		// This is the "receive" part
+		for (global_loop::ArrayIDList::iterator
+			     arrayIt = myLoop->used_arrays_begin(iProc),
+			     arrayEnd = myLoop->used_arrays_end(iProc);
+		     arrayIt != arrayEnd;
+		     ++arrayIt){
+
+			local_data* localArray = allLocalData[*arrayIt];
+
+			pipeRecvCounts[iProc] +=
+				localArray->pipe_get_recvcounts(iter, iProc);
+		}
+		// Update the displacements for the next process
+		if (iProc + 1 < nprocs)
+			pipeRecvDispls[iProc + 1] =
+				pipeRecvDispls[iProc] + pipeRecvCounts[iProc];
+	}
+
+	MPI_Alltoallv(pipeSendBuf, pipeSendCounts, pipeSendDispls, MPI_BYTE,
+	              pipeRecvBuf, pipeRecvCounts, pipeRecvDispls, MPI_BYTE,
+	              global_comm::global_iec_communicator);
+
+	// Move received data to the local array
+	char* received = pipeRecvBuf;
+	for (int iProc = 0; iProc < nprocs; ++iProc){
+
+		for (global_loop::ArrayIDList::iterator
+			     arrayIt = myLoop->used_arrays_begin(iProc),
+			     arrayEnd = myLoop->used_arrays_end(iProc);
+		     arrayIt != arrayEnd;
+		     ++arrayIt){
+
+			local_data* localArray = allLocalData[*arrayIt];
+			localArray->pipe_update(iter, iProc, received);
+			received += localArray->pipe_get_recvcounts(iter, iProc);
+		}
+	}
 }
