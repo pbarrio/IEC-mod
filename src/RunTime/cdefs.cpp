@@ -550,9 +550,22 @@ extern "C" {
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
 
-	void pipe_initLoop(int loop, int usedArrays[], int usedArraysSize){
-		vector<int> usedArraysV(usedArrays, usedArrays + usedArraysSize);
-		Inspector::instance()->init_loop(loop, usedArraysV);
+	void pipe_init_loop
+	(int loop, int usedArrays[], int readInfo[], int writeInfo[], int nArrays){
+
+		// Transform rwInfo into booleans
+		bool* readInfoBool = new bool[nArrays];
+		bool* writeInfoBool = new bool[nArrays];
+		for (int i = 0; i < nArrays; ++i){
+			readInfoBool[i] = readInfo[i] == 0 ? false : true;
+			writeInfoBool[i] = writeInfo[i] == 0 ? false : true;
+		}
+
+		Inspector::instance()->pipe_init_loop
+			(loop, usedArrays, readInfoBool, writeInfoBool, nArrays);
+
+		delete [] readInfoBool;
+		delete [] writeInfoBool;
 	}
 
 	void pipe_endExternalIter(){

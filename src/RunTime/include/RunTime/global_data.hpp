@@ -31,6 +31,33 @@ class inspector;
  */
 class global_data{
 
+public:
+	/// For each position of an array, the iteration of the:
+	///     - last write, if this is a producer loop. We need to know when the
+	///       loop can safely communicate the final value.
+	///     - first use, if this is my loop. We need to know when we can start
+	///       an iteration because we already received all data from producers.
+	typedef std::map<int, int> ArrayUseMapInLoop;
+
+	/// A map to write/use information for all indices, for all loops
+	typedef std::map<int,  ArrayUseMapInLoop> ArrayUseMap;
+
+private:
+	/// For each loop, true if the array is read in the loop.
+	std::map<int, bool> isReadInLoop;
+
+	/// For each loop, true if the array is updated (written).
+	/// This is only meaningful for pipelining. The original IEC only required
+	/// to know if the array was RO/RW throughout the entire code, not in a
+	/// per-loop basis.
+	std::map<int, bool> isWriteInLoop;
+
+	/// Map to the write/use information for this array for all loops.
+	/// Consumers don't need to keep track of these values. Note that these
+	/// specification is not enforced in this class (TODO) but the class gives
+	/// methods use_in_loop() and is_already_used_in_loop() to enforce it.
+	ArrayUseMap finalUse;
+
 protected:
 
 	/// Pointers to nets for each array value, for each team
@@ -73,7 +100,16 @@ public:
 	 */
 	inline void SetConstraint(){is_constrained = true;}
 
-	void use_in_loop(int);
+	void use_in_loop(int, bool, bool);
+
+	void use_in_loop(int, int, int);
+
+	bool is_already_used_in_loop(int index, int loopID){
+		return (finalUse[loopID].find(index) != finalUse[loopID].end());
+	}
+
+	bool is_read(int loop){return isReadInLoop[loop];}
+	bool is_write(int loop){return isWriteInLoop[loop];}
 
 	friend class Inspector;
 };

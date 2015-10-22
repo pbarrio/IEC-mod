@@ -360,23 +360,6 @@ bool Inspector::DoneGraphGeneration(){
 
 
 /**
- * \brief Initializes structures required by the Inspector for this loop
- *
- * Mark arrays as used
- */
-void Inspector::init_loop(int loopID, vector<int> dataIDs){
-
-	for (vector<int>::iterator dataID = dataIDs.begin(),
-		     dataIDEnd = dataIDs.end();
-	     dataID != dataIDEnd; dataID++){
-
-		global_data* data = all_data[*dataID];
-		data->use_in_loop(loopID);
-	}
-}
-
-
-/**
  * \brief Adds a vertex to the iteration/data hypergraph
  *
  * This function also classifies the loop as a "producer", "consumer",
@@ -415,15 +398,25 @@ void Inspector::AddVertex(int loopID, int iterValue){
  * \param is_ploop !=0 if the access is direct from the partitionable loops.
  */
 void Inspector::AddPinToNet
-(int data_num, int index, int loop, int iter, int is_direct, int is_ploop){
+(int arrayID, int index, int loopID, int iter, int is_direct, int is_ploop){
 
 	assert(arrayID < allData.size());
 
-	///Get the current net
-	net* net_num = all_data[data_num]->data_net_info[loop][index];
+	global_loop* loop = allLoops[loopID];
+	global_data* data = allData[arrayID];
 
-	vertex* curr_vertex = all_loops[loop]->iter_vertex[iter];
+	// Only care about read arrays if we are in a loop that we own (because
+	// we must wait for a producer to give us the data).
+	if (loop->is_my_loop() && data->is_read(loopID))
+		loop->add_used_array(iter, arrayID);
+	// We care about write arrays in producers and our loops, because that's how
+	// we calculate when the producer will communicate data to our loop.
+	if ((loop->is_producer() || loop->is_my_loop()) && data->is_write(loopID))
+		loop->add_computed_array(iter, arrayID);
 
+	// Get the current net
+	net* net_num = allData[arrayID]->data_net_info[loopID][index];
+	vertex* curr_vertex = loop->iter_vertex[iter];
 	pin_info new_pin(curr_vertex, is_direct != 0 ? true : false);
 
 	// If access is from a partitionable loop and is direct access
@@ -1418,6 +1411,35 @@ void Inspector::PopulateLocalArray(int an, double* lb, double* oa, int st){
  * NEW PIPELINING FUNCTIONS
  */
 
+/**
+ * \brief Initializes structures required by the Inspector for this loop
+ *
+ * Mark arrays as used
+ */
+void Inspector::pipe_init_loop(int loopID,
+                               int usedArrays[],
+                               const bool readInfo[],
+                               const bool writeInfo[],
+                               int nArrays){
+
+	// Find loop type
+	global_loop* loop = allLoops[loopID];
+	if (loopID < team_num){
+		loop->set_as_producer();
+		producerLoops[loopID] = loop;
+	}
+	else if (loopID > team_num){
+		loop->set_as_consumer();
+		consumerLoops[loopID] = loop;
+	}
+	else{
+		loop->set_as_my_loop();
+		myLoop = loop;
+	}
+
+	for (int i = 0; i < nArrays; ++i)
+		allData[usedArrays[i]]->use_in_loop(loopID, readInfo[i], writeInfo[i]);
+}
 
 
 /**

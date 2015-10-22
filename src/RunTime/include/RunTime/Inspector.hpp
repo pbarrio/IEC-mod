@@ -158,7 +158,6 @@ public:
 
 	inline int GetProcLocal(int in) const {return allLoops[in]->nproc_local;}
 
-	void init_loop(int, std::vector<int>);
 	void AddVertex(int, int);
 	void AddPinToNet(int, int, int, int, int, int);
 
@@ -391,6 +390,8 @@ public:
 	/*
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
+
+	void pipe_init_loop(int, int[], const bool[], const bool[], int);
 
 	inline void pipe_endExternalIter(){
 

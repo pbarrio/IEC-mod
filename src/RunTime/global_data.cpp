@@ -55,14 +55,34 @@ global_data::~global_data(){
 
 /**
  * \brief Mark the array as used in a loop and initialize some required info
+ *
+ * Note that there is another version of this function below with a slightly
+ * different functionality.
+ *
+ * \param loopID ID of the loop where this array is used
+ * \param isRead True if this array is read in the loop
+ * \param isWrite True if this array is written in the loop
  */
-void global_data::use_in_loop(int loopID){
+void global_data::use_in_loop(int loopID, bool isRead, bool isWrite){
+
+	isReadInLoop[loopID] = isRead;
+	isWriteInLoop[loopID] = isWrite;
 
 	// Create a net for each element of the array to be used in partitioning
 	data_net_info[loopID] = new net*[orig_array_size];
 	for (int i = 0; i < orig_array_size; i++)
 		data_net_info[loopID][i] = new net(id, i, stride_size, offset + i);
 }
+
+
+/**
+ * \brief Mark a position in the array as used in a loop iteration
+ */
+void global_data::use_in_loop(int loopID, int iter, int index){
+
+	finalUse[loopID][index] = iter;
+}
+
 
 /**
  * \brief Constructor

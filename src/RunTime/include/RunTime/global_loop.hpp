@@ -32,6 +32,9 @@ public:
 
 private:
 
+	typedef enum {MY_LOOP, PRODUCER, CONSUMER} LoopType;
+	LoopType type;
+
 	vertex** iter_vertex;
 
 	const int my_num;
@@ -59,6 +62,13 @@ public:
 		return iter_vertex[iter_value]->home;
 	}
 
+	void set_as_producer(){type = PRODUCER;}
+	void set_as_consumer(){type = CONSUMER;}
+	void set_as_my_loop(){type = MY_LOOP;}
+
+	bool is_producer(){return type == PRODUCER;}
+	bool is_consumer(){return type == CONSUMER;}
+	bool is_my_loop(){return type == MY_LOOP;}
 
 	void add_used_array(int proc, int arrayID){
 		usedArrays[proc].insert(arrayID);
