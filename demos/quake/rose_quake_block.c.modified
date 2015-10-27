@@ -526,56 +526,57 @@ int main(int argc,char **argv){
 			}
 
 		// Loop 1
-		__shadow_0__ = 0;
-		__shadow_1__ = 0;
-		for (i = __local_block_1_start__; i < __local_block_1_end__; i++)
-			if (__1_status__[i - __local_block_1_start__] == 0) {
-				__1_status__[i - __local_block_1_start__] = 1;
+		if (myTeam == 1){
+			__shadow_0__ = 0;
+			__shadow_1__ = 0;
+			for (i = __local_block_1_start__; i < __local_block_1_end__; i++)
+				if (__1_status__[i - __local_block_1_start__] == 0) {
+					__1_status__[i - __local_block_1_start__] = 1;
 
-				add_vertex(1, i);
-				if (is_known(1, i)) {
-					Anext = get_elem(1, i);
-					__shadow_0__ = 1;
-				}
-				else {
-					__1_status__[i - __local_block_1_start__] = 0;
-					__shadow_0__ = 0;
-				}
-				if (__shadow_0__ != 0)
-					add_pin_to_net(2, Anext, 1, i, 0, 0);
-				else
-					__1_status__[i - __local_block_1_start__] = 0;
-				add_pin_to_net(1, i, 1, i, 1, 1);
-				if (is_known(1, i) && is_known(1, i + 1))
-					for (j = (get_elem(1, i) + 1);
-					     j < get_elem(1, i + 1);
-					     j++){
-
-						if (is_known(0, j)) {
-							col = get_elem(0, j);
-							__shadow_1__ = 1;
-						}
-						else {
-							__1_status__[i - __local_block_1_start__] = 0;
-							__shadow_1__ = 0;
-						}
-						add_pin_to_net(2, j, 1, i, 1, 0);
-						if (__shadow_1__ != 0)
-							add_pin_to_net(1, col, 1, i, 0, 0);
-						else
-							__1_status__[i - __local_block_1_start__] = 0;
-						if (__shadow_1__ != 0)
-							add_pin_to_net(0, col, 1, i, 0, 0);
-						else
-							__1_status__[i - __local_block_1_start__] = 0;
+					add_vertex(1, i);
+					if (is_known(1, i)) {
+						Anext = get_elem(1, i);
+						__shadow_0__ = 1;
 					}
-				else {
-					__shadow_1__ = 0;
-					__1_status__[i - __local_block_1_start__] = 0;
-				}
-				add_pin_to_net(0, i, 1, i, 1, 1);
-			}
+					else {
+						__1_status__[i - __local_block_1_start__] = 0;
+						__shadow_0__ = 0;
+					}
+					if (__shadow_0__ != 0)
+						add_pin_to_net(2, Anext, 1, i, 0, 0);
+					else
+						__1_status__[i - __local_block_1_start__] = 0;
+					add_pin_to_net(1, i, 1, i, 1, 1);
+					if (is_known(1, i) && is_known(1, i + 1))
+						for (j = (get_elem(1, i) + 1);
+						     j < get_elem(1, i + 1);
+						     j++){
 
+							if (is_known(0, j)) {
+								col = get_elem(0, j);
+								__shadow_1__ = 1;
+							}
+							else {
+								__1_status__[i - __local_block_1_start__] = 0;
+								__shadow_1__ = 0;
+							}
+							add_pin_to_net(2, j, 1, i, 1, 0);
+							if (__shadow_1__ != 0)
+								add_pin_to_net(1, col, 1, i, 0, 0);
+							else
+								__1_status__[i - __local_block_1_start__] = 0;
+							if (__shadow_1__ != 0)
+								add_pin_to_net(0, col, 1, i, 0, 0);
+							else
+								__1_status__[i - __local_block_1_start__] = 0;
+						}
+					else {
+						__shadow_1__ = 0;
+						__1_status__[i - __local_block_1_start__] = 0;
+					}
+					add_pin_to_net(0, i, 1, i, 1, 1);
+				}
+		}
 	}while (!done_graph_gen());
 
 	partition_hypergraph(2);
