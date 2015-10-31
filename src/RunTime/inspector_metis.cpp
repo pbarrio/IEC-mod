@@ -379,15 +379,17 @@ void Inspector::BlockPartition(){
 		MetisReplicateHypergraph(loop);
 
 	int nparts = teamSize;
+	int firstProcInTeam = teamSize * teamNum;
 	for (deque<global_loop*>::iterator it = allLoops.begin();
 	     it!= allLoops.end(); it++){
 
 		int numiters = (*it)->num_iters;
 		int split = numiters / nparts;
-		int home = 0;
+		int home = firstProcInTeam;
 		for (int j = 0; j < numiters; j++){
 			vertex* curr_vertex = (*it)->iter_vertex[j];
-			if( home != (nparts -1) && j == (home+1)*split )
+			if (home - firstProcInTeam != (nparts - 1) &&
+			    j == (home + 1) * split)
 				home++;
 			curr_vertex->home = home;
 			if (home == procId)
