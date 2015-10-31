@@ -908,7 +908,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 		     it++ ){
 
 			const int access_proc = (*it).pin->home;
-			assert(access_proc != -1 && access_proc < teamSize);
+			assert(access_proc != -1);
 			if (!flags[access_proc]){
 				if (is_direct[access_proc])
 					send_info[access_proc * 2]->insert(curr_net->data_index);
