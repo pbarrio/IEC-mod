@@ -104,6 +104,13 @@ public:
 
 	void use_in_loop(int, int, int);
 
+
+	/**
+	 * \brief See if a specific index has been already marked used in the loop
+	 *
+	 * \param index Index in this array to be checked
+	 * \param loopID Loop identifier
+	 */
 	bool is_already_used_in_loop(int index, int loopID){
 		return (finalUse[loopID].find(index) != finalUse[loopID].end());
 	}

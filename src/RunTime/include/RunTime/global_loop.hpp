@@ -56,6 +56,11 @@ public:
 	~global_loop();
 
 	/**
+	 * \brief Get the owner process of this loop iteration
+	 *
+	 * Each iteration of the loop is run in only one process. This method
+	 * returns the process that will execute the iteration (the owner).
+	 *
 	 * \param iter_value Iteration of the loop
 	 */
 	inline int GetVertexHome(int iter_value) const{

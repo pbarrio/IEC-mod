@@ -29,7 +29,7 @@ using namespace std;
  * \param mn Identifier for this data
  * \param oas Size of the original array
  * \param of Offset: address of the first elem if we put all global data in a
- *           single buffer in ID order.
+ *           single buffer in ID order
  * \param iro True if read-only array
  */
 global_data::global_data(int mn, int oas, int of, bool iro):

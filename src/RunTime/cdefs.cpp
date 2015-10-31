@@ -157,7 +157,7 @@ extern "C" {
 	/**
 	 * \brief Connect a vertex to a net.
 	 *
-	 * Vertices are loop iterations, nets represent data.
+	 * Vertices are loop iterations; nets represent data.
 	 * When we detect that some data is used in an iteration,
 	 * we must connect the iteration vertex to the data net.
 	 * This allows us to know which processes will use which data,
@@ -226,7 +226,7 @@ extern "C" {
 		Inspector::instance()->SetStride(*an, *st);
 	}
 
-	int get_vertex_home(int in ,int iv){
+	int get_vertex_home(int in, int iv){
 		return Inspector::instance()->GetVertexHome(in, iv);
 	}
 
@@ -323,7 +323,7 @@ extern "C" {
 
 
 	/**
-	 * \brief Renumbers ther access array from local to global indexes
+	 * \brief Renumbers the access array from local to global indexes
 	 *
 	 * \param an ID of the local array
 	 * \param as Size of this local array
@@ -492,14 +492,6 @@ extern "C" {
 		Inspector::instance()->RenumberGlobalRows(*sn, oa, *as);
 	}
 
-	void print_solver(){
-		Inspector::instance()->print_solver();
-	}
-
-	void print_solver_(){
-		Inspector::instance()->print_solver();
-	}
-
 	int get_local_rows(int sn){
 		return Inspector::instance()->GetLocalRows(sn);
 	}
@@ -550,6 +542,15 @@ extern "C" {
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
 
+	/**
+	 * \brief Initializes info required for the loop processing
+	 *
+	 * \param loop ID of the loop to be initialized
+	 * \param usedArrays List of array IDs that are used in the loop
+	 * \param readInfo Binary list defining which of the arrays are read
+	 * \param writeInfo Binary list defining which of the arrays are written
+	 * \param nArrays Number of arrays
+	 */
 	void pipe_init_loop
 	(int loop, int usedArrays[], int readInfo[], int writeInfo[], int nArrays){
 
@@ -586,7 +587,6 @@ extern "C" {
 	 * \param iter The iteration of the loop that is about to start.
 	 */
 	void pipe_communicate(int iter){
-
 		Inspector::instance()->pipe_communicate(iter);
 	}
 }

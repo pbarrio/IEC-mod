@@ -63,34 +63,34 @@ char* global_comm::write_recv_signal = NULL;
  * \param pid Process identifier in the distributed program
  * \param np Number of processes in the distributed program
  * \param team Identifier of this process' team
- * \param pid_team Identifier of this processor private to the team
+ * \param pidTeam Identifier of this processor private to the team
  * \param teamsize Size (in number of processors) of each team
  * \param nl Number of loops
  * \param nd Number of direct access arrays
  * \param nc Number of communicators. There is one per loop.
  * \param nad Number of indirection arrays.
- * \param iter_num_count Array of iteration limits (must be of size nl)
- * \param data_num_count Array of direct array sizes (must be of size nd)
+ * \param iterNumCount Array of iteration limits (must be of size nl)
+ * \param dataNumCount Array of direct array sizes (must be of size nd)
  * \param ro Array of read-only flags for the direct arrays (must be of size nd)
  */
-Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
-                     int nl, int nd, int nc, int nad, int* iter_num_count,
-                     int* data_num_count, int* ro):
-	proc_id(pid),
-	team_num(team),
-	id_in_team(pid_team),
-	team_size(teamsize),
-	nprocs(np),
+Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
+                     int nl, int nd, int nc, int nad, int* iterNumCount,
+                     int* dataNumCount, int* ro):
+	procId(pid),
+	teamNum(team),
+	idInTeam(pidTeam),
+	teamSize(teamsize),
+	nProcs(np),
 	pins_size(-1),
 	myLoop(NULL),
-	iter_num_offset(new int[nl + 1]), // The first '1' is for my loop
-	data_num_offset(new int[nd + 1]){
+	iterNumOffset(new int[nl + 1]), // The first '1' is for my loop
+	dataNumOffset(new int[nd + 1]){
 
 	// Create new communicator associated to the inspector. This avoids having
 	// to use MPI_COMM_WORLD.
 	// Also create a communicator for the team.
 	MPI_Comm_dup(MPI_COMM_WORLD, &global_comm::global_iec_communicator);
-	MPI_Comm_split(MPI_COMM_WORLD, team_num, 0,
+	MPI_Comm_split(MPI_COMM_WORLD, teamNum, 0,
 	               &global_comm::team_communicator);
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -98,44 +98,43 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 		return;
 
 	/// Create all loops
-	iter_num_offset[0] = 0;
-	for (int iLoop = 0 ; iLoop < nl ; ++iLoop){
+	iterNumOffset[0] = 0;
+	for (int iLoop = 0; iLoop < nl; ++iLoop){
 
 		global_loop* new_loop =
 			new global_loop(iLoop,
-			                iter_num_count[iLoop],
-			                iter_num_offset[iLoop]);
+			                iterNumCount[iLoop],
+			                iterNumOffset[iLoop]);
 		allLoops.push_back(new_loop);
-		iter_num_offset[iLoop + 1] =
-			iter_num_offset[iLoop] + iter_num_count[iLoop];
+		iterNumOffset[iLoop + 1] =
+			iterNumOffset[iLoop] + iterNumCount[iLoop];
 	}
 
 	/// Create data arrays (excludes indirection arrays)
-	data_num_offset[0] = 0;
+	dataNumOffset[0] = 0;
 	for (int i = 0; i < nd; i++){
 		global_data* new_data;
-		new_data = new global_data_double(i, data_num_count[i],
-		                                  data_num_offset[i],
+		new_data = new global_data_double(i, dataNumCount[i], dataNumOffset[i],
 		                                  ro[i] == 1? true : false);
 		allData.push_back(new_data);
 
-		data_num_offset[i+1] = data_num_offset[i] + data_num_count[i];
+		dataNumOffset[i + 1] = dataNumOffset[i] + dataNumCount[i];
 	}
 
 	// Set up the global IEC communicator for each loop
 	// TODO: we should get rid of multiple global communicators (use only one).
 	for (int i = 0; i < nc; i++){
-		global_comm* new_comm = new global_comm(i, nprocs, proc_id);
+		global_comm* new_comm = new global_comm(i, nProcs, procId);
 		all_comm.push_back(new_comm);
 	}
 
 	// Set up IEC communicator local to the team
-	team_comm = new local_comm(team_size, id_in_team);
+	team_comm = new local_comm(teamSize, idInTeam);
 
 	// Indirection arrays (called access data).
 	for (int i = 0; i < nad; i++){
 		access_data* new_access_data =
-			new access_data(i, proc_id, nprocs, pid_team, teamsize);
+			new access_data(i, procId, nProcs, pidTeam, teamsize);
 		all_access_data.push_back(new_access_data);
 	}
 
@@ -145,8 +144,8 @@ Inspector::Inspector(int pid, int np, int team, int pid_team, int teamsize,
 	pipeRecvCounts = new int[np];
 	pipeRecvDispls = new int[np];
 
-	send_info = new set<int>*[nprocs * 2];
-	for (int i = 0; i < nprocs * 2; i++)
+	send_info = new set<int>*[nProcs * 2];
+	for (int i = 0; i < nProcs * 2; i++)
 		send_info[i] = new set<int>;
 
 	MPI_Barrier(global_comm::global_iec_communicator);
@@ -160,14 +159,14 @@ Inspector::~Inspector(){
 
 		delete (*it);
 
-	delete[] iter_num_offset;
+	delete[] iterNumOffset;
 	allLoops.clear();
 	for (deque<global_data*>::iterator it = allData.begin();
 	     it != allData.end(); it++)
 
 		delete (*it);
 
-	delete[] data_num_offset;
+	delete[] dataNumOffset;
 	allData.clear();
 	int counter = 0;
 	for (deque<global_comm*>::iterator it = all_comm.begin();
@@ -187,7 +186,7 @@ Inspector::~Inspector(){
 	if( global_comm::max_send_size > 0 )
 		ARMCI_Free_local(global_comm::send_buffer);
 	if (global_comm::put_buffer){
-		ARMCI_Free(global_comm::put_buffer[proc_id]);
+		ARMCI_Free(global_comm::put_buffer[procId]);
 		delete[] global_comm::put_buffer;
 	}
 	if( global_comm::max_nprocs_read_send > 0 ){
@@ -216,7 +215,7 @@ Inspector::~Inspector(){
 	}
 
 	if (send_info){
-		for( int i = 0 ; i < nprocs * 2 ; i++ ){
+		for( int i = 0 ; i < nProcs * 2 ; i++ ){
 			send_info[i]->clear();
 			delete send_info[i];
 		}
@@ -241,29 +240,29 @@ Inspector::~Inspector(){
 void Inspector::GetDontHave(){
 
 	int stride = all_access_data.size(); // Number of indirection arrays
-	int* get_n_elems = new int[team_size * stride];
-	int* send_n_elems = new int[team_size * stride];
+	int* get_n_elems = new int[teamSize * stride];
+	int* send_n_elems = new int[teamSize * stride];
 
 	/// Get the number of elements to get from other processes
-	for( int i = 0 ; i < team_size * stride ; i++ )
+	for( int i = 0 ; i < teamSize * stride ; i++ )
 		get_n_elems[i] = 0;
 	for (deque<access_data*>::iterator it = all_access_data.begin();
 	     it != all_access_data.end(); it++)
 
-		(*it)->GetSendCounts(get_n_elems,stride);
+		(*it)->GetSendCounts(get_n_elems, stride);
 
 	///Initial communication to setup the buffer
 	MPI_Alltoall(get_n_elems, stride, MPI_INT, send_n_elems, stride, MPI_INT,
 	             global_comm::global_iec_communicator);
 
-	int send_count[team_size];
-	int recv_count[team_size];
-	int send_offset[team_size + 1];
-	int recv_offset[team_size + 1];
+	int send_count[teamSize];
+	int recv_count[teamSize];
+	int send_offset[teamSize + 1];
+	int recv_offset[teamSize + 1];
 
 	// Compute the size of message sent and received by each process
 	send_offset[0] = 0; recv_offset[0] = 0;
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 
 		send_count[i] = 0; recv_count[i] = 0;
 		for (int j = 0; j < stride; j++){
@@ -277,25 +276,25 @@ void Inspector::GetDontHave(){
 	int *sendbuf, *recvbuf;
 
 	// Allocate send buffer
-	if (send_offset[team_size] > 0)
-		sendbuf = new int[send_offset[team_size]];
+	if (send_offset[teamSize] > 0)
+		sendbuf = new int[send_offset[teamSize]];
 	else
 		sendbuf = NULL;
 
 	// Allocate recv buffer
-	if (recv_offset[team_size] > 0)
-		recvbuf = new int[recv_offset[team_size]];
+	if (recv_offset[teamSize] > 0)
+		recvbuf = new int[recv_offset[teamSize]];
 	else
 		recvbuf = NULL;
 
 	// Populate the send buffer with the indices requested by other processes
-	int* curr_offset = new int[team_size];
-	for (int i = 0; i < team_size; i++)
+	int* curr_offset = new int[teamSize];
+	for (int i = 0; i < teamSize; i++)
 		curr_offset[i] = send_offset[i];
 	for (deque<access_data*>::iterator it = all_access_data.begin();
 	     it != all_access_data.end(); it++)
 
-		(*it)->PopulateBuffer(sendbuf, send_offset[team_size], curr_offset);
+		(*it)->PopulateBuffer(sendbuf, send_offset[teamSize], curr_offset);
 
 	MPI_Alltoallv(sendbuf, send_count, send_offset, MPI_INT, recvbuf,
 	              recv_count, recv_offset, MPI_INT,
@@ -303,13 +302,13 @@ void Inspector::GetDontHave(){
 
 	// Populate the receive buffer with the values of all indices requested
 	// by this process.
-	for (int i = 0; i < team_size; i++)
+	for (int i = 0; i < teamSize; i++)
 		curr_offset[i] = recv_offset[i];
 
 	for (deque<access_data*>::iterator it = all_access_data.begin();
 	     it != all_access_data.end(); it++)
 
-		(*it)->GetRequestedValue(recvbuf, recv_offset[team_size], curr_offset,
+		(*it)->GetRequestedValue(recvbuf, recv_offset[teamSize], curr_offset,
 		                         send_n_elems, stride);
 
 	MPI_Alltoallv(recvbuf, recv_count, recv_offset, MPI_INT, sendbuf,
@@ -317,19 +316,19 @@ void Inspector::GetDontHave(){
 	              global_comm::global_iec_communicator);
 
 	///Add to set of elements that are known on each process
-	for (int i = 0; i < team_size; i++)
+	for (int i = 0; i < teamSize; i++)
 		curr_offset[i] = send_offset[i];
 
 	for (deque<access_data*>::iterator it = all_access_data.begin();
 	     it != all_access_data.end(); it++)
 
-		(*it)->AddToHaveSet(sendbuf,send_offset[team_size],curr_offset);
+		(*it)->AddToHaveSet(sendbuf, send_offset[teamSize], curr_offset);
 
 	delete[] get_n_elems;
 	delete[] send_n_elems;
-	if( sendbuf )
+	if (sendbuf)
 		delete[] sendbuf;
-	if( recvbuf )
+	if (recvbuf)
 		delete[] recvbuf;
 	delete[] curr_offset;
 }
@@ -343,10 +342,6 @@ bool Inspector::DoneGraphGeneration(){
 	// Compute the number of indirect array positions missing from all processes
 	MPI_Allreduce(MPI_IN_PLACE, &n_dont, 1, MPI_INT, MPI_SUM,
 	              global_comm::global_iec_communicator);
-#ifndef NDEBUG
-	printf("MXD:ID:%d,n_dont=%d\n",proc_id,n_dont);
-	fflush(stdout);
-#endif
 
 	// If there is still one array position missing,
 	// the graph generation is not done.
@@ -377,11 +372,11 @@ void Inspector::AddVertex(int loopID, int iterValue){
 
 	// Loop classification
 	global_loop* currLoop = allLoops[loopID];
-	if (loopID == team_num)
+	if (loopID == teamNum)
 		myLoop = currLoop;
-	else if (loopID < team_num)
+	else if (loopID < teamNum)
 		producerLoops[loopID] = currLoop;
-	else if (loopID > team_num)
+	else if (loopID > teamNum)
 		consumerLoops[loopID] = currLoop;
 }
 
@@ -459,12 +454,12 @@ void Inspector::AddUnknown
 
 void Inspector::PatohPrePartition(int loop){
 
-	if( nprocs > 1 ) {
-		const int ia_size = data_num_offset[allData.size()];
+	if (nProcs > 1){
+		const int ia_size = dataNumOffset[allData.size()];
 
-		int** armci_net_ia = new int*[nprocs];
+		int** armci_net_ia = new int*[nProcs];
 		ARMCI_Malloc((void**)armci_net_ia, (ia_size + 1) * sizeof(int));
-		int* const net_ia = (int*)armci_net_ia[proc_id];
+		int* const net_ia = (int*)armci_net_ia[procId];
 
 		net_ia[0] = 0;
 		int counter = 0;
@@ -478,7 +473,7 @@ void Inspector::PatohPrePartition(int loop){
 			}
 		assert(counter == ia_size);
 
-		int net_ja_size[nprocs];
+		int net_ja_size[nProcs];
 
 		///Total number of pins on each process
 		MPI_Allgather(&(net_ia[ia_size]), 1, MPI_INT, net_ja_size, 1, MPI_INT,
@@ -486,13 +481,13 @@ void Inspector::PatohPrePartition(int loop){
 
 		int max_net_ja_size = 0;
 		///Maximum size needed for the pin information from each process
-		for( int i =0 ; i < nprocs ; i++)
+		for (int i = 0; i < nProcs; i++)
 			max_net_ja_size = (net_ja_size[i] > max_net_ja_size ?
 			                   net_ja_size[i] : max_net_ja_size);
 
-		int** armci_net_ja = new int*[nprocs];
+		int** armci_net_ja = new int*[nProcs];
 		ARMCI_Malloc((void**)armci_net_ja, max_net_ja_size * sizeof(int));
-		int* const net_ja = (int*)armci_net_ja[proc_id];
+		int* const net_ja = (int*)armci_net_ja[procId];
 
 		///Populate the pin information on the local process
 		counter = 0;
@@ -524,11 +519,11 @@ void Inspector::PatohPrePartition(int loop){
 
 		MPI_Barrier(global_comm::global_iec_communicator);
 
-		for (int i = 1; i < nprocs; i++){
+		for (int i = 1; i < nProcs; i++){
 
 			// Get the pin information from each process
-			int dest_id = (proc_id + i) % nprocs;
-			int source_id = (proc_id + nprocs - i) % nprocs;
+			int dest_id = (procId + i) % nProcs;
+			int source_id = (procId + nProcs - i) % nProcs;
 
 			ARMCI_Get((void*)armci_net_ia[source_id], (void*)recv_ia,
 			          (ia_size + 1) * sizeof(int), source_id);
@@ -552,42 +547,36 @@ void Inspector::PatohPrePartition(int loop){
 						int vertex_num = recv_ja[j];
 						int k = 0;
 						for( k = 0 ; k < allLoops.size() ; k++ )
-							if( iter_num_offset[k+1] > vertex_num )
+							if( iterNumOffset[k+1] > vertex_num )
 								break;
 						assert(k != allLoops.size());
 						pin_info new_pin
 							(allLoops[k]->iter_vertex[vertex_num -
-							                           iter_num_offset[k]],
+							                           iterNumOffset[k]],
 							 (recv_ja[j + 1] != 0 ? true : false));
 						curr_net->pins.insert(new_pin);
 					}
 					if( recv_ja[recv_ia[counter+1]-1] != -1 ){
 						int vertex_num = recv_ja[recv_ia[counter+1]-1];
 						int k = 0;
-						for( k = 0 ; k < allLoops.size() ; k++ )
-							if( iter_num_offset[k+1] > vertex_num )
+						for (k = 0; k < allLoops.size(); k++)
+							if (iterNumOffset[k + 1] > vertex_num)
 								break;
 						assert(k != allLoops.size());
 						curr_net->direct_vertex = allLoops[k]->
-							iter_vertex[vertex_num - iter_num_offset[k]];
+							iter_vertex[vertex_num - iterNumOffset[k]];
 					}
 					counter++;
 				}
 			}
 		}
 
-		ARMCI_Free(armci_net_ja[proc_id]);
-		ARMCI_Free(armci_net_ia[proc_id]);
+		ARMCI_Free(armci_net_ja[procId]);
+		ARMCI_Free(armci_net_ia[procId]);
 		ARMCI_Free_local(recv_ia);
 		ARMCI_Free_local(recv_ja);
-		delete[] armci_net_ia;
-		delete[] armci_net_ja;
-
-#ifndef NDEBUG
-		printf("PID:%d,ReplicationDone\n",proc_id);
-		fflush(stdout);
-		MPI_Barrier(global_comm::global_iec_communicator);
-#endif
+		delete [] armci_net_ia;
+		delete [] armci_net_ja;
 	}
 }
 
@@ -603,7 +592,7 @@ void Inspector::PatohPartition(int loop){
 
 	PatohPrePartition(loop);
 
-	if( nprocs > 1 ){
+	if (nProcs > 1){
 		int patoh_n,patoh_c,patoh_nc,patoh_cutsize;
 		int *patoh_cellwts, *patoh_netwts, *patoh_xpins, *patoh_pins,
 			*patoh_partwts, *patoh_partvec;
@@ -616,7 +605,7 @@ void Inspector::PatohPartition(int loop){
 		                            PATOH_SUGPARAM_QUALITY);
 
 		//Number of vertices
-		patoh_c = iter_num_offset[allLoops.size()];
+		patoh_c = iterNumOffset[allLoops.size()];
 		//number of nets
 		patoh_n = 0;
 		for( i = 0 ; i < allData.size() ; i++ )
@@ -625,14 +614,14 @@ void Inspector::PatohPartition(int loop){
 		//Number of constraints
 		patoh_nc = allLoops.size();
 		//Number of partitions
-		patoh._k = nprocs;
+		patoh._k = nProcs;
 
 		//Weight for cells
-		patoh_cellwts = new int[patoh_c*patoh_nc];
+		patoh_cellwts = new int[patoh_c * patoh_nc];
 		int counter = 0;
-		for( i = 0 ; i < allLoops.size() ; i++ )
-			for( j = 0 ; j < allLoops[i]->num_iters ; j++ )  {
-				for( k = 0 ; k < patoh_nc ; k++ )
+		for (i = 0; i < allLoops.size(); i++)
+			for (j = 0; j < allLoops[i]->num_iters; j++){
+				for (k = 0; k < patoh_nc; k++)
 					patoh_cellwts[counter*patoh_nc + k] = 0;
 				patoh_cellwts[ counter*patoh_nc + i ] = 1;
 				counter++;
@@ -680,9 +669,9 @@ void Inspector::PatohPartition(int loop){
 		           patoh_partvec, patoh_partwts, &patoh_cutsize);
 
 		counter = 0;
-		for( i = 0 ; i < allLoops.size() ; i++ )
-			for( j = 0 ; j < allLoops[i]->num_iters ; j++ ){
-				if( patoh_partvec[counter] == proc_id )
+		for (i = 0; i < allLoops.size(); i++)
+			for (j = 0; j < allLoops[i]->num_iters; j++){
+				if (patoh_partvec[counter] == procId)
 					allLoops[i]->nproc_local++;
 				allLoops[i]->iter_vertex[j]->home = patoh_partvec[counter++];
 			}
@@ -710,7 +699,7 @@ void Inspector::PatohPartition(int loop){
 void Inspector::PatohAfterPartition(int loop){
 
 	//Decide homes for the nets
-	int possible[nprocs];
+	int possible[nProcs];
 
 	for (deque<global_data*>::iterator it = allData.begin();
 	     it != allData.end();
@@ -728,7 +717,7 @@ void Inspector::PatohAfterPartition(int loop){
 					else{
 						///Add it to the same process as the one that accesses
 						///it the most (really doesn't matter)
-						for (int i = 0 ; i < nprocs ; i++ )
+						for (int i = 0; i < nProcs; i++)
 							possible[i] = 0;
 						for (set<pin_info,pin_comparator>::iterator jt =
 							     curr_net->pins.begin();
@@ -739,16 +728,16 @@ void Inspector::PatohAfterPartition(int loop){
 
 						int maxval = -1;
 						int counter = 0 , i = 0 ;
-						while( counter < nprocs ){
-							if( possible[i] > maxval ) {
+						while (counter < nProcs){
+							if (possible[i] > maxval){
 								maxval = possible[i];
 								home = i;
 							}
 							counter++;
-							i = (i+1)%(nprocs);
+							i = (i + 1) % nProcs;
 						}
 					}
-					assert(curr_net->home == -1 && home >= 0 && home <= nprocs);
+					assert(curr_net->home == -1 && home >= 0 && home <= nProcs);
 					curr_net->home = home;
 				}
 			}
@@ -756,12 +745,12 @@ void Inspector::PatohAfterPartition(int loop){
 				///If constrained, then the array is assumed to be
 				///block partitioned (ghosts added later)
 				int curr_proc = 0;
-				const int array_split = (*it)->orig_array_size / (nprocs);
+				const int array_split = (*it)->orig_array_size / (nProcs);
 				for( int j = 0 ; j < (*it)->orig_array_size ; j++ ){
 					net* curr_net = (*it)->data_net_info[loop][j];
 					curr_net->home = curr_proc;
-					if( (j+1)%array_split == 0 )
-						curr_proc = (curr_proc + 1 > nprocs -1 ?
+					if ((j + 1) % array_split == 0)
+						curr_proc = (curr_proc + 1 > nProcs - 1 ?
 						             curr_proc : curr_proc + 1);
 				}
 			}
@@ -791,16 +780,16 @@ void Inspector::AfterPartition(int loop){
 		int* send_buf = new int[curr_solver->size];
 		int* recv_buf = new int[curr_solver->size];
 
-		int source_proc = proc_id -1;
-		for (int dest_proc = (proc_id + 1) % nprocs;
-		     dest_proc != proc_id;
-		     dest_proc = (dest_proc + 1) % nprocs, source_proc--){
+		int source_proc = procId - 1;
+		for (int dest_proc = (procId + 1) % nProcs;
+		     dest_proc != procId;
+		     dest_proc = (dest_proc + 1) % nProcs, source_proc--){
 
 			MPI_Request i_send_request;
 			MPI_Status i_recv_status,i_send_status;
 
 			if( source_proc < 0 )
-				source_proc = nprocs - 1;
+				source_proc = nProcs - 1;
 
 			for( int j = 0 ; j < curr_size ; j++ )
 				if( curr_solver->orig_net[j] != NULL )
@@ -818,21 +807,21 @@ void Inspector::AfterPartition(int loop){
 				if (net_num != -1){
 					int k = 0;
 					for (; k < allData.size(); k++)
-						if (data_num_offset[k + 1] > net_num)
+						if (dataNumOffset[k + 1] > net_num)
 							break;
 					if (k == allData.size())
-						printf("ID=%d,Source=%d,net_num=%d,k=%d\n", proc_id,
+						printf("ID=%d,Source=%d,net_num=%d,k=%d\n", procId,
 						       source_proc, net_num, k);
 					assert(k != allData.size());
 					assert(!allData[k]->is_read_only);
 					assert(curr_solver->orig_net[j] == NULL ||
 					       curr_solver->orig_net[j] ==
 					       allData[k]->data_net_info[loop][net_num -
-					                                        data_num_offset[k]
+					                                        dataNumOffset[k]
 					                                        ]);
 					curr_solver->orig_net[j] =
 						allData[k]->data_net_info[loop][net_num -
-						                                 data_num_offset[k]];
+						                                dataNumOffset[k]];
 				}
 			}
 			MPI_Wait(&i_send_request,&i_send_status);
@@ -844,7 +833,7 @@ void Inspector::AfterPartition(int loop){
 
 	/// Take all global data and intialize the corresponding local data
 	// It might be possible to get rid of this
-	if (loop == team_num){
+	if (loop == teamNum){
 		for (deque<global_data*>::iterator it = allData.begin();
 		     it != allData.end(); it++){
 
@@ -870,7 +859,7 @@ void Inspector::AfterPartition(int loop){
  */
 void Inspector::pipe_reset_counts_and_displs(){
 
-	for (int i = 0; i < nprocs; ++i){
+	for (int i = 0; i < nProcs; ++i){
 		pipeSendCounts[i] = pipeSendDispls[i] = 0;
 		pipeRecvCounts[i] = pipeRecvDispls[i] = 0;
 	}
@@ -881,26 +870,26 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
                                  int** count){
 
 	const global_data* curr_array = allData[array_num];
-	net** const curr_nets = curr_array->data_net_info.at(team_num);
+	net** const curr_nets = curr_array->data_net_info.at(teamNum);
 	const int curr_array_size = curr_array->orig_array_size;
-	const int curr_split = curr_array_size / team_size;
-	const int curr_start = curr_split * id_in_team;
-	const int curr_end = (id_in_team == team_size - 1 ?
+	const int curr_split = curr_array_size / teamSize;
+	const int curr_start = curr_split * idInTeam;
+	const int curr_end = (idInTeam == teamSize - 1 ?
 	                      curr_array_size :
-	                      curr_split * (id_in_team + 1));
+	                      curr_split * (idInTeam + 1));
 
-	for (int i = 0; i < team_size * 2; i++)
+	for (int i = 0; i < teamSize * 2; i++)
 		send_info[i]->clear();
-	int* const sendcount_mpi = new int[team_size];
-	bool* is_direct = new bool[team_size];
-	bool* flags = new bool[team_size];
+	int* const sendcount_mpi = new int[teamSize];
+	bool* is_direct = new bool[teamSize];
+	bool* flags = new bool[teamSize];
 
 	// Find all the processes that access the blocked part of array owned
 	// by the process
 	for (int i = curr_start; i < curr_end; i++){
 
 		const net* curr_net = curr_nets[i];
-		for (int j = 0; j < team_size; j++){
+		for (int j = 0; j < teamSize; j++){
 			is_direct[j] = false;
 			flags[j] = false;
 		}
@@ -919,7 +908,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 		     it++ ){
 
 			const int access_proc = (*it).pin->home;
-			assert(access_proc != -1 && access_proc < team_size);
+			assert(access_proc != -1 && access_proc < teamSize);
 			if (!flags[access_proc]){
 				if (is_direct[access_proc])
 					send_info[access_proc * 2]->insert(curr_net->data_index);
@@ -933,12 +922,12 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	delete[] flags;
 
 	// Calculate data counts and displacements
-	int* const sendcount = new int[team_size * 2];
-	int* const curr_displ = new int[team_size * 2 + 1];
-	int* const senddispl = new int[team_size + 1];
+	int* const sendcount = new int[teamSize * 2];
+	int* const curr_displ = new int[teamSize * 2 + 1];
+	int* const senddispl = new int[teamSize + 1];
 	senddispl[0] = 0;
 	curr_displ[0] = 0;
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 		sendcount_mpi[i] = 0;
 		for (int k = 0; k < 2; k++){
 			sendcount[i * 2 + k] = send_info[i * 2 + k]->size();
@@ -949,18 +938,18 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 		senddispl[i + 1] = senddispl[i] + sendcount_mpi[i];
 	}
 
-	int* const recvcount = new int[team_size * 2];
-	int* const recvcount_mpi = new int[team_size];
+	int* const recvcount = new int[teamSize * 2];
+	int* const recvcount_mpi = new int[teamSize];
 
 	// Send the number of elements sent from each process
 	MPI_Alltoall(sendcount, 2, MPI_INT, recvcount, 2, MPI_INT,
 	             global_comm::team_communicator);
 
-	int* const sendbuffer = new int[senddispl[team_size]];
+	int* const sendbuffer = new int[senddispl[teamSize]];
 
 	// Populate the send buffer with the actual elements
 	int counter = 0;
-	for (int i = 0; i < team_size; i++)
+	for (int i = 0; i < teamSize; i++)
 
 		// k takes values 0 (direct accesses) or 1 (indirect accesses)
 		for (int k = 0; k < 2; k++){
@@ -970,14 +959,14 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 				sendbuffer[counter++] = (*it);
 		}
 
-	assert(counter == senddispl[team_size]);
+	assert(counter == senddispl[teamSize]);
 
-	int* const recvdispl = new int[team_size + 1];
-	*displ = new int[team_size * 2];
-	*count = new int[team_size * 2];
+	int* const recvdispl = new int[teamSize + 1];
+	*displ = new int[teamSize * 2];
+	*count = new int[teamSize * 2];
 	recvdispl[0] = 0;
 	int curr_recv_displ = 0;
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 		recvcount_mpi[i] = 0;
 		for (int k = 0; k < 2; k++){
 			(*count)[i * 2 + k] = recvcount[i * 2 + k];
@@ -988,7 +977,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 		recvdispl[i + 1] = recvdispl[i] + recvcount_mpi[i];
 	}
 
-	*recvbuf = new int[recvdispl[team_size]];
+	*recvbuf = new int[recvdispl[teamSize]];
 
 	MPI_Alltoallv(sendbuffer, sendcount_mpi, senddispl, MPI_INT,
 	              *recvbuf, recvcount_mpi, recvdispl, MPI_INT,
@@ -1024,7 +1013,7 @@ void Inspector::GetBufferSize(){
 		curr_global_comm->write_send_offset[0] = 0;
 		curr_global_comm->write_recv_offset[0] = 0;
 
-		for (int i = 0; i < team_size; i++){
+		for (int i = 0; i < teamSize; i++){
 
 			send_read_count +=
 				team_comm->GetReadSendCount(i, send_read_count);
@@ -1051,12 +1040,12 @@ void Inspector::GetBufferSize(){
 
 		global_comm::max_send_size =
 			MAX(global_comm::max_send_size,
-			    MAX(curr_global_comm->write_send_offset[nprocs],
-			        curr_global_comm->read_send_offset[nprocs]));
+			    MAX(curr_global_comm->write_send_offset[nProcs],
+			        curr_global_comm->read_send_offset[nProcs]));
 		global_comm::max_recv_size =
 			MAX(global_comm::max_recv_size,
-			    MAX(curr_global_comm->write_recv_offset[nprocs],
-			        curr_global_comm->read_recv_offset[nprocs]));
+			    MAX(curr_global_comm->write_recv_offset[nProcs],
+			        curr_global_comm->read_recv_offset[nProcs]));
 
 		MPI_Alltoall(curr_global_comm->read_recv_offset, 1, MPI_INT,
 		             curr_global_comm->read_put_displ, 1, MPI_INT,
@@ -1065,7 +1054,7 @@ void Inspector::GetBufferSize(){
 		             curr_global_comm->write_put_displ, 1, MPI_INT,
 		             global_comm::global_iec_communicator);
 
-		for (int i = 0; i < nprocs; i++){
+		for (int i = 0; i < nProcs; i++){
 			if (curr_global_comm->read_send_count[i] != 0)
 				curr_global_comm->nprocs_read_send++;
 			if (curr_global_comm->read_recv_count[i] != 0)
@@ -1089,8 +1078,8 @@ void Inspector::GetBufferSize(){
 			curr_global_comm->proc_id_write_recv =
 				new int[curr_global_comm->nprocs_write_recv];
 
-		int r_s_count = 0,r_r_count = 0,w_s_count =0,w_r_count = 0;
-		for (int i = 0; i < nprocs; i++){
+		int r_s_count = 0, r_r_count = 0, w_s_count = 0, w_r_count = 0;
+		for (int i = 0; i < nProcs; i++){
 			if (curr_global_comm->read_send_count[i] != 0)
 				curr_global_comm->proc_id_read_send[r_s_count++] = i;
 			if (curr_global_comm->read_recv_count[i] != 0)
@@ -1105,21 +1094,30 @@ void Inspector::GetBufferSize(){
 		assert(w_s_count == curr_global_comm->nprocs_write_send);
 		assert(w_r_count == curr_global_comm->nprocs_write_recv);
 
-		global_comm::max_nprocs_read_send = MAX( curr_global_comm->nprocs_read_send, global_comm::max_nprocs_read_send);
-		global_comm::max_nprocs_read_recv = MAX( curr_global_comm->nprocs_read_recv, global_comm::max_nprocs_read_recv);
-		global_comm::max_nprocs_write_send = MAX( curr_global_comm->nprocs_write_send, global_comm::max_nprocs_write_send);
-		global_comm::max_nprocs_write_recv = MAX( curr_global_comm->nprocs_write_recv, global_comm::max_nprocs_write_recv);
+		global_comm::max_nprocs_read_send =
+			MAX(curr_global_comm->nprocs_read_send,
+			    global_comm::max_nprocs_read_send);
+		global_comm::max_nprocs_read_recv =
+			MAX(curr_global_comm->nprocs_read_recv,
+			    global_comm::max_nprocs_read_recv);
+		global_comm::max_nprocs_write_send =
+			MAX(curr_global_comm->nprocs_write_send,
+			    global_comm::max_nprocs_write_send);
+		global_comm::max_nprocs_write_recv =
+			MAX(curr_global_comm->nprocs_write_recv,
+			    global_comm::max_nprocs_write_recv);
 	}
 
 	if( global_comm::max_send_size > 0 )
 		global_comm::send_buffer =
 			(char*)ARMCI_Malloc_local(global_comm::max_send_size);
-  
-	global_comm::put_buffer = new char*[nprocs];
-	ARMCI_Malloc((void**)global_comm::put_buffer,global_comm::max_recv_size+1);
+
+	global_comm::put_buffer = new char * [nProcs];
+	ARMCI_Malloc((void**)global_comm::put_buffer,
+	             global_comm::max_recv_size + 1);
 
 	if( global_comm::max_recv_size > 0 )
-		global_comm::recv_buffer = (char*)global_comm::put_buffer[proc_id];
+		global_comm::recv_buffer = (char*)global_comm::put_buffer[procId];
 
 	if( global_comm::max_nprocs_read_send > 0 ){
 		int array_size = global_comm::max_nprocs_read_send;
@@ -1152,7 +1150,7 @@ void Inspector::GetBufferSize(){
 
 
 #ifndef NDEBUG
-	printf("PID:%d,SendBufferSize:%d,", proc_id,global_comm::max_send_size);
+	printf("PID:%d,SendBufferSize:%d,", procId, global_comm::max_send_size);
 	printf("Send_Buffer:%p, ", global_comm::send_buffer);
 	printf("RecvBufferSize:%d, ", global_comm::max_recv_size);
 	printf("RecvBuffer:%p\n", global_comm::recv_buffer);
@@ -1167,17 +1165,17 @@ void Inspector::GetBufferSize(){
 void Inspector::CommunicateGhosts(){
 
 	// Number of send-ghosts for each process, all arrays
-	int sendcount[team_size];
+	int sendcount[teamSize];
 
 	// senddispl[i] will contain the index where ghosts start for process i,
 	// senddispl[i + 1] the index where ghosts end (not included) for process i
-	int senddispl[team_size + 1];
+	int senddispl[teamSize + 1];
 
 	// Number of receive-ghosts for each process, all arrays
-	int recvcount[team_size];
+	int recvcount[teamSize];
 
 	// Same explanation as senddispl but for receive-ghosts
-	int recvdispl[team_size + 1];
+	int recvdispl[teamSize + 1];
 
 	// Number of R/W arrays
 	int n_data = 0;
@@ -1189,15 +1187,15 @@ void Inspector::CommunicateGhosts(){
 			n_data++;
 
 	// #send-ghosts per target process, per R/W array
-	int* sendghosts_count = new int[team_size * n_data];
+	int* sendghosts_count = new int[teamSize * n_data];
 
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 		sendcount[i] = 0;
 		recvcount[i] = 0;
 	}
 
 	// Count #send-ghosts for all receiver processes
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 
 		int dest_proc = i;
 		int d = 0;
@@ -1216,18 +1214,18 @@ void Inspector::CommunicateGhosts(){
 
 	// Calculate indices where send-ghosts start & end for all processes
 	senddispl[0] = 0;
-	for (int i = 0; i < team_size; i++)
+	for (int i = 0; i < teamSize; i++)
 		senddispl[i + 1] = senddispl[i] + sendcount[i];
 
 	// #receive-ghosts per target process, per R/W array
-	int* recvghosts_count = new int[team_size * n_data];
+	int* recvghosts_count = new int[teamSize * n_data];
 
 	// Send counts of send-ghosts and receive counts of receive-ghosts
 	MPI_Alltoall(sendghosts_count, n_data, MPI_INT, recvghosts_count, n_data,
 	             MPI_INT, global_comm::team_communicator);
 
 	// Extract #receive-ghosts for all sender processes
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 		int send_proc = i;
 
 		// For all arrays
@@ -1239,15 +1237,15 @@ void Inspector::CommunicateGhosts(){
 
 	// Calculate indices where receive-ghosts start & end for all processes
 	recvdispl[0] = 0;
-	for (int i = 0; i < team_size; i++)
+	for (int i = 0; i < teamSize; i++)
 		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
 
-	int* ghosts_send_val = new int[senddispl[team_size]];
-	int* ghosts_recv_val = new int[recvdispl[team_size]];
+	int* ghosts_send_val = new int[senddispl[teamSize]];
+	int* ghosts_recv_val = new int[recvdispl[teamSize]];
 
 	// Populate the actual ghosts from data in the local arrays
 	int counter = 0;
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 
 		int d = 0;
 		for (deque<local_data*>::iterator it = allLocalData.begin();
@@ -1264,7 +1262,7 @@ void Inspector::CommunicateGhosts(){
 			}
 	}
 
-	assert(counter == senddispl[team_size]);
+	assert(counter == senddispl[teamSize]);
 
 	// Communicate the send- and receive-ghosts
 	MPI_Alltoallv(ghosts_send_val, sendcount, senddispl, MPI_INT,
@@ -1273,7 +1271,7 @@ void Inspector::CommunicateGhosts(){
 
 	// Update the owned data with the received ghost values
 	counter = 0;
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 
 		int d = 0;
 		for (deque<local_data*>::iterator it = allLocalData.begin();
@@ -1296,7 +1294,7 @@ void Inspector::CommunicateGhosts(){
 
 void Inspector::CommunicateReads(int comm_num){
 
-	int nparts = nprocs;
+	int nparts = nProcs;
 
 #ifdef COMM_TIME
 	double start_t,stop_t,start_t1,stop_t1,start_t2,stop_t2,start_t3,stop_t3;
@@ -1328,8 +1326,8 @@ void Inspector::CommunicateReads(int comm_num){
 	if( global_comm::max_send_size > 0 ){
 		global_comm* curr_communicator = all_comm[comm_num];
 		int count;
-		for( int i =0 ; i < nprocs ; i++ )
-			if( ( count = curr_communicator->read_send_count[i]  ) != 0 )
+		for (int i = 0; i < nProcs; i++)
+			if ((count = curr_communicator->read_send_count[i]) != 0)
 				ARMCI_NbPut(global_comm::send_buffer +
 				            curr_communicator->read_send_offset[i],
 
@@ -1339,13 +1337,13 @@ void Inspector::CommunicateReads(int comm_num){
 				            count, i, NULL);
 	}
 
-	if( team_comm->read_recv_count[0] > 0 ){
+	if (team_comm->read_recv_count[0] > 0){
 
 		vector<local_data*>::iterator it =
 			team_comm->read_arrays.begin();
 
 		for (; it != team_comm->read_arrays.end(); it++)
-			(*it)->PopulateLocalGhosts(allLocalData[(*it)->my_num], proc_id);
+			(*it)->PopulateLocalGhosts(allLocalData[(*it)->my_num], procId);
 	}
 
 	ARMCI_WaitAll();
@@ -1424,11 +1422,11 @@ void Inspector::pipe_init_loop(int loopID,
 
 	// Find loop type
 	global_loop* loop = allLoops[loopID];
-	if (loopID < team_num){
+	if (loopID < teamNum){
 		loop->set_as_producer();
 		producerLoops[loopID] = loop;
 	}
-	else if (loopID > team_num){
+	else if (loopID > teamNum){
 		loop->set_as_consumer();
 		consumerLoops[loopID] = loop;
 	}
@@ -1458,7 +1456,7 @@ void Inspector::pipe_communicate(int iter){
 	pipe_reset_counts_and_displs();
 
 	// Prepare structures for sendreceiving
-	for (int iProc = 0; iProc < nprocs; ++iProc){
+	for (int iProc = 0; iProc < nProcs; ++iProc){
 
 		// This is the "send" part
 		for (global_loop::ArrayIDList::iterator
@@ -1478,7 +1476,7 @@ void Inspector::pipe_communicate(int iter){
 				 pipeSendBuf + pipeSendDispls[iProc] + pipeSendCounts[iProc]);
 		}
 		// Update the send displacements for the next process
-		if (iProc + 1 < nprocs)
+		if (iProc + 1 < nProcs)
 			pipeSendDispls[iProc + 1] =
 				pipeSendDispls[iProc] + pipeSendCounts[iProc];
 
@@ -1495,7 +1493,7 @@ void Inspector::pipe_communicate(int iter){
 				localArray->pipe_get_recvcounts(iter, iProc);
 		}
 		// Update the displacements for the next process
-		if (iProc + 1 < nprocs)
+		if (iProc + 1 < nProcs)
 			pipeRecvDispls[iProc + 1] =
 				pipeRecvDispls[iProc] + pipeRecvCounts[iProc];
 	}
@@ -1506,7 +1504,7 @@ void Inspector::pipe_communicate(int iter){
 
 	// Move received data to the local array
 	char* received = pipeRecvBuf;
-	for (int iProc = 0; iProc < nprocs; ++iProc){
+	for (int iProc = 0; iProc < nProcs; ++iProc){
 
 		for (global_loop::ArrayIDList::iterator
 			     arrayIt = myLoop->used_arrays_begin(iProc),

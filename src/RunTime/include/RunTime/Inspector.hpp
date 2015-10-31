@@ -56,7 +56,7 @@ class Inspector{
 
 private:
 
-	const int proc_id, nprocs, team_num, id_in_team, team_size;
+	const int procId, nProcs, teamNum, idInTeam, teamSize;
 
 	/// Used by the partitioner
 	int pins_size;
@@ -90,9 +90,9 @@ private:
 	/// All solvers
 	std::deque<petsc_solve*> all_solvers;
 
-	int* const iter_num_offset;
+	int* const iterNumOffset;
 
-	int* const data_num_offset;
+	int* const dataNumOffset;
 
 	/// Node level communicator
 	std::deque<global_comm*> all_comm;
@@ -143,14 +143,14 @@ public:
 		return singleton_inspector;
 	}
 
-	inline int get_proc_id() const{return proc_id;}
+	inline int get_proc_id() const{return procId;}
 
 	inline int GetVertexHome(int loop_id, int iter) const{
 		return allLoops[loop_id]->GetVertexHome(iter);
 	}
 
-	inline int GetNProcs() const {return nprocs;}
-	inline int GetTeamSize() const {return team_size;}
+	inline int GetNProcs() const {return nProcs;}
+	inline int GetTeamSize() const {return teamSize;}
 
 	inline void SetStride(int an, int st){
 		allData[an]->SetStride(st);
@@ -241,7 +241,7 @@ public:
 
 	inline int InitSolver(int s){
 		assert(all_solvers.size() == 0);
-		all_solvers.push_back(new petsc_solve(proc_id, nprocs, s));
+		all_solvers.push_back(new petsc_solve(procId, nProcs, s));
 		return all_solvers.size() - 1;
 	}
 
@@ -264,14 +264,6 @@ public:
 		allData[an]->SetConstraint();
 	}
 
-	inline void print_solver(){
-		char file_name[15];
-		sprintf(file_name,"solver_%d.dat", proc_id);
-		FILE* outfile = fopen(file_name, "w");
-		all_solvers[0]->print(outfile);
-		fclose(outfile);
-	}
-
 
 	/*
 	 * STOLEN FROM LOCAL INSPECTOR
@@ -289,17 +281,17 @@ public:
 	 * \brief Add local array corresponding to a global_data
 	 *
 	 * \param mn ID of the global_data
-	 * \param stride_size Number of array positions in the "pragma" stride
+	 * \param strideSize Number of array positions in the "pragma" stride
 	 * \param ddni Nets for all the positions of the global data
 	 * \param oas Size of the original array
 	 * \param iro True if the array is read-only
 	 * \param ic Unused in the quake benchmark
 	 */
-	inline void add_local_data(int mn, int stride_size, const net** ddni,
+	inline void add_local_data(int mn, int strideSize, const net** ddni,
 	                           int oas, bool iro, bool ic){
 
 		local_data* new_data =
-			new local_data_double(mn, team_size, proc_id, stride_size, ddni,
+			new local_data_double(mn, teamSize, procId, strideSize, ddni,
 			                      oas, iro, ic);
 		allLocalData.push_back(new_data);
 	}

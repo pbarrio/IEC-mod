@@ -137,45 +137,45 @@ int remove_duplicates(int* const array, const int size, int* const mirror_array)
  */
 void Inspector::MetisReplicateHypergraph(int loop){
 
-	if (team_size < 2)
+	if (teamSize < 2)
 		return;
 
-	const int num_nets = data_num_offset[allData.size()];
+	const int num_nets = dataNumOffset[allData.size()];
 
 	// First step, broadcast the number of pins a process has for each net
-	int sendcount[team_size], senddispl[team_size + 1], recvcount[team_size],
-		recvdispl[team_size + 1];
+	int sendcount[teamSize], senddispl[teamSize + 1], recvcount[teamSize],
+		recvdispl[teamSize + 1];
 	int num_local_nets = 0;
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 		sendcount[i] = 0;
 		recvcount[i] = 0;
 	}
 
 	for (int i = 0; i < allData.size(); i++){
-		int curr_size = data_num_offset[i + 1] - data_num_offset[i];
-		int split = curr_size / team_size;
-		num_local_nets += (proc_id == team_size - 1 ?
-		                   curr_size - split * proc_id : split);
-		for (int j = 0; j < team_size; j++){
-			sendcount[j] += (j == proc_id ?
-			                 0 : (j == team_size - 1 ?
-			                      curr_size - split * j : split));
+		int currSize = dataNumOffset[i + 1] - dataNumOffset[i];
+		int split = currSize / teamSize;
+		num_local_nets += (procId == teamSize - 1 ?
+		                   currSize - split * procId : split);
+		for (int j = 0; j < teamSize; j++){
+			sendcount[j] += (j == procId ?
+			                 0 : (j == teamSize - 1 ?
+			                      currSize - split * j : split));
 		}
 	}
 
 	senddispl[0] = 0; recvdispl[0] = 0;
-	for (int i = 0; i < team_size; i++){
+	for (int i = 0; i < teamSize; i++){
 		senddispl[i + 1] = senddispl[i] + sendcount[i];
-		recvcount[i] = (i == proc_id ? 0 : num_local_nets);
+		recvcount[i] = (i == procId ? 0 : num_local_nets);
 		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
 	}
 
-	int* const net_send_npins = new int[senddispl[team_size]];
-	int* const net_recv_npins = new int[recvdispl[team_size]];
+	int* const net_send_npins = new int[senddispl[teamSize]];
+	int* const net_recv_npins = new int[recvdispl[teamSize]];
 	net** const local_nets = new net*[num_local_nets];
 
-	int curr_displ[team_size];
-	for (int i = 0; i < team_size; i++)
+	int curr_displ[teamSize];
+	for (int i = 0; i < teamSize; i++)
 		curr_displ[i] = senddispl[i];
 
 	int local_count = 0;
@@ -183,9 +183,9 @@ void Inspector::MetisReplicateHypergraph(int loop){
 	     it != allData.end(); it++){
 
 		int curr_array_size = (*it)->orig_array_size;
-		int curr_split = curr_array_size / team_size;
-		int my_start = curr_split * proc_id;
-		int my_end = (proc_id == team_size - 1 ?
+		int curr_split = curr_array_size / teamSize;
+		int my_start = curr_split * procId;
+		int my_end = (procId == teamSize - 1 ?
 		              curr_array_size : my_start + curr_split);
 
 		for (int j = 0, curr_proc = 0; j < curr_array_size; j++){
@@ -196,19 +196,19 @@ void Inspector::MetisReplicateHypergraph(int loop){
 			else
 				local_nets[local_count++] = (*it)->data_net_info[loop][j];
 			if ((j + 1) % curr_split == 0)
-				curr_proc = (curr_proc >= team_size - 1 ?
-				             team_size - 1 : curr_proc + 1);
+				curr_proc = (curr_proc >= teamSize - 1 ?
+				             teamSize - 1 : curr_proc + 1);
 		}
 	}
 
 	MPI_Alltoallv(net_send_npins, sendcount, senddispl, MPI_INT, net_recv_npins,
 	              recvcount, recvdispl, MPI_INT,
 	              global_comm::global_iec_communicator);
-	int send_pins_count[team_size], send_pins_displ[team_size + 1],
-		recv_pins_count[team_size], recv_pins_displ[team_size + 1];
+	int send_pins_count[teamSize], send_pins_displ[teamSize + 1],
+		recv_pins_count[teamSize], recv_pins_displ[teamSize + 1];
 
 	recv_pins_displ[0] = 0; send_pins_displ[0] = 0;
-	for (int i = 0; i < team_size ; i++){
+	for (int i = 0; i < teamSize ; i++){
 		send_pins_count[i] = 0;
 		for (int j = senddispl[i]; j < senddispl[i + 1]; j++)
 			send_pins_count[i] += net_send_npins[j];
@@ -220,18 +220,18 @@ void Inspector::MetisReplicateHypergraph(int loop){
 	}
 
 	//Second Step : Send the pins of net to the respective process.
-	int* const send_pins = new int[send_pins_displ[team_size]];
-	int* const recv_pins = new int[recv_pins_displ[team_size]];
+	int* const send_pins = new int[send_pins_displ[teamSize]];
+	int* const recv_pins = new int[recv_pins_displ[teamSize]];
 
-	for (int i = 0; i < team_size; i++)
+	for (int i = 0; i < teamSize; i++)
 		curr_displ[i] = send_pins_displ[i];
 
 	for (deque<global_data*>::iterator it = allData.begin();
 	     it != allData.end(); it++){
 		int curr_array_size = (*it)->orig_array_size ;
-		int curr_split = curr_array_size / team_size;
-		int my_start = curr_split * proc_id;
-		int my_end = (proc_id == team_size - 1 ?
+		int curr_split = curr_array_size / teamSize;
+		int my_start = curr_split * procId;
+		int my_end = (procId == teamSize - 1 ?
 		              curr_array_size : my_start + curr_split);
 		for (int j = 0,  curr_proc = 0; j < curr_array_size; j++){
 			if (j < my_start || j >= my_end){
@@ -255,8 +255,8 @@ void Inspector::MetisReplicateHypergraph(int loop){
 				}
 			}
 			if ((j + 1) % curr_split == 0)
-				curr_proc = (curr_proc >= team_size - 1 ?
-				             team_size - 1 : curr_proc + 1);
+				curr_proc = (curr_proc >= teamSize - 1 ?
+				             teamSize - 1 : curr_proc + 1);
 		}
 	}
 
@@ -264,20 +264,20 @@ void Inspector::MetisReplicateHypergraph(int loop){
 	              recv_pins, recv_pins_count, recv_pins_displ, MPI_INT,
 	              global_comm::global_iec_communicator);
 
-	int vcount[team_size];
-	for (int i = 0; i < team_size; i++)
+	int vcount[teamSize];
+	for (int i = 0; i < teamSize; i++)
 		vcount[i] = recv_pins_displ[i];
 
 	for (int i = 0; i < num_local_nets; i++){
 		net* curr_net = local_nets[i];
-		for (int j = 0; j < team_size; j++)
-			if (j != proc_id){
+		for (int j = 0; j < teamSize; j++)
+			if (j != procId){
 				int num_pins = net_recv_npins[recvdispl[j] + i] - 1;
 				for (int l = 0; l < num_pins; l += 2){
 					int vertex_num = recv_pins[vcount[j]++];
 					pin_info new_pin
 						(allLoops[loop]->iter_vertex[vertex_num -
-						                              iter_num_offset[loop]],
+						                              iterNumOffset[loop]],
 						 (recv_pins[vcount[j]++] != 0 ?
 						  true : false));
 					curr_net->pins.insert(new_pin);
@@ -290,7 +290,7 @@ void Inspector::MetisReplicateHypergraph(int loop){
 
 						curr_net->direct_vertex =
 							allLoops[loop]->iter_vertex[direct_vertex_num -
-							                             iter_num_offset[loop]];
+							                             iterNumOffset[loop]];
 				}
 			}
 	}
@@ -314,10 +314,10 @@ void Inspector::MetisPrePartition(int loop){
 
 		if (!(*it)->is_read_only){
 			int curr_array_size = (*it)->orig_array_size;
-			int curr_split = curr_array_size / nprocs;
-			int curr_start = curr_split * proc_id;
-			int curr_end = (proc_id == nprocs - 1 ?
-			                curr_array_size : curr_split * ( proc_id + 1 ));
+			int curr_split = curr_array_size / nProcs;
+			int curr_start = curr_split * procId;
+			int curr_end = (procId == nProcs - 1 ?
+			                curr_array_size : curr_split * ( procId + 1 ));
 			for (int j = curr_start; j < curr_end; j++){
 				net* curr_net = (*it)->data_net_info[loop][j];
 				int npins = curr_net->pins.size();
@@ -335,18 +335,27 @@ void Inspector::MetisPrePartition(int loop){
 							vertex* vertex1 = curr_pins[k];
 							vertex* vertex2 = curr_pins[l];
 #if defined USE_QPHASH || defined USE_KSHASH
-							vertex1->adjvertex->hash_insert(vertex2->my_num,curr_net->weight);
-							vertex2->adjvertex->hash_insert(vertex1->my_num,curr_net->weight);
+							vertex1->adjvertex->hash_insert(vertex2->my_num,
+							                                curr_net->weight);
+							vertex2->adjvertex->hash_insert(vertex1->my_num,
+							                                curr_net->weight);
 #else
-							map<int,int>::iterator kt = vertex1->adjvertex.find(vertex2->my_num);
-							if( kt == vertex1->adjvertex.end() ){
-								assert( vertex2->adjvertex.find(vertex1->my_num) == vertex2->adjvertex.end() );
-								vertex1->adjvertex.insert(pair<int,int>(vertex2->my_num,curr_net->weight));
-								vertex2->adjvertex.insert(pair<int,int>(vertex1->my_num,curr_net->weight));
+							map<int,int>::iterator kt =
+								vertex1->adjvertex.find(vertex2->my_num);
+							if (kt == vertex1->adjvertex.end()){
+								assert(vertex2->adjvertex.find(vertex1->my_num) ==
+								       vertex2->adjvertex.end() );
+								vertex1->adjvertex.insert
+									(pair<int, int>(vertex2->my_num,
+									                curr_net->weight));
+								vertex2->adjvertex.insert
+									(pair<int, int>(vertex1->my_num,
+									                curr_net->weight));
 							}
 							else{
 								(*kt).second += curr_net->weight;
-								map<int,int>::iterator lt = vertex2->adjvertex.find(vertex1->my_num);
+								map<int,int>::iterator lt =
+									vertex2->adjvertex.find(vertex1->my_num);
 								assert( lt != vertex2->adjvertex.end());
 								(*lt).second += curr_net->weight;
 							}
@@ -369,7 +378,7 @@ void Inspector::BlockPartition(){
 	for (int loop = 0; loop < allLoops.size(); ++loop)
 		MetisReplicateHypergraph(loop);
 
-	int nparts = team_size;
+	int nparts = teamSize;
 	for (deque<global_loop*>::iterator it = allLoops.begin();
 	     it!= allLoops.end(); it++){
 
@@ -381,7 +390,7 @@ void Inspector::BlockPartition(){
 			if( home != (nparts -1) && j == (home+1)*split )
 				home++;
 			curr_vertex->home = home;
-			if( home == proc_id )
+			if (home == procId)
 				(*it)->nproc_local++;
 		}
 	}
@@ -400,32 +409,32 @@ void Inspector::MetisPartition(int loop){
 
 	MetisPrePartition(loop);
 
-	const int num_vertex = iter_num_offset[allLoops.size()];
-	const int vertex_split = num_vertex / nprocs;
-	const int vertex_start = proc_id * vertex_split;
-	const int vertex_end = (proc_id == nprocs - 1 ?
-	                        num_vertex - 1 : vertex_split * (proc_id + 1) - 1);
+	const int num_vertex = iterNumOffset[allLoops.size()];
+	const int vertex_split = num_vertex / nProcs;
+	const int vertex_start = procId * vertex_split;
+	const int vertex_end = (procId == nProcs - 1 ?
+	                        num_vertex - 1 : vertex_split * (procId + 1) - 1);
 	const int num_local_vertex = vertex_end - vertex_start + 1;
 
 	vertex** metis_vertex = new vertex*[num_local_vertex];
 	int counter = 0;
-	if (nprocs > 1){
-		int recvcount[nprocs], recvdispl[nprocs + 1];
-		int sendcount[nprocs], senddispl[nprocs + 1];
+	if (nProcs > 1){
+		int recvcount[nProcs], recvdispl[nProcs + 1];
+		int sendcount[nProcs], senddispl[nProcs + 1];
 		recvdispl[0] = 0; senddispl[0] = 0;
-		for (int i = 0; i < nprocs; i++){
-			sendcount[i] = (i == proc_id ? 0 :
-			                (i != nprocs - 1 ? vertex_split :
+		for (int i = 0; i < nProcs; i++){
+			sendcount[i] = (i == procId ? 0 :
+			                (i != nProcs - 1 ? vertex_split :
 			                 num_vertex - i * vertex_split));
-			recvcount[i] = (i == proc_id ? 0 : num_local_vertex);
+			recvcount[i] = (i == procId ? 0 : num_local_vertex);
 			senddispl[i+1] = senddispl[i] + sendcount[i];
 			recvdispl[i+1] = recvdispl[i] + recvcount[i];
 		}
-		assert(senddispl[nprocs] == num_vertex - num_local_vertex );
-		assert(recvdispl[nprocs] == num_local_vertex * (nprocs-1) );
+		assert(senddispl[nProcs] == num_vertex - num_local_vertex );
+		assert(recvdispl[nProcs] == num_local_vertex * (nProcs-1) );
 
-		int * send_adj_count = new int[senddispl[nprocs]];
-		int * recv_adj_count = new int[recvdispl[nprocs]];
+		int * send_adj_count = new int[senddispl[nProcs]];
+		int * recv_adj_count = new int[recvdispl[nProcs]];
 
 		counter = 0;int countv = 0;
 		for (deque<global_loop*>::iterator it = allLoops.begin();
@@ -450,11 +459,11 @@ void Inspector::MetisPartition(int loop){
 		              recv_adj_count, recvcount, recvdispl, MPI_INT,
 		              MPI_COMM_WORLD);
 
-		int sendcount_ja[nprocs], recvcount_ja[nprocs],
-			senddispl_ja[nprocs + 1], recvdispl_ja[nprocs + 1];
+		int sendcount_ja[nProcs], recvcount_ja[nProcs],
+			senddispl_ja[nProcs + 1], recvdispl_ja[nProcs + 1];
 
 		senddispl_ja[0] = 0 ; recvdispl_ja[0] =0;
-		for( int i = 0 ; i < nprocs ; i++ ){
+		for( int i = 0 ; i < nProcs ; i++ ){
 			sendcount_ja[i] = 0;
 			for( int j = senddispl[i] ; j < senddispl[i+1] ; j++ )
 				sendcount_ja[i] += send_adj_count[j] * 2;
@@ -465,8 +474,8 @@ void Inspector::MetisPartition(int loop){
 			recvdispl_ja[i+1] = recvdispl_ja[i] + recvcount_ja[i];
 		}
 
-		int* send_adj_list = new int[senddispl_ja[nprocs]];
-		int* recv_adj_list = new int[recvdispl_ja[nprocs]];
+		int* send_adj_list = new int[senddispl_ja[nProcs]];
+		int* recv_adj_list = new int[recvdispl_ja[nProcs]];
 
 		counter =0;countv=0;
 		for (deque<global_loop*>::iterator it = allLoops.begin();
@@ -490,14 +499,14 @@ void Inspector::MetisPartition(int loop){
 				}
 				countv++;
 			}
-		assert(counter == senddispl_ja[nprocs]);
+		assert(counter == senddispl_ja[nProcs]);
 
 		MPI_Alltoallv(send_adj_list, sendcount_ja, senddispl_ja, MPI_INT,
 		              recv_adj_list, recvcount_ja, recvdispl_ja, MPI_INT,
 		              MPI_COMM_WORLD);
 
-		for( int i = 0 ; i < nprocs ; i++ )
-			if( i != proc_id ){
+		for( int i = 0 ; i < nProcs ; i++ )
+			if( i != procId ){
 				counter = recvdispl_ja[i];
 				for( int j = 0 ; j < num_local_vertex ; j++ ){
 					int nadj = recv_adj_count[j+recvdispl[i]];
@@ -539,16 +548,16 @@ void Inspector::MetisPartition(int loop){
 
 	int *xadj = new int[num_local_vertex+1];
 	int *vwgt = new int[num_local_vertex*allLoops.size()];
-	int *vtxdist = new int[nprocs+1];
+	int *vtxdist = new int[nProcs+1];
 	int ncon = allLoops.size();
-	int nparts = nprocs;
+	int nparts = nProcs;
 	int wgtflag = 3;
 	int numflag = 0;
 
 	vtxdist[0] = 0;
-	for( int i = 0 ; i < nprocs - 1 ; i++ )
+	for( int i = 0 ; i < nProcs - 1 ; i++ )
 		vtxdist[i+1] = vtxdist[i] + vertex_split;
-	vtxdist[nprocs] = num_vertex;
+	vtxdist[nProcs] = num_vertex;
 
 	xadj[0] = 0;
 	for( int i =  0 ; i < num_local_vertex ; i++ ){
@@ -608,22 +617,22 @@ void Inspector::MetisPartition(int loop){
 	                     &nedgecuts, vertex_home, &world_comm);
 
 #ifndef NDEBUG
-	printf("ID=%d, Done graphpartition\n",proc_id);
+	printf("ID=%d, Done graphpartition\n",procId);
 #endif
 
-	if( nprocs > 1 ) {
-		int recvcount[nprocs],recvdispl[nprocs+1];
+	if( nProcs > 1 ) {
+		int recvcount[nProcs],recvdispl[nProcs+1];
 
 		recvdispl[0] = 0;
-		for( int i = 0; i < nprocs -1 ; i++ ){
+		for( int i = 0; i < nProcs -1 ; i++ ){
 			recvcount[i] = vertex_split;
 			recvdispl[i+1] = recvdispl[i] + recvcount[i];
 		}
-		recvdispl[nprocs] = num_vertex;
-		recvcount[nprocs-1] = recvdispl[nprocs] - recvdispl[nprocs-1];
-		assert( recvcount[proc_id] == num_local_vertex);
+		recvdispl[nProcs] = num_vertex;
+		recvcount[nProcs-1] = recvdispl[nProcs] - recvdispl[nProcs-1];
+		assert( recvcount[procId] == num_local_vertex);
 
-		int* recvbuffer = new int[recvdispl[nprocs]];
+		int* recvbuffer = new int[recvdispl[nProcs]];
 
 		MPI_Allgatherv(vertex_home, num_local_vertex, MPI_INT, recvbuffer,
 		               recvcount, recvdispl, MPI_INT, MPI_COMM_WORLD);
@@ -632,7 +641,7 @@ void Inspector::MetisPartition(int loop){
 		for (deque<global_loop*>::iterator it = allLoops.begin();
 		     it != allLoops.end(); it++)
 			for( int j = 0; j < (*it)->num_iters ; j++ ){
-				if( recvbuffer[counter] == proc_id )
+				if( recvbuffer[counter] == procId )
 					(*it)->nproc_local++;
 				(*it)->iter_vertex[j]->home = recvbuffer[counter++];
 			}
@@ -664,8 +673,8 @@ void Inspector::MetisPartition(int loop){
 void Inspector::MetisAfterPartition(int loop){
 
 	int num_local_nets = 0;
-	int* const recvcount= new int[nprocs];
-	for (int i = 0; i < nprocs; i++){
+	int* const recvcount= new int[nProcs];
+	for (int i = 0; i < nProcs; i++){
 		recvcount[i] = 0;
 	}
 
@@ -673,27 +682,27 @@ void Inspector::MetisAfterPartition(int loop){
 		if (!allData[i]->is_read_only){
 
 			int curr_array_size = allData[i]->orig_array_size;
-			int curr_split = curr_array_size / nprocs;
-			num_local_nets += (proc_id == nprocs - 1 ?
-			                   curr_array_size - curr_split * proc_id :
+			int curr_split = curr_array_size / nProcs;
+			num_local_nets += (procId == nProcs - 1 ?
+			                   curr_array_size - curr_split * procId :
 			                   curr_split);
-			for (int j = 0; j < nprocs - 1; j++)
+			for (int j = 0; j < nProcs - 1; j++)
 				recvcount[j] += curr_split;
-			recvcount[nprocs - 1] +=
-				curr_array_size - curr_split * (nprocs - 1);
+			recvcount[nProcs - 1] +=
+				curr_array_size - curr_split * (nProcs - 1);
 		}
 	int* const send_home = new int[num_local_nets];
 
-	int* const recvdispl = new int[nprocs + 1];
+	int* const recvdispl = new int[nProcs + 1];
 	recvdispl[0] = 0;
-	for (int i = 0; i < nprocs; i++)
+	for (int i = 0; i < nProcs; i++)
 		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
 
-	int* const recv_home = new int[recvdispl[nprocs]];
-	for (int i = 0; i < recvdispl[nprocs]; i++)
+	int* const recv_home = new int[recvdispl[nProcs]];
+	for (int i = 0; i < recvdispl[nProcs]; i++)
 		recv_home[i] = -1;
 
-	int* const possible = new int[nprocs];
+	int* const possible = new int[nProcs];
 	int countv = 0;
 	for (deque<global_data*>::iterator it = allData.begin();
 	     it != allData.end(); it++)
@@ -701,17 +710,17 @@ void Inspector::MetisAfterPartition(int loop){
 		if (!(*it)->is_read_only){
 
 			int curr_array_size = (*it)->orig_array_size;
-			int curr_split = curr_array_size / nprocs;
-			int curr_start = curr_split * proc_id;
-			int curr_end = (proc_id == nprocs - 1 ?
+			int curr_split = curr_array_size / nProcs;
+			int curr_start = curr_split * procId;
+			int curr_end = (procId == nProcs - 1 ?
 			                curr_array_size : curr_start + curr_split);
 			if ((*it)->is_constrained){
 
-				int thread_split = curr_array_size / (nprocs);
+				int thread_split = curr_array_size / (nProcs);
 				for (int j = curr_start; j < curr_end; j++){
 					net* curr_net = (*it)->data_net_info[loop][j];
-					int home = (j / thread_split > nprocs - 1?
-					            nprocs - 1: j / thread_split);
+					int home = (j / thread_split > nProcs - 1?
+					            nProcs - 1: j / thread_split);
 					curr_net->home = home;
 					send_home[countv++] = curr_net->home;
 				}
@@ -721,6 +730,7 @@ void Inspector::MetisAfterPartition(int loop){
 				for (int j = curr_start; j < curr_end; j++){
 
 					net* curr_net = (*it)->data_net_info[loop][j];
+
 					int home = -1;
 					if (curr_net->direct_vertex){
 						home = curr_net->direct_vertex->home;
@@ -728,7 +738,7 @@ void Inspector::MetisAfterPartition(int loop){
 
 					else{
 
-						for (int i = 0; i < nprocs; i++)
+						for (int i = 0; i < nProcs; i++)
 							possible[i] = 0;
 
 						for (set<pin_info, pin_comparator>::iterator jt =
@@ -736,24 +746,24 @@ void Inspector::MetisAfterPartition(int loop){
 						     jt != curr_net->pins.end(); jt++){
 
 							assert((*jt).pin->home >= 0 &&
-							       (*jt).pin->home < (nprocs));
+							       (*jt).pin->home < (nProcs));
 							possible[(*jt).pin->home]++;
 						}
 
 						int maxval = -1;
 						int counter = 0, i = 0;
-						while (counter < nprocs){
+						while (counter < nProcs){
 							if (possible[i] > maxval){
 								maxval = possible[i];
 								home = i;
 							}
 							counter++;
-							i = (i + 1) % (nprocs);
+							i = (i + 1) % (nProcs);
 						}
 					}
-					assert( curr_net->home == -1 && home >= 0 && home <= (nprocs/* * nthreads*/));
+					assert(curr_net->home == -1 && home >= 0 && home <= nProcs);
 					curr_net->home = home;
-					assert(curr_net->home >= 0 && curr_net->home < (nprocs/* * nthreads*/) );
+					assert(curr_net->home >= 0 && curr_net->home < nProcs);
 					assert(countv < num_local_nets);
 					send_home[countv++] = curr_net->home;
 				}
@@ -764,8 +774,8 @@ void Inspector::MetisAfterPartition(int loop){
 	MPI_Allgatherv(send_home, num_local_nets, MPI_INT, recv_home, recvcount,
 	               recvdispl, MPI_INT, global_comm::global_iec_communicator);
 
-	int curr_displ[nprocs];
-	for (int i = 0; i < nprocs; i++)
+	int curr_displ[nProcs];
+	for (int i = 0; i < nProcs; i++)
 		curr_displ[i] = recvdispl[i];
 
 	for (deque<global_data*>::iterator it = allData.begin();
@@ -773,21 +783,21 @@ void Inspector::MetisAfterPartition(int loop){
 
 		if (!(*it)->is_read_only){
 			int curr_array_size = (*it)->orig_array_size;
-			int curr_split = curr_array_size / nprocs;
-			int my_start = curr_split*proc_id;
-			int my_end = (proc_id == nprocs - 1?
+			int curr_split = curr_array_size / nProcs;
+			int my_start = curr_split*procId;
+			int my_end = (procId == nProcs - 1?
 			              curr_array_size: my_start + curr_split);
 			for (int j = 0, curr_proc = 0; j < curr_array_size; j++){
 				if (j < my_start || j >= my_end){
 					net* curr_net = (*it)->data_net_info[loop][j];
 					assert(curr_net->home == -1);
 					assert(recv_home[curr_displ[curr_proc]] >= 0 &&
-					       recv_home[curr_displ[curr_proc]] < nprocs);
+					       recv_home[curr_displ[curr_proc]] < nProcs);
 					curr_net->home = recv_home[curr_displ[curr_proc]++];
 				}
 				if ((j + 1) % curr_split == 0)
-					curr_proc = (curr_proc >= nprocs - 1?
-					             nprocs - 1: curr_proc + 1);
+					curr_proc = (curr_proc >= nProcs - 1?
+					             nProcs - 1: curr_proc + 1);
 			}
 		}
 

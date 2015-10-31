@@ -468,7 +468,6 @@ int main(int argc, char **argv)
       for (j_1 = 0; j_1 < 3; j_1++)
         disp0[i_1][j_1] = 0.0;
 
-
     for (i_2 = 0; i_2 < ARCHnodes; i_2++) {
       Anext_2 = ARCHmatrixindex[i_2];
 
@@ -482,7 +481,6 @@ int main(int argc, char **argv)
     	sum0 += K[j_2][0]*disp1[col_2][0] + K[j_2][1]*disp1[col_2][1] + K[j_2][2]*disp1[col_2][2];
     	sum1 += K[j_2][3]*disp1[col_2][0] + K[j_2][4]*disp1[col_2][1] + K[j_2][5]*disp1[col_2][2];
     	sum2 += K[j_2][6]*disp1[col_2][0] + K[j_2][7]*disp1[col_2][1] + K[j_2][8]*disp1[col_2][2];
-      
 
     	disp0[col_2][0] += K[j_2][0]*disp1[i_2][0] + K[j_2][3]*disp1[i_2][1] + K[j_2][6]*disp1[i_2][2];
     	disp0[col_2][1] += K[j_2][1]*disp1[i_2][0] + K[j_2][4]*disp1[i_2][1] + K[j_2][7]*disp1[i_2][2];
@@ -493,9 +491,7 @@ int main(int argc, char **argv)
       disp0[i_2][2] += sum2;
     }
 
-
     time = iter * Exc.dt;
-
 
     for (i_3 = 0; i_3 < ARCHnodes; i_3++)
       for (j_3 = 0; j_3 < 3; j_3++)
@@ -505,12 +501,10 @@ int main(int argc, char **argv)
     			       C23[i_3][j_3] * phi1(time) / 2.0 +
     			       V23[i_3][j_3] * phi0(time) / 2.0);
 
-
     for (i_4 = 0; i_4 < ARCHnodes; i_4++)
       for (j_4 = 0; j_4 < 3; j_4++)
         disp0[i_4][j_4] = disp0[i_4][j_4] /
     	                        (M[i_4][j_4] + Exc.dt / 2.0 * C[i_4][j_4]);
-
 
     for (i_5 = 0; i_5 < ARCHnodes; i_5++)
       for (j_5 = 0; j_5 < 3; j_5++)
@@ -518,14 +512,10 @@ int main(int argc, char **argv)
     				    disp2[i_5][j_5]);
 
     iter += 1;
-    /* Print out the response at the source and epicenter nodes */
-
 
     for (i_6 = 0; i_6 < ARCHnodes; i_6++)
       for (j_6 = 0; j_6 < 3; j_6++)
         disp2[i_6][j_6] = 0.0;
-
- 
 
     for (i_7 = 0; i_7 < ARCHnodes; i_7++) {
       Anext_7 = ARCHmatrixindex[i_7];
@@ -540,7 +530,6 @@ int main(int argc, char **argv)
     	sum0 += K[j_7][0]*disp0[col_7][0] + K[j_7][1]*disp0[col_7][1] + K[j_7][2]*disp0[col_7][2];
     	sum1 += K[j_7][3]*disp0[col_7][0] + K[j_7][4]*disp0[col_7][1] + K[j_7][5]*disp0[col_7][2];
     	sum2 += K[j_7][6]*disp0[col_7][0] + K[j_7][7]*disp0[col_7][1] + K[j_7][8]*disp0[col_7][2];
-      
 
     	disp2[col_7][0] += K[j_7][0]*disp0[i_7][0] + K[j_7][3]*disp0[i_7][1] + K[j_7][6]*disp0[i_7][2];
     	disp2[col_7][1] += K[j_7][1]*disp0[i_7][0] + K[j_7][4]*disp0[i_7][1] + K[j_7][7]*disp0[i_7][2];
@@ -551,9 +540,7 @@ int main(int argc, char **argv)
       disp2[i_7][2] += sum2;
     }
 
-
     time = iter * Exc.dt;
-
 
     for (i_8 = 0; i_8 < ARCHnodes; i_8++)
       for (j_8 = 0; j_8 < 3; j_8++)
@@ -563,12 +550,10 @@ int main(int argc, char **argv)
     			       C23[i_8][j_8] * phi1(time) / 2.0 +
     			       V23[i_8][j_8] * phi0(time) / 2.0);
 
-
     for (i_9 = 0; i_9 < ARCHnodes; i_9++)
       for (j_9 = 0; j_9 < 3; j_9++)
         disp2[i_9][j_9] = disp2[i_9][j_9] /
     	                        (M[i_9][j_9] + Exc.dt / 2.0 * C[i_9][j_9]);
-
 
     for (i_10 = 0; i_10 < ARCHnodes; i_10++)
       for (j_10 = 0; j_10 < 3; j_10++)
@@ -577,12 +562,9 @@ int main(int argc, char **argv)
 
     iter += 1;
 
-
-
     for (i_11 = 0; i_11 < ARCHnodes; i_11++)
       for (j_11 = 0; j_11 < 3; j_11++)
         disp1[i_11][j_11] = 0.0;
-
 
     for (i_12 = 0; i_12 < ARCHnodes; i_12++) {
       Anext_12 = ARCHmatrixindex[i_12];
@@ -597,7 +579,6 @@ int main(int argc, char **argv)
     	sum0 += K[j_12][0]*disp2[col_12][0] + K[j_12][1]*disp2[col_12][1] + K[j_12][2]*disp2[col_12][2];
     	sum1 += K[j_12][3]*disp2[col_12][0] + K[j_12][4]*disp2[col_12][1] + K[j_12][5]*disp2[col_12][2];
     	sum2 += K[j_12][6]*disp2[col_12][0] + K[j_12][7]*disp2[col_12][1] + K[j_12][8]*disp2[col_12][2];
-      
 
     	disp1[col_12][0] += K[j_12][0]*disp2[i_12][0] + K[j_12][3]*disp2[i_12][1] + K[j_12][6]*disp2[i_12][2];
     	disp1[col_12][1] += K[j_12][1]*disp2[i_12][0] + K[j_12][4]*disp2[i_12][1] + K[j_12][7]*disp2[i_12][2];
@@ -610,7 +591,6 @@ int main(int argc, char **argv)
 
     time = iter * Exc.dt;
 
-
     for (i_13 = 0; i_13 < ARCHnodes; i_13++)
       for (j_13 = 0; j_13 < 3; j_13++)
         disp1[i_13][j_13] = (-disp1[i_13][j_13] * Exc.dt * Exc.dt ) +  2.0 * M[i_13][j_13] * disp2[i_13][j_13] -
@@ -619,12 +599,10 @@ int main(int argc, char **argv)
     			       C23[i_13][j_13] * phi1(time) / 2.0 +
     			       V23[i_13][j_13] * phi0(time) / 2.0);
 
-
     for (i_14 = 0; i_14 < ARCHnodes; i_14++)
       for (j_14 = 0; j_14 < 3; j_14++)
         disp1[i_14][j_14] = disp1[i_14][j_14] /
     	                        (M[i_14][j_14] + Exc.dt / 2.0 * C[i_14][j_14]);
-
 
     for (i_15 = 0; i_15 < ARCHnodes; i_15++)
       for (j_15 = 0; j_15 < 3; j_15++)
@@ -632,7 +610,6 @@ int main(int argc, char **argv)
     				    disp0[i_15][j_15]);
 
     iter += 1;
-
 
     /* if (iter % Step_stride == 0) { */
 
@@ -675,8 +652,6 @@ int main(int argc, char **argv)
 	   disp0[Src.epicenternode][0],
 	   disp0[Src.epicenternode][1],
 	   disp0[Src.epicenternode][2]);
-
-
 
   fprintf(stderr, "%s: %d nodes %d elems %d timesteps\n", 
 	  progname, ARCHglobalnodes, ARCHglobalelems, timesteps);
@@ -725,7 +700,7 @@ struct properties *prop;
 double *E, *nu;
 {
   double ratio;
-  
+
   ratio = prop->cp / prop->cs;
   ratio = ratio * ratio;
   *nu = 0.5 * (ratio - 2.0) / (ratio - 1.0);
