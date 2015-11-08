@@ -80,7 +80,7 @@ protected:
 	std::set<int> indirect_access;
 
 	/// Number of indirect accesses
-	int indirect_access_size;
+	long indirect_access_size;
 
 	/// Same as direct_access_array but for indirect accesses
 	int* indirect_access_array;
