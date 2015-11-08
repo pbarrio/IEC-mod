@@ -119,6 +119,13 @@ private:
 	int *pipeSendCounts, *pipeSendDispls, *pipeRecvCounts, *pipeRecvDispls;
 	char *pipeSendBuf, *pipeRecvBuf;
 
+	/**
+	 * \brief Returns the team ID of a process
+	 *
+	 * \param globalId Global ID of the process
+	 */
+	int get_team_id(int globalId){return globalId % teamSize;}
+
 	void AfterPartition(int loop);
 
 	void pipe_reset_counts_and_displs();

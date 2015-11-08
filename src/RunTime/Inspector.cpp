@@ -144,8 +144,8 @@ Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
 	pipeRecvCounts = new int[np];
 	pipeRecvDispls = new int[np];
 
-	send_info = new set<int>*[nProcs * 2];
-	for (int i = 0; i < nProcs * 2; i++)
+	send_info = new set<int>*[teamSize * 2];
+	for (int i = 0; i < teamSize * 2; i++)
 		send_info[i] = new set<int>;
 
 	MPI_Barrier(global_comm::global_iec_communicator);
@@ -215,7 +215,7 @@ Inspector::~Inspector(){
 	}
 
 	if (send_info){
-		for( int i = 0 ; i < nProcs * 2 ; i++ ){
+		for (int i = 0; i < teamSize * 2; i++){
 			send_info[i]->clear();
 			delete send_info[i];
 		}
@@ -907,7 +907,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 		     it != curr_net->pins.end();
 		     it++ ){
 
-			const int access_proc = (*it).pin->home;
+			const int access_proc = get_team_id((*it).pin->home);
 			assert(access_proc != -1);
 			if (!flags[access_proc]){
 				if (is_direct[access_proc])
