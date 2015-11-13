@@ -96,6 +96,11 @@ public:
 	virtual int get_stride_size() const = 0;
 
 	/**
+	 * \brief Get this array ID
+	 */
+	int getId(){return id;}
+
+	/**
 	 * \brief Unimportant for the quake benchmark
 	 */
 	inline void SetConstraint(){is_constrained = true;}
