@@ -134,8 +134,8 @@ struct damping Damp;
 
 /*--------------------------------------------------------------------------*/ 
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv){
+
   int i, j, k, ii, jj, kk, iter, timesteps;
   int disptplus, dispt, disptminus;
   int verticesonbnd;
@@ -160,8 +160,13 @@ int main(int argc, char **argv)
 
 /*--------------------------------------------------------------------------*/ 
 
+  // Input checking
+  if (argc != 2){
+	  printf("Please specify an input file\n");
+	  exit(0);
+  }
+
 /* Read in data from the pack file */
-  
   arch_init(argc, argv, &options);
 
 /* Dynamic memory allocations and initializations */
