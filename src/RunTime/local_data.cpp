@@ -269,7 +269,6 @@ void local_data::GenerateGhosts(){
 		for (int i = 0; i < indirect_access_size; i++, total_counter++){
 			int curr_index = indirect_access_array[i];
 			const net* curr_net = data_net_info[curr_index];
-			assert(curr_net->home >= 0 && curr_net->home < nparts);
 			l_to_g[total_counter] = curr_index;
 		}
 
