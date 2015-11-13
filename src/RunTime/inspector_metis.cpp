@@ -674,9 +674,12 @@ void Inspector::MetisPartition(int loop){
 
 void Inspector::MetisAfterPartition(int loop){
 
+	int startProc = get_first_id_in_team();
+	int endProc = get_last_id_in_team();
+
 	int num_local_nets = 0;
-	int* const recvcount= new int[nProcs];
-	for (int i = 0; i < nProcs; i++){
+	int* const recvcount = new int[teamSize];
+	for (int i = 0; i < teamSize; i++){
 		recvcount[i] = 0;
 	}
 
@@ -684,45 +687,45 @@ void Inspector::MetisAfterPartition(int loop){
 		if (!allData[i]->is_read_only){
 
 			int curr_array_size = allData[i]->orig_array_size;
-			int curr_split = curr_array_size / nProcs;
-			num_local_nets += (procId == nProcs - 1 ?
-			                   curr_array_size - curr_split * procId :
+			int curr_split = curr_array_size / teamSize;
+			num_local_nets += (idInTeam == teamSize - 1 ?
+			                   curr_array_size - curr_split * idInTeam :
 			                   curr_split);
-			for (int j = 0; j < nProcs - 1; j++)
+			for (int j = 0; j < teamSize - 1; j++)
 				recvcount[j] += curr_split;
-			recvcount[nProcs - 1] +=
-				curr_array_size - curr_split * (nProcs - 1);
+			recvcount[teamSize - 1] +=
+				curr_array_size - curr_split * (teamSize - 1);
 		}
 	int* const send_home = new int[num_local_nets];
 
-	int* const recvdispl = new int[nProcs + 1];
+	int* const recvdispl = new int[teamSize + 1];
 	recvdispl[0] = 0;
-	for (int i = 0; i < nProcs; i++)
+	for (int i = 0; i < teamSize; i++)
 		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
 
-	int* const recv_home = new int[recvdispl[nProcs]];
-	for (int i = 0; i < recvdispl[nProcs]; i++)
+	int* const recv_home = new int[recvdispl[teamSize]];
+	for (int i = 0; i < recvdispl[teamSize]; i++)
 		recv_home[i] = -1;
 
-	int* const possible = new int[nProcs];
+	int* const possible = new int[teamSize];
 	int countv = 0;
+
 	for (deque<global_data*>::iterator it = allData.begin();
 	     it != allData.end(); it++)
 
 		if (!(*it)->is_read_only){
-
 			int curr_array_size = (*it)->orig_array_size;
-			int curr_split = curr_array_size / nProcs;
-			int curr_start = curr_split * procId;
-			int curr_end = (procId == nProcs - 1 ?
+			int curr_split = curr_array_size / teamSize;
+			int curr_start = curr_split * idInTeam;
+			int curr_end = (idInTeam == teamSize - 1 ?
 			                curr_array_size : curr_start + curr_split);
 			if ((*it)->is_constrained){
 
-				int thread_split = curr_array_size / (nProcs);
+				int thread_split = curr_array_size / teamSize;
 				for (int j = curr_start; j < curr_end; j++){
 					net* curr_net = (*it)->data_net_info[loop][j];
-					int home = (j / thread_split > nProcs - 1?
-					            nProcs - 1: j / thread_split);
+					int home = (j / thread_split > teamSize - 1?
+					            teamSize - 1: j / thread_split);
 					curr_net->home = home;
 					send_home[countv++] = curr_net->home;
 				}
@@ -740,33 +743,35 @@ void Inspector::MetisAfterPartition(int loop){
 
 					else{
 
-						for (int i = 0; i < nProcs; i++)
+						for (int i = 0; i < teamSize; i++)
 							possible[i] = 0;
 
 						for (set<pin_info, pin_comparator>::iterator jt =
 							     curr_net->pins.begin();
 						     jt != curr_net->pins.end(); jt++){
 
-							assert((*jt).pin->home >= 0 &&
-							       (*jt).pin->home < (nProcs));
+							assert((*jt).pin->home >= startProc &&
+							       (*jt).pin->home < endProc);
 							possible[(*jt).pin->home]++;
 						}
 
-						int maxval = -1;
-						int counter = 0, i = 0;
-						while (counter < nProcs){
+						for (int i = 0, maxval = -1; i < teamSize; ++i){
 							if (possible[i] > maxval){
 								maxval = possible[i];
-								home = i;
+								home = startProc + i;
 							}
-							counter++;
-							i = (i + 1) % (nProcs);
 						}
 					}
-					assert(curr_net->home == -1 && home >= 0 && home <= nProcs);
+					assert(curr_net->home == -1 &&
+					       home >= startProc &&
+					       home <= endProc);
+
 					curr_net->home = home;
-					assert(curr_net->home >= 0 && curr_net->home < nProcs);
+
+					assert(curr_net->home >= startProc &&
+					       curr_net->home <= endProc);
 					assert(countv < num_local_nets);
+
 					send_home[countv++] = curr_net->home;
 				}
 			}
@@ -774,10 +779,10 @@ void Inspector::MetisAfterPartition(int loop){
 	assert(countv == num_local_nets);
 
 	MPI_Allgatherv(send_home, num_local_nets, MPI_INT, recv_home, recvcount,
-	               recvdispl, MPI_INT, global_comm::global_iec_communicator);
+	               recvdispl, MPI_INT, global_comm::team_communicator);
 
-	int curr_displ[nProcs];
-	for (int i = 0; i < nProcs; i++)
+	int curr_displ[teamSize];
+	for (int i = 0; i < teamSize; i++)
 		curr_displ[i] = recvdispl[i];
 
 	for (deque<global_data*>::iterator it = allData.begin();
@@ -785,21 +790,21 @@ void Inspector::MetisAfterPartition(int loop){
 
 		if (!(*it)->is_read_only){
 			int curr_array_size = (*it)->orig_array_size;
-			int curr_split = curr_array_size / nProcs;
-			int my_start = curr_split*procId;
-			int my_end = (procId == nProcs - 1?
+			int curr_split = curr_array_size / teamSize;
+			int my_start = curr_split * idInTeam;
+			int my_end = (idInTeam == teamSize - 1?
 			              curr_array_size: my_start + curr_split);
 			for (int j = 0, curr_proc = 0; j < curr_array_size; j++){
 				if (j < my_start || j >= my_end){
 					net* curr_net = (*it)->data_net_info[loop][j];
 					assert(curr_net->home == -1);
-					assert(recv_home[curr_displ[curr_proc]] >= 0 &&
-					       recv_home[curr_displ[curr_proc]] < nProcs);
+					assert(recv_home[curr_displ[curr_proc]] >= startProc &&
+					       recv_home[curr_displ[curr_proc]] < endProc);
 					curr_net->home = recv_home[curr_displ[curr_proc]++];
 				}
 				if ((j + 1) % curr_split == 0)
-					curr_proc = (curr_proc >= nProcs - 1?
-					             nProcs - 1: curr_proc + 1);
+					curr_proc = (curr_proc >= teamSize - 1?
+					             endProc: curr_proc + 1);
 			}
 		}
 

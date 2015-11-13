@@ -126,6 +126,16 @@ private:
 	 */
 	int get_team_id(int globalId){return globalId % teamSize;}
 
+	/**
+	 * \brief Get first global process ID in the team
+	 */
+	int get_first_id_in_team(){return teamNum * teamSize;}
+
+	/**
+	 * \brief Get last global process ID in the team
+	 */
+	int get_last_id_in_team(){return (teamNum + 1) * teamSize - 1;}
+
 	void AfterPartition(int loop);
 
 	void pipe_reset_counts_and_displs();
