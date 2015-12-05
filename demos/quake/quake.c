@@ -490,162 +490,160 @@ int main(int argc, char **argv)
 		/*
 		 * LOOP 3
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				disp0[i][j] = (-disp0[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp1[i][j] - */
-/* 					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp2[i][j] - */
-/* 					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 + */
-/* 					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 + */
-/* 					                   V23[i][j] * phi0(time,Exc_t0) / 2.0); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp0[i][j] = (-disp0[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp1[i][j] -
+					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp2[i][j] -
+					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
+					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 +
+					                   V23[i][j] * phi0(time,Exc_t0) / 2.0);
 
 		/*
 		 * LOOP 4
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				disp0[i][j] = disp0[i][j] / */
-/* 					(M[i][j] + Exc_dt / 2.0 * C[i][j]); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp0[i][j] = disp0[i][j] /
+					(M[i][j] + Exc_dt / 2.0 * C[i][j]);
 
 		/*
 		 * LOOP 5
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				vel[i][j] = 0.5 / Exc_dt * (disp0[i][j] - */
-/* 				                            disp2[i][j]); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				vel[i][j] = 0.5 / Exc_dt * (disp0[i][j] -
+				                            disp2[i][j]);
 
-/* 		iter += 1; */
+		iter += 1;
 
 		/* Print out the response at the source and epicenter nodes */
 
 		/*
 		 * LOOP 6
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				disp2[i][j] = 0.0; */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp2[i][j] = 0.0;
 
 		/*
 		 * LOOP 7
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) { */
-/* 			Anext = ARCHmatrixindex[i]; */
+		for (i = 0; i < ARCHnodes; i++) {
+			Anext = ARCHmatrixindex[i];
 
-/* 			sum0 = K[Anext][0]*disp0[i][0] + K[Anext][1]*disp0[i][1] + K[Anext][2]*disp0[i][2]; */
-/* 			sum1 = K[Anext][3]*disp0[i][0] + K[Anext][4]*disp0[i][1] + K[Anext][5]*disp0[i][2]; */
-/* 			sum2 = K[Anext][6]*disp0[i][0] + K[Anext][7]*disp0[i][1] + K[Anext][8]*disp0[i][2]; */
+			sum0 = K[Anext][0]*disp0[i][0] + K[Anext][1]*disp0[i][1] + K[Anext][2]*disp0[i][2];
+			sum1 = K[Anext][3]*disp0[i][0] + K[Anext][4]*disp0[i][1] + K[Anext][5]*disp0[i][2];
+			sum2 = K[Anext][6]*disp0[i][0] + K[Anext][7]*disp0[i][1] + K[Anext][8]*disp0[i][2];
 
-/* 			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){ */
-/* 				col = ARCHmatrixcol[j]; */
+			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
+				col = ARCHmatrixcol[j];
 
-/* 				sum0 += K[j][0]*disp0[col][0] + K[j][1]*disp0[col][1] + K[j][2]*disp0[col][2]; */
-/* 				sum1 += K[j][3]*disp0[col][0] + K[j][4]*disp0[col][1] + K[j][5]*disp0[col][2]; */
-/* 				sum2 += K[j][6]*disp0[col][0] + K[j][7]*disp0[col][1] + K[j][8]*disp0[col][2]; */
-      
+				sum0 += K[j][0]*disp0[col][0] + K[j][1]*disp0[col][1] + K[j][2]*disp0[col][2];
+				sum1 += K[j][3]*disp0[col][0] + K[j][4]*disp0[col][1] + K[j][5]*disp0[col][2];
+				sum2 += K[j][6]*disp0[col][0] + K[j][7]*disp0[col][1] + K[j][8]*disp0[col][2];
 
-/* 				disp2[col][0] += K[j][0]*disp0[i][0] + K[j][3]*disp0[i][1] + K[j][6]*disp0[i][2]; */
-/* 				disp2[col][1] += K[j][1]*disp0[i][0] + K[j][4]*disp0[i][1] + K[j][7]*disp0[i][2]; */
-/* 				disp2[col][2] += K[j][2]*disp0[i][0] + K[j][5]*disp0[i][1] + K[j][8]*disp0[i][2]; */
-/* 			} */
-/* 			disp2[i][0] += sum0; */
-/* 			disp2[i][1] += sum1; */
-/* 			disp2[i][2] += sum2; */
-/* 		} */
+				disp2[col][0] += K[j][0]*disp0[i][0] + K[j][3]*disp0[i][1] + K[j][6]*disp0[i][2];
+				disp2[col][1] += K[j][1]*disp0[i][0] + K[j][4]*disp0[i][1] + K[j][7]*disp0[i][2];
+				disp2[col][2] += K[j][2]*disp0[i][0] + K[j][5]*disp0[i][1] + K[j][8]*disp0[i][2];
+			}
+			disp2[i][0] += sum0;
+			disp2[i][1] += sum1;
+			disp2[i][2] += sum2;
+		}
 
-/* 		time = iter * Exc_dt ; */
+		time = iter * Exc_dt ;
 
 		/*
 		 * LOOP 8
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				disp2[i][j] = (-disp2[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp0[i][j] - */
-/* 					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp1[i][j] - */
-/* 					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 + */
-/* 					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 + */
-/* 					                   V23[i][j] * phi0(time,Exc_t0) / 2.0); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp2[i][j] = (-disp2[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp0[i][j] -
+					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp1[i][j] -
+					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
+					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 +
+					                   V23[i][j] * phi0(time,Exc_t0) / 2.0);
 
 		/*
 		 * LOOP 9
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				disp2[i][j] = disp2[i][j] / */
-/* 					(M[i][j] + Exc_dt / 2.0 * C[i][j]); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp2[i][j] = disp2[i][j] /
+					(M[i][j] + Exc_dt / 2.0 * C[i][j]);
 
 		/*
 		 * LOOP 10
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				vel[i][j] = 0.5 / Exc_dt * (disp2[i][j] - */
-/* 				                            disp1[i][j]); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				vel[i][j] = 0.5 / Exc_dt * (disp2[i][j] -
+				                            disp1[i][j]);
 
-/* 		iter += 1; */
+		iter += 1;
 
 
 		/*
 		 * LOOP 11
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				disp1[i][j] = 0.0; */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp1[i][j] = 0.0;
 
 		/*
 		 * LOOP 12
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) { */
-/* 			Anext = ARCHmatrixindex[i]; */
+		for (i = 0; i < ARCHnodes; i++) {
+			Anext = ARCHmatrixindex[i];
 
-/* 			sum0 = K[Anext][0]*disp2[i][0] + K[Anext][1]*disp2[i][1] + K[Anext][2]*disp2[i][2]; */
-/* 			sum1 = K[Anext][3]*disp2[i][0] + K[Anext][4]*disp2[i][1] + K[Anext][5]*disp2[i][2]; */
-/* 			sum2 = K[Anext][6]*disp2[i][0] + K[Anext][7]*disp2[i][1] + K[Anext][8]*disp2[i][2]; */
+			sum0 = K[Anext][0]*disp2[i][0] + K[Anext][1]*disp2[i][1] + K[Anext][2]*disp2[i][2];
+			sum1 = K[Anext][3]*disp2[i][0] + K[Anext][4]*disp2[i][1] + K[Anext][5]*disp2[i][2];
+			sum2 = K[Anext][6]*disp2[i][0] + K[Anext][7]*disp2[i][1] + K[Anext][8]*disp2[i][2];
 
-/* 			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){ */
-/* 				col = ARCHmatrixcol[j]; */
+			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){
+				col = ARCHmatrixcol[j];
 
-/* 				sum0 += K[j][0]*disp2[col][0] + K[j][1]*disp2[col][1] + K[j][2]*disp2[col][2]; */
-/* 				sum1 += K[j][3]*disp2[col][0] + K[j][4]*disp2[col][1] + K[j][5]*disp2[col][2]; */
-/* 				sum2 += K[j][6]*disp2[col][0] + K[j][7]*disp2[col][1] + K[j][8]*disp2[col][2]; */
-      
+				sum0 += K[j][0]*disp2[col][0] + K[j][1]*disp2[col][1] + K[j][2]*disp2[col][2];
+				sum1 += K[j][3]*disp2[col][0] + K[j][4]*disp2[col][1] + K[j][5]*disp2[col][2];
+				sum2 += K[j][6]*disp2[col][0] + K[j][7]*disp2[col][1] + K[j][8]*disp2[col][2];
 
-/* 				disp1[col][0] += K[j][0]*disp2[i][0] + K[j][3]*disp2[i][1] + K[j][6]*disp2[i][2]; */
-/* 				disp1[col][1] += K[j][1]*disp2[i][0] + K[j][4]*disp2[i][1] + K[j][7]*disp2[i][2]; */
-/* 				disp1[col][2] += K[j][2]*disp2[i][0] + K[j][5]*disp2[i][1] + K[j][8]*disp2[i][2]; */
-/* 			} */
-/* 			disp1[i][0] += sum0; */
-/* 			disp1[i][1] += sum1; */
-/* 			disp1[i][2] += sum2; */
-/* 		} */
+				disp1[col][0] += K[j][0]*disp2[i][0] + K[j][3]*disp2[i][1] + K[j][6]*disp2[i][2];
+				disp1[col][1] += K[j][1]*disp2[i][0] + K[j][4]*disp2[i][1] + K[j][7]*disp2[i][2];
+				disp1[col][2] += K[j][2]*disp2[i][0] + K[j][5]*disp2[i][1] + K[j][8]*disp2[i][2];
+			}
+			disp1[i][0] += sum0;
+			disp1[i][1] += sum1;
+			disp1[i][2] += sum2;
+		}
 
-/* 		time = iter * Exc_dt; */
+		time = iter * Exc_dt;
 
 		/*
 		 * LOOP 13
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				disp1[i][j] = (-disp1[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp2[i][j] - */
-/* 					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp0[i][j] - */
-/* 					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 + */
-/* 					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 + */
-/* 					                   V23[i][j] * phi0(time,Exc_t0) / 2.0); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp1[i][j] = (-disp1[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp2[i][j] -
+					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp0[i][j] -
+					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 +
+					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 +
+					                   V23[i][j] * phi0(time,Exc_t0) / 2.0);
 
 		/*
 		 * LOOP 14
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				disp1[i][j] = disp1[i][j] / */
-/* 					(M[i][j] + Exc_dt / 2.0 * C[i][j]); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				disp1[i][j] = disp1[i][j] /
+					(M[i][j] + Exc_dt / 2.0 * C[i][j]);
 
 		/*
 		 * LOOP 15
 		 */
-/* 		for (i = 0; i < ARCHnodes; i++) */
-/* 			for (j = 0; j < 3; j++) */
-/* 				vel[i][j] = 0.5 / Exc_dt * (disp1[i][j] - */
-/* 				                            disp0[i][j]); */
+		for (i = 0; i < ARCHnodes; i++)
+			for (j = 0; j < 3; j++)
+				vel[i][j] = 0.5 / Exc_dt * (disp1[i][j] -
+				                            disp0[i][j]);
 
 		iter += 1;
 	}

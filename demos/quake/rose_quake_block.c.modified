@@ -426,31 +426,36 @@ int main(int argc,char **argv){
 	ARCHmatrixcol [ ARCHmatrixlen ] [ 1 ]
 
 	// For now, one loop goes to team 0 and another goes to team 1.
-	const int nTeams = 2;
+	const int nLoops = 2;
 
 	// Each team must have the same number of processes.
-	if (__nprocs__ % nTeams != 0){
+	if (__nprocs__ % nLoops != 0){
 
 		printf("ERROR - #procs must be multiple of the pipeline depth\n");
 		ARMCI_Finalize();
 		MPI_Finalize();
 		return -1;
 	}
-	const int teamSize = __nprocs__ / nTeams;
+	const int teamSize = __nprocs__ / nLoops;
 	const int myTeam = __proc_id__ / teamSize;
 	const int idInMyTeam = __proc_id__ % teamSize;
 
 	int iter_num_count[2] = {ARCHnodes - 0, ARCHnodes - 0};
 
+
+
+
 	int data_num_count[3] = {ARCHnodes, ARCHnodes, ARCHmatrixlen};
+
+
 	int ro_mask[3] = {0, 1, 1};
 
-	create_inspector(__proc_id__, __nprocs__, myTeam, idInMyTeam, teamSize, 2,
-	                 3, 2, 2, iter_num_count, data_num_count, ro_mask);
+	create_inspector(__proc_id__, __nprocs__, myTeam, idInMyTeam, teamSize,
+	                 nLoops, 3, 2, iter_num_count, data_num_count, ro_mask);
 
 	// Set parameters for the indirection arrays
 	// (0 = ARCHmatrixcol, 1 = ARCHmatrixindex)
-	int __size_ARCHmatrixcol__ =  ARCHmatrixlen ;
+	int __size_ARCHmatrixcol__ =  ARCHmatrixlen;
 	set_access_array_param(0, ARCHmatrixlen, 1,
 	                       __size_ARCHmatrixcol__ / teamSize * idInMyTeam +
 	                       ARCHmatrixcol);
@@ -465,6 +470,13 @@ int main(int argc,char **argv){
 	set_array_stride(1, 3); // disp1
 	set_array_stride(2, 9); // K
 
+
+
+
+
+
+
+
 	// Initial limits for loop 0
 	int __local_block_0_start__ = (ARCHnodes - 0) / teamSize * idInMyTeam + 0;
 	int __local_block_0_end__;
@@ -473,11 +485,9 @@ int main(int argc,char **argv){
 			(ARCHnodes - 0) / teamSize * (idInMyTeam + 1) + 0;
 	else
 		__local_block_0_end__ = ARCHnodes;
-
 	int *__0_status__ = (int *)(malloc(sizeof(int ) *
 	                                   (__local_block_0_end__ -
 	                                    __local_block_0_start__)));
-
 	memset(__0_status__, 0,
 	       sizeof(int ) * (__local_block_0_end__ - __local_block_0_start__));
 
@@ -489,12 +499,192 @@ int main(int argc,char **argv){
 			(ARCHnodes - 0) / teamSize * (idInMyTeam + 1) + 0;
 	else
 		__local_block_1_end__ = ARCHnodes;
-
 	int *__1_status__ =
-		(int *)(malloc(sizeof(int ) *
+		(int*)(malloc(sizeof(int ) *
 		               (__local_block_1_end__ - __local_block_1_start__)));
 	memset(__1_status__, 0,
-	       sizeof(int ) * (__local_block_1_end__ - __local_block_1_start__));
+	       sizeof(int) * (__local_block_1_end__ - __local_block_1_start__));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	/*
@@ -507,13 +697,68 @@ int main(int argc,char **argv){
 
 	// Pipeline array usage initialization
 	int used_arrays_loop0[1] = {0};
-	int read_in_loop0[1] = {0};
-	int write_in_loop0[1] = {1};
-	pipe_init_loop(0, used_arrays_loop0, read_in_loop0, write_in_loop0, 1);
 	int used_arrays_loop1[3] = {0, 1, 2};
-	int read_in_loop1[3] = {0, 1, 1};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	int read_in_loop0[1] = {0};
+	int read_in_loop1[3] = {1, 1, 1};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	int write_in_loop0[1] = {1};
 	int write_in_loop1[3] = {1, 0, 0};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	pipe_init_loop(0, used_arrays_loop0, read_in_loop0, write_in_loop0, 1);
 	pipe_init_loop(1, used_arrays_loop1, read_in_loop1, write_in_loop1, 3);
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	do {
 
@@ -577,6 +822,227 @@ int main(int argc,char **argv){
 					add_pin_to_net(0, i, 1, i, 1, 1);
 				}
 		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	}while (!done_graph_gen());
 
 	partition_hypergraph(2);
@@ -586,6 +1052,45 @@ int main(int argc,char **argv){
 	free(__1_status__);
 	__1_status__ = ((int*)(malloc(sizeof(int) * get_proc_iter_size(0))));
 	memset(__1_status__, 0, sizeof(int) * get_proc_iter_size(0));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	/* STAGE 2: Create data structures? */
 	do {
@@ -656,9 +1161,269 @@ int main(int argc,char **argv){
 			}
 			else ;;
 		};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	}while (!done_graph_gen());
 	free(__0_status__);
 	free(__1_status__);
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	/* STAGE 3: Fill in data structures? */
@@ -667,6 +1432,23 @@ int main(int argc,char **argv){
 	int __body_1__ = 0;
 	int __loop_i_6__ = 0;
 	int __body_i_6__ = 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// Loop 0
 	for (i = 0; i < ARCHnodes; i++) {
@@ -687,20 +1469,160 @@ int main(int argc,char **argv){
 			__body_1__ = __body_1__ + 1;
 		}
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	int *__i_disp0_j_5_ = (int *)(malloc(__body_i_6__ * sizeof(int )));
+
 	int *__i_disp1_j_4_ = (int *)(malloc(__body_i_6__ * sizeof(int )));
+
+
+
 	int *__i_K_i_1_ = (int *)(malloc(__body_1__ * sizeof(int )));
 	int *__o_K_j_3_ = (int *)(malloc(__loop_i_6__ * sizeof(int )));
 	int __o_K_j_3__offset;
+
+
+
+
+
+
 	int __nlocal_0__ = __body_0__;
 	int __nlocal_1__ = __body_1__;
 	int *__lb_j_i_6__ = (int *)(malloc(__loop_i_6__ * sizeof(int )));
 	int *__ub_j_i_6__ = (int *)(malloc(__loop_i_6__ * sizeof(int )));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	__body_0__ = 0;
 	__body_1__ = 0;
 	__loop_i_6__ = 0;
 	__body_i_6__ = 0;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// Loop 0
 	if ((myTeam == 0) || (myTeam == 1)){
 
 		for (i = 0; i < ARCHnodes; i++) {
@@ -711,6 +1633,7 @@ int main(int argc,char **argv){
 		}
 	}
 
+	// Loop 1
 	if ((myTeam == 0) || (myTeam == 1)){
 
 		for (i = 0; i < ARCHnodes; i++) {
@@ -740,30 +1663,283 @@ int main(int argc,char **argv){
 		}
 	}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	// Initialize disp0
+
+
+
+
+
 	int __localsize_disp0__ = get_local_size(0);
 	double **__local_disp0__ = malloc_2d_double(__localsize_disp0__, 3);
 	populate_local_array(0, __local_disp0__[0], disp0[0], 3);
 	renumber_access_array(0, __body_i_6__, __i_disp0_j_5_);
+
 	communicate_writes_for(0);
+
+
 
 	// Initialize disp1
 	double **__local_disp1__ = NULL;
 	if (myTeam == 1){
+
+
+
 		int __localsize_disp1__ = get_local_size(1);
 		__local_disp1__ = malloc_2d_double(__localsize_disp1__, 3);
 		populate_local_array(1, __local_disp1__[0], disp1[0], 3);
 		renumber_access_array(1, __body_i_6__, __i_disp1_j_4_);
+
+
+
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// Initialize K
 	double** __local_K__ = NULL;
 	if (myTeam == 1){
+
 		int __localsize_K__ = get_local_size(2);
 		__local_K__ = malloc_2d_double(__localsize_K__, 9);
 		populate_local_array(2, __local_K__[0], K[0], 9);
 		renumber_access_array(2, __body_1__, __i_K_i_1_);
 		renumber_offset_array(2, __loop_i_6__, __o_K_j_3_, __lb_j_i_6__);
+
+
+
+
 	}
 
 	/*
@@ -797,34 +1973,26 @@ int main(int argc,char **argv){
 			__body_1__ = 0;
 			__loop_i_6__ = 0;
 			__body_i_6__ = 0;
+
 			init_write_ghosts(1);
 			for (i = 0; i < __nlocal_1__; ++i) {
 
 				pipe_communicate(i);
 
 				sum0 =
-					(((__local_K__[__i_K_i_1_[i]][0] *
-					   __local_disp1__[i][0]) +
-					  (__local_K__[__i_K_i_1_[i]][1] *
-					   __local_disp1__[i][1])) +
-					 (__local_K__[__i_K_i_1_[i]][2] *
-					  __local_disp1__[i][2]));
+					(((__local_K__[__i_K_i_1_[i]][0] * __local_disp1__[i][0]) +
+					  (__local_K__[__i_K_i_1_[i]][1] * __local_disp1__[i][1])) +
+					 (__local_K__[__i_K_i_1_[i]][2] * __local_disp1__[i][2]));
 
 				sum1 =
-					(((__local_K__[__i_K_i_1_[i]][3] *
-					   __local_disp1__[i][0]) +
-					  (__local_K__[__i_K_i_1_[i]][4] *
-					   __local_disp1__[i][1])) +
-					 (__local_K__[__i_K_i_1_[i]][5]
-					  * __local_disp1__[i][2]));
+					(((__local_K__[__i_K_i_1_[i]][3] * __local_disp1__[i][0]) +
+					  (__local_K__[__i_K_i_1_[i]][4] * __local_disp1__[i][1])) +
+					 (__local_K__[__i_K_i_1_[i]][5] * __local_disp1__[i][2]));
 
 				sum2 =
-					(((__local_K__[__i_K_i_1_[i]][6] *
-					   __local_disp1__[i][0]) +
-					  (__local_K__[__i_K_i_1_[i]][7] *
-					   __local_disp1__[i][1])) +
-					 (__local_K__[__i_K_i_1_[i]][8] *
-					  __local_disp1__[i][2]));
+					(((__local_K__[__i_K_i_1_[i]][6] * __local_disp1__[i][0]) +
+					  (__local_K__[__i_K_i_1_[i]][7] * __local_disp1__[i][1])) +
+					 (__local_K__[__i_K_i_1_[i]][8] * __local_disp1__[i][2]));
 
 				__o_K_j_3__offset = __o_K_j_3_[__loop_i_6__];
 
@@ -886,18 +2054,17 @@ int main(int argc,char **argv){
 				__local_disp0__[i][1] += sum1;
 				__local_disp0__[i][2] += sum2;;
 			}
+
 		}
-
 		time = (iter * Exc_dt);
-
-		pipe_endExternalIter();
 
 		/*
 		 * LOOP 3
 		 */
 /* 		for (i = 0; i < ARCHnodes; i++) */
 /* 			for (j = 0; j < 3; j++) */
-/* 				disp0[i][j] = (-disp0[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp1[i][j] - */
+/* 				disp0[i][j] = (-disp0[i][j] * Exc_dt * Exc_dt ) +
+				2.0 * M[i][j] * disp1[i][j] - */
 /* 					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp2[i][j] - */
 /* 					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 + */
 /* 					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 + */
@@ -929,17 +2096,26 @@ int main(int argc,char **argv){
  */
 /* 		for (i = 0; i < ARCHnodes; i++) { */
 /* 			Anext = ARCHmatrixindex[i]; */
-/* 			sum0 = K[Anext][0]*disp0[i][0] + K[Anext][1]*disp0[i][1] + K[Anext][2]*disp0[i][2]; */
-/* 			sum1 = K[Anext][3]*disp0[i][0] + K[Anext][4]*disp0[i][1] + K[Anext][5]*disp0[i][2]; */
-/* 			sum2 = K[Anext][6]*disp0[i][0] + K[Anext][7]*disp0[i][1] + K[Anext][8]*disp0[i][2]; */
+/* 			sum0 = K[Anext][0]*disp0[i][0] + K[Anext][1]*disp0[i][1] +
+			K[Anext][2]*disp0[i][2]; */
+/* 			sum1 = K[Anext][3]*disp0[i][0] + K[Anext][4]*disp0[i][1] +
+			K[Anext][5]*disp0[i][2]; */
+/* 			sum2 = K[Anext][6]*disp0[i][0] + K[Anext][7]*disp0[i][1] +
+			K[Anext][8]*disp0[i][2]; */
 /* 			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){ */
 /* 				col = ARCHmatrixcol[j]; */
-/* 				sum0 += K[j][0]*disp0[col][0] + K[j][1]*disp0[col][1] + K[j][2]*disp0[col][2]; */
-/* 				sum1 += K[j][3]*disp0[col][0] + K[j][4]*disp0[col][1] + K[j][5]*disp0[col][2]; */
-/* 				sum2 += K[j][6]*disp0[col][0] + K[j][7]*disp0[col][1] + K[j][8]*disp0[col][2]; */
-/* 				disp2[col][0] += K[j][0]*disp0[i][0] + K[j][3]*disp0[i][1] + K[j][6]*disp0[i][2]; */
-/* 				disp2[col][1] += K[j][1]*disp0[i][0] + K[j][4]*disp0[i][1] + K[j][7]*disp0[i][2]; */
-/* 				disp2[col][2] += K[j][2]*disp0[i][0] + K[j][5]*disp0[i][1] + K[j][8]*disp0[i][2]; */
+/* 				sum0 += K[j][0]*disp0[col][0] + K[j][1]*disp0[col][1] +
+				K[j][2]*disp0[col][2]; */
+/* 				sum1 += K[j][3]*disp0[col][0] + K[j][4]*disp0[col][1] +
+				K[j][5]*disp0[col][2]; */
+/* 				sum2 += K[j][6]*disp0[col][0] + K[j][7]*disp0[col][1] +
+				K[j][8]*disp0[col][2]; */
+/* 				disp2[col][0] += K[j][0]*disp0[i][0] + K[j][3]*disp0[i][1] +
+				K[j][6]*disp0[i][2]; */
+/* 				disp2[col][1] += K[j][1]*disp0[i][0] + K[j][4]*disp0[i][1] +
+				K[j][7]*disp0[i][2]; */
+/* 				disp2[col][2] += K[j][2]*disp0[i][0] + K[j][5]*disp0[i][1] +
+				K[j][8]*disp0[i][2]; */
 /* 			} */
 /* 			disp2[i][0] += sum0; */
 /* 			disp2[i][1] += sum1; */
@@ -951,7 +2127,8 @@ int main(int argc,char **argv){
  */
 /* 		for (i = 0; i < ARCHnodes; i++) */
 /* 			for (j = 0; j < 3; j++) */
-/* 				disp2[i][j] = (-disp2[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp0[i][j] - */
+/* 				disp2[i][j] = (-disp2[i][j] * Exc_dt * Exc_dt ) +
+				2.0 * M[i][j] * disp0[i][j] - */
 /* 					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp1[i][j] - */
 /* 					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 + */
 /* 					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 + */
@@ -982,17 +2159,26 @@ int main(int argc,char **argv){
  */
 /* 		for (i = 0; i < ARCHnodes; i++) { */
 /* 			Anext = ARCHmatrixindex[i]; */
-/* 			sum0 = K[Anext][0]*disp2[i][0] + K[Anext][1]*disp2[i][1] + K[Anext][2]*disp2[i][2]; */
-/* 			sum1 = K[Anext][3]*disp2[i][0] + K[Anext][4]*disp2[i][1] + K[Anext][5]*disp2[i][2]; */
-/* 			sum2 = K[Anext][6]*disp2[i][0] + K[Anext][7]*disp2[i][1] + K[Anext][8]*disp2[i][2]; */
+/* 			sum0 = K[Anext][0]*disp2[i][0] + K[Anext][1]*disp2[i][1] +
+			K[Anext][2]*disp2[i][2]; */
+/* 			sum1 = K[Anext][3]*disp2[i][0] + K[Anext][4]*disp2[i][1] +
+			K[Anext][5]*disp2[i][2]; */
+/* 			sum2 = K[Anext][6]*disp2[i][0] + K[Anext][7]*disp2[i][1] +
+			K[Anext][8]*disp2[i][2]; */
 /* 			for( j = ARCHmatrixindex[i]+1 ; j < ARCHmatrixindex[i+1] ; j++){ */
 /* 				col = ARCHmatrixcol[j]; */
-/* 				sum0 += K[j][0]*disp2[col][0] + K[j][1]*disp2[col][1] + K[j][2]*disp2[col][2]; */
-/* 				sum1 += K[j][3]*disp2[col][0] + K[j][4]*disp2[col][1] + K[j][5]*disp2[col][2]; */
-/* 				sum2 += K[j][6]*disp2[col][0] + K[j][7]*disp2[col][1] + K[j][8]*disp2[col][2]; */
-/* 				disp1[col][0] += K[j][0]*disp2[i][0] + K[j][3]*disp2[i][1] + K[j][6]*disp2[i][2]; */
-/* 				disp1[col][1] += K[j][1]*disp2[i][0] + K[j][4]*disp2[i][1] + K[j][7]*disp2[i][2]; */
-/* 				disp1[col][2] += K[j][2]*disp2[i][0] + K[j][5]*disp2[i][1] + K[j][8]*disp2[i][2]; */
+/* 				sum0 += K[j][0]*disp2[col][0] + K[j][1]*disp2[col][1] +
+				K[j][2]*disp2[col][2]; */
+/* 				sum1 += K[j][3]*disp2[col][0] + K[j][4]*disp2[col][1] +
+				K[j][5]*disp2[col][2]; */
+/* 				sum2 += K[j][6]*disp2[col][0] + K[j][7]*disp2[col][1] +
+				K[j][8]*disp2[col][2]; */
+/* 				disp1[col][0] += K[j][0]*disp2[i][0] + K[j][3]*disp2[i][1] +
+				K[j][6]*disp2[i][2]; */
+/* 				disp1[col][1] += K[j][1]*disp2[i][0] + K[j][4]*disp2[i][1] +
+				K[j][7]*disp2[i][2]; */
+/* 				disp1[col][2] += K[j][2]*disp2[i][0] + K[j][5]*disp2[i][1] +
+				K[j][8]*disp2[i][2]; */
 /* 			} */
 /* 			disp1[i][0] += sum0; */
 /* 			disp1[i][1] += sum1; */
@@ -1004,7 +2190,8 @@ int main(int argc,char **argv){
  */
 /* 		for (i = 0; i < ARCHnodes; i++) */
 /* 			for (j = 0; j < 3; j++) */
-/* 				disp1[i][j] = (-disp1[i][j] * Exc_dt * Exc_dt ) +  2.0 * M[i][j] * disp2[i][j] - */
+/* 				disp1[i][j] = (-disp1[i][j] * Exc_dt * Exc_dt ) +
+				2.0 * M[i][j] * disp2[i][j] - */
 /* 					(M[i][j] - Exc_dt / 2.0 * C[i][j]) * disp0[i][j] - */
 /* 					Exc_dt * Exc_dt * (M23[i][j] * phi2(time,Exc_t0) / 2.0 + */
 /* 					                   C23[i][j] * phi1(time,Exc_t0) / 2.0 + */
@@ -1024,19 +2211,284 @@ int main(int argc,char **argv){
 /* 				vel[i][j] = 0.5 / Exc_dt * (disp1[i][j] - */
 /* 				                            disp0[i][j]); */
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		pipe_endExternalIter();
 		iter += 1;
 	}
 
 	populate_global_arrays();
+
+
+
+
+
+
 	free(__i_disp0_j_5_);
+
 	free_2d_double(__local_disp0__);
 	free(__i_disp1_j_4_);
+
 	free_2d_double(__local_disp1__);
+
+
+
 	free(__i_K_i_1_);
 	free(__o_K_j_3_);
+
+
+
+
 	free_2d_double(__local_K__);
 	free(__lb_j_i_6__);
 	free(__ub_j_i_6__);
+
+
+
+
 	delete_inspector();
 
 	fprintf(stderr,"Time step %d\n",iter);
@@ -1048,7 +2500,7 @@ int main(int argc,char **argv){
 		printf("%d: %.2e %.2e %.2e\n",
 		       ARCHglobalnode[Src.epicenternode], disp0[Src.epicenternode][0],
 		       disp0[Src.epicenternode][1], disp0[Src.epicenternode][2]);
-	fprintf(stderr,"%s: %d nodes %d elems %d timesteps\n",
+	fprintf(stderr, "%s: %d nodes %d elems %d timesteps\n",
 	        progname, ARCHglobalnodes, ARCHglobalelems, timesteps);
 	fprintf(stderr,"\n");
 	fflush(stderr);
