@@ -105,10 +105,6 @@ private:
 	/// Indirection arrays are tracked here
 	std::deque<access_data*> all_access_data;
 
-	Inspector(int pid, int np, int team, int pid_team, int teamsize,
-	          int nl, int nd, int nc, int nad, int* iter_num_count,
-	          int* data_num_count, int* ro);
-
 	/// Singleton inspector object. There is one inspector per process.
 	static Inspector* singleton_inspector;
 
@@ -140,17 +136,21 @@ private:
 
 	void pipe_reset_counts_and_displs();
 
+	Inspector(int pid, int np, int team, int pid_team, int teamsize,
+	          int nl, int nd, int nad,
+	          int* iter_num_count, int* data_num_count, int* ro);
+
 public:
 	~Inspector();
 
 	static Inspector* instance(int pid, int np, int team, int pid_team,
-	                           int teamsize, int nl, int nd, int nc, int nad,
+	                           int teamsize, int nl, int nd, int nad,
 	                           int* iter_num_count, int* data_num_count,
 	                           int* ro){
 
 		if( singleton_inspector == NULL )
 			singleton_inspector =
-				new Inspector(pid, np, team, pid_team, teamsize, nl, nd, nc,
+				new Inspector(pid, np, team, pid_team, teamsize, nl, nd,
 				              nad, iter_num_count, data_num_count, ro);
 		return singleton_inspector;
 	}

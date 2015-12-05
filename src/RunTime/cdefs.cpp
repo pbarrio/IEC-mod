@@ -55,16 +55,28 @@ extern "C" {
 
 
 	/**
-	 * \brief For more info, see the Inspector constructor
+	 * \brief Sets up inspector
+	 *
+	 * \param md Process identifier in the distributed program
+	 * \param np Number of processes in the distributed program
+	 * \param team Identifier of this process' team
+	 * \param pid_team Identifier of this processor private to the team
+	 * \param teamsize Size (in number of processors) of each team
+	 * \param nloops Number of loops
+	 * \param ndata Number of direct access arrays
+	 * \param nac Number of indirection arrays.
+	 * \param nic Array of iteration limits (must be of size nl)
+	 * \param ndc Array of direct array sizes (must be of size nd)
+	 * \param ro Array of read-only flags for the direct arrays (must be of size nd)
 	 */
 	void create_inspector(int md, int np, int team, int pid_team, int teamsize,
-	                      int nloops, int ndata, int nc, int nac, int* nic,
-	                      int* ndc, int* ro){
+	                      int nloops, int ndata, int nac, int* nic, int* ndc,
+	                      int* ro){
 
 		inspector_start = rtclock();
 		Inspector* new_inspector =
 			Inspector::instance(md, np, team, pid_team, teamsize, nloops, ndata,
-			                    nc, nac, nic, ndc, ro);
+			                    nac, nic, ndc, ro);
 		scalar_holder = new double[1];
 #ifndef NDEBUG
 		fprintf(stdout, "PID:%d,Creating inspector:%p\n", md, new_inspector);
@@ -74,11 +86,11 @@ extern "C" {
 
 
 	void create_inspector_(int* md, int* np, int team, int pid_team,
-	                       int teamsize, int* nloops, int* ndata, int* nc,
-	                       int *nac, int *nic, int* ndc, int* ro){
+	                       int teamsize, int* nloops, int* ndata, int *nac,
+	                       int *nic, int* ndc, int* ro){
 
 		create_inspector(*md, *np, team, pid_team, teamsize, *nloops, *ndata,
-		                 *nc, *nac, nic, ndc, ro);
+		                 *nac, nic, ndc, ro);
 	}
 
 

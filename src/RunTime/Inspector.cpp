@@ -67,14 +67,13 @@ char* global_comm::write_recv_signal = NULL;
  * \param teamsize Size (in number of processors) of each team
  * \param nl Number of loops
  * \param nd Number of direct access arrays
- * \param nc Number of communicators. There is one per loop.
  * \param nad Number of indirection arrays.
  * \param iterNumCount Array of iteration limits (must be of size nl)
  * \param dataNumCount Array of direct array sizes (must be of size nd)
  * \param ro Array of read-only flags for the direct arrays (must be of size nd)
  */
 Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
-                     int nl, int nd, int nc, int nad, int* iterNumCount,
+                     int nl, int nd, int nad, int* iterNumCount,
                      int* dataNumCount, int* ro):
 	procId(pid),
 	teamNum(team),
@@ -123,7 +122,7 @@ Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
 
 	// Set up the global IEC communicator for each loop
 	// TODO: we should get rid of multiple global communicators (use only one).
-	for (int i = 0; i < nc; i++){
+	for (int i = 0; i < nl; i++){
 		global_comm* new_comm = new global_comm(i, nProcs, procId);
 		all_comm.push_back(new_comm);
 	}

@@ -40,8 +40,8 @@ enum partition_type{
 };
 
 extern void create_inspector(int md, int np, int team, int pid_team,
-                             int teamsize, int nloops, int ndata, int nc,
-                             int nac, int *nic, int* ndc, int* ro);
+                             int teamsize, int nloops, int ndata, int nac,
+                             int *nic, int* ndc, int* ro);
 extern void set_access_array_param(int, int, int, int*);
 extern int done_graph_gen();
 extern int is_known(int, int);
