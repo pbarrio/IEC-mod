@@ -686,6 +686,9 @@ void Inspector::MetisAfterPartition(int loop){
 	for (int i = 0; i < allData.size(); i++)
 		if (!allData[i]->is_read_only){
 
+			if (!allData[i]->is_used_in_loop(loop))
+				continue;
+
 			int curr_array_size = allData[i]->orig_array_size;
 			int curr_split = curr_array_size / teamSize;
 			num_local_nets += (idInTeam == teamSize - 1 ?
@@ -711,9 +714,13 @@ void Inspector::MetisAfterPartition(int loop){
 	int countv = 0;
 
 	for (deque<global_data*>::iterator it = allData.begin();
-	     it != allData.end(); it++)
+	     it != allData.end(); it++){
+
+		if (!(*it)->is_used_in_loop(loop))
+			continue;
 
 		if (!(*it)->is_read_only){
+
 			int curr_array_size = (*it)->orig_array_size;
 			int curr_split = curr_array_size / teamSize;
 			int curr_start = curr_split * idInTeam;
@@ -776,6 +783,7 @@ void Inspector::MetisAfterPartition(int loop){
 				}
 			}
 		}
+	}
 	assert(countv == num_local_nets);
 
 	MPI_Allgatherv(send_home, num_local_nets, MPI_INT, recv_home, recvcount,

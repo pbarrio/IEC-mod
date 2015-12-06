@@ -109,6 +109,16 @@ public:
 
 	void use_in_loop(int, int, int);
 
+	/**
+	 * \brief Check if this array is used in the current loop
+	 *
+	 * \param loop Loop ID
+	 */
+	bool is_used_in_loop(int loop){
+		if (data_net_info.find(loop) != data_net_info.end())
+			return true;
+		return false;
+	}
 
 	/**
 	 * \brief See if a specific index has been already marked used in the loop
