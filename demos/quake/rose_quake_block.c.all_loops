@@ -1833,8 +1833,8 @@ int main(int argc,char **argv)
 	    (myTeam == 12) || (myTeam == 13)){
 
 		int __localsize_M__ = get_local_size(0);
-		double **__local_M__ = malloc_2d_double(__localsize_M__, 3 );
-		populate_local_array(0,__local_M__[0],M[0], 3 );
+		__local_M__ = malloc_2d_double(__localsize_M__, 3);
+		populate_local_array(0, __local_M__[0], M[0], 3);
 	}
 
 	// Initialize C
