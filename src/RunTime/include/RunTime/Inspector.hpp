@@ -65,7 +65,7 @@ private:
 	std::deque<global_data*> allData;
 
 	/// Same as above but for local data. I wonder if I could get rid of these!
-	std::deque<local_data*> allLocalData;
+	std::map<int, local_data*> allLocalData;
 
 
 	/*
@@ -291,7 +291,7 @@ public:
 	}
 
 	inline int GetLocalDataSize(int dn) const{
-		return allLocalData[dn]->GetLocalSize();
+		return allLocalData.at(dn)->GetLocalSize();
 	}
 
 	/**
@@ -310,7 +310,7 @@ public:
 		local_data* new_data =
 			new local_data_double(mn, teamSize, procId, strideSize, ddni,
 			                      oas, iro, ic);
-		allLocalData.push_back(new_data);
+		allLocalData[mn] = new_data;
 	}
 
 	/*
@@ -364,19 +364,19 @@ public:
 
 	inline void GenerateGhosts(){
 		int counter = 0;
-		for (std::deque<local_data*>::iterator it = allLocalData.begin();
+		for (std::map<int, local_data*>::iterator it = allLocalData.begin();
 		     it != allLocalData.end(); it++, counter++)
 
-			(*it)->GenerateGhosts();
+			it->second->GenerateGhosts();
 	}
 
 
 	inline void GenerateOwned(){
 		int counter = 0;
-		for (std::deque<local_data*>::iterator it = allLocalData.begin();
+		for (std::map<int, local_data*>::iterator it = allLocalData.begin();
 		     it != allLocalData.end(); it++, counter++)
 
-			(*it)->GenerateOwned();
+			it->second->GenerateOwned();
 	}
 
 	inline void InitWriteGhosts(int cn){

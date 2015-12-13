@@ -1200,15 +1200,18 @@ void Inspector::CommunicateGhosts(){
 		int d = 0;
 
 		// Count #send-ghosts for all arrays
-		for (deque<local_data*>::iterator it = allLocalData.begin();
-		     it != allLocalData.end(); it++)
+		for (map<int, local_data*>::iterator it = allLocalData.begin();
+		     it != allLocalData.end(); it++){
 
-			if (!(*it)->is_read_only){
-				int nghosts = (*it)->global_ghosts[dest_proc].size();
+			local_data* array = it->second;
+
+			if (!array->is_read_only){
+				int nghosts = array->global_ghosts[dest_proc].size();
 				sendghosts_count[dest_proc * n_data + d] = nghosts;
 				sendcount[i] += nghosts;
 				d++;
 			}
+		}
 	}
 
 	// Calculate indices where send-ghosts start & end for all processes
@@ -1247,18 +1250,21 @@ void Inspector::CommunicateGhosts(){
 	for (int i = 0; i < teamSize; i++){
 
 		int d = 0;
-		for (deque<local_data*>::iterator it = allLocalData.begin();
-		     it != allLocalData.end(); it++)
+		for (map<int, local_data*>::iterator it = allLocalData.begin();
+		     it != allLocalData.end(); it++){
 
-			if (!(*it)->is_read_only){
-				for (set<int>::iterator jt = (*it)->global_ghosts[i].begin();
-				     jt != (*it)->global_ghosts[i].end(); jt++){
+			local_data* array = it->second;
 
-					ghosts_send_val[counter] = (*jt);
+			if (!array->is_read_only){
+				for (set<int>::iterator jt = array->global_ghosts[i].begin();
+				     jt != array->global_ghosts[i].end(); jt++){
+
+					ghosts_send_val[counter] = *jt;
 					++counter;
 				}
 				d++;
 			}
+		}
 	}
 
 	assert(counter == senddispl[teamSize]);
@@ -1273,15 +1279,18 @@ void Inspector::CommunicateGhosts(){
 	for (int i = 0; i < teamSize; i++){
 
 		int d = 0;
-		for (deque<local_data*>::iterator it = allLocalData.begin();
-		     it != allLocalData.end(); it++)
+		for (map<int, local_data*>::iterator it = allLocalData.begin();
+		     it != allLocalData.end(); it++){
 
-			if (!(*it)->is_read_only){
+			local_data* array = it->second;
+
+			if (!array->is_read_only){
 				int nghosts = recvghosts_count[i * n_data + d];
 				for (int g = 0; g < nghosts; g++)
-					(*it)->global_owned[i].insert(ghosts_recv_val[counter++]);
+					array->global_owned[i].insert(ghosts_recv_val[counter++]);
 				d++;
 			}
+		}
 	}
 
 	delete[] ghosts_send_val;
@@ -1382,10 +1391,10 @@ void Inspector::CommunicateReads(int comm_num){
 
 void Inspector::PopulateGlobalArrays(){
 
-	for (deque<local_data*>::iterator it = allLocalData.begin();
+	for (map<int, local_data*>::iterator it = allLocalData.begin();
 	     it != allLocalData.end(); it++)
 
-		(*it)->PopulateGlobalArray();
+		it->second->PopulateGlobalArray();
 }
 
 
