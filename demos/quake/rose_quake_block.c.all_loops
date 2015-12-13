@@ -1046,6 +1046,7 @@ int main(int argc,char **argv)
 	}while (!done_graph_gen());
 
 	partition_hypergraph(2);
+
 	free(__0_status__);
 	__0_status__ = ((int *)(malloc(sizeof(int ) * get_proc_iter_size(0))));
 	memset(__0_status__,0,sizeof(int ) * get_proc_iter_size(0));
@@ -1878,8 +1879,8 @@ int main(int argc,char **argv)
 	if ((myTeam == 4) || (myTeam == 9) || (myTeam == 14)){
 
 		int __localsize_vel__ = get_local_size(5);
-		__local_vel__ = malloc_2d_double(__localsize_vel__, 3 );
-		populate_local_array(5,__local_vel__[0],vel[0], 3 );
+		__local_vel__ = malloc_2d_double(__localsize_vel__, 3);
+		populate_local_array(5, __local_vel__[0], vel[0], 3);
 	}
 
 	// Initialize disp0
