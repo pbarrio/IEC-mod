@@ -61,10 +61,10 @@ private:
 	/// Used by the partitioner
 	int pins_size;
 
-	/// All arrays in pragma, except for indirection arrays.
+	/// All arrays in pragma, except for indirection arrays
 	std::deque<global_data*> allData;
 
-	/// Same as above but for local data. I wonder if I could get rid of these!
+	/// Same as global arrays but for local data. Maps array ids to arrays.
 	std::map<int, local_data*> allLocalData;
 
 

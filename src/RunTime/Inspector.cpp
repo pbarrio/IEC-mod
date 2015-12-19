@@ -66,8 +66,8 @@ char* global_comm::write_recv_signal = NULL;
  * \param pidTeam Identifier of this processor private to the team
  * \param teamsize Size (in number of processors) of each team
  * \param nl Number of loops
- * \param nd Number of direct access arrays
- * \param nad Number of indirection arrays.
+ * \param nd Number of "data" arrays
+ * \param nad Number of "indirection" arrays
  * \param iterNumCount Array of iteration limits (must be of size nl)
  * \param dataNumCount Array of direct array sizes (must be of size nd)
  * \param ro Array of read-only flags for the direct arrays (must be of size nd)

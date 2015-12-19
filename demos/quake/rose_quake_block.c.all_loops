@@ -2462,6 +2462,7 @@ int main(int argc,char **argv)
 	}
 
 	populate_global_arrays();
+
 	free_2d_double(__local_M__);
 	free_2d_double(__local_C__);
 	free_2d_double(__local_M23__);
