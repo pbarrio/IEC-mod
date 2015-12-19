@@ -1392,9 +1392,12 @@ void Inspector::CommunicateReads(int comm_num){
 void Inspector::PopulateGlobalArrays(){
 
 	for (map<int, local_data*>::iterator it = allLocalData.begin();
-	     it != allLocalData.end(); it++)
+	     it != allLocalData.end(); it++){
 
-		it->second->PopulateGlobalArray();
+		global_data* global_array = allData[it->first];
+		if (global_array->is_last_write_in_pipeline())
+			it->second->PopulateGlobalArray();
+	}
 }
 
 
@@ -1428,6 +1431,8 @@ void Inspector::pipe_init_loop(int loopID,
                                const bool writeInfo[],
                                int nArrays){
 
+	bool arraysWrittenInAFutureLoop = false;
+
 	// Find loop type
 	global_loop* loop = allLoops[loopID];
 	if (loopID < teamNum){
@@ -1437,14 +1442,22 @@ void Inspector::pipe_init_loop(int loopID,
 	else if (loopID > teamNum){
 		loop->set_as_consumer();
 		consumerLoops[loopID] = loop;
+		arraysWrittenInAFutureLoop = true;
 	}
 	else{
 		loop->set_as_my_loop();
 		myLoop = loop;
 	}
 
-	for (int i = 0; i < nArrays; ++i)
-		allData[usedArrays[i]]->use_in_loop(loopID, readInfo[i], writeInfo[i]);
+	for (int i = 0; i < nArrays; ++i){
+
+		global_data* array = allData[usedArrays[i]];
+
+		if (arraysWrittenInAFutureLoop && writeInfo[i])
+			array->set_not_last_write_in_pipeline();
+
+		array->use_in_loop(loopID, readInfo[i], writeInfo[i]);
+	}
 }
 
 

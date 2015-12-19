@@ -52,6 +52,10 @@ private:
 	/// per-loop basis.
 	std::map<int, bool> isWriteInLoop;
 
+	/// True if this loop is the last in the pipeline that writes to the array,
+	/// false otherwise.
+	bool lastWriteInPipeline;
+
 	/// Map to the write/use information for this array for all loops.
 	/// Consumers don't need to keep track of these values. Note that these
 	/// specification is not enforced in this class (TODO) but the class gives
@@ -132,6 +136,8 @@ public:
 
 	bool is_read(int loop){return isReadInLoop[loop];}
 	bool is_write(int loop){return isWriteInLoop[loop];}
+	bool is_last_write_in_pipeline(){return lastWriteInPipeline;}
+	void set_not_last_write_in_pipeline(){lastWriteInPipeline = false;}
 
 	friend class Inspector;
 };

@@ -16,8 +16,12 @@
  * @file: local_data.cpp
  * @author: Mahesh Ravishankar <ravishan@cse.ohio-state.edu>
  */
+
+#include "RunTime/communicator.hpp"
 #include "RunTime/local_data.hpp"
+
 #include "mpi.h"
+
 #include <string.h>
 
 using namespace std;
@@ -601,7 +605,7 @@ void local_data_double::PopulateGlobalArray(){
 					orig_array[global_index*stride+j] = local_array[i*stride+j];
 		}
 		MPI_Allreduce(MPI_IN_PLACE, orig_array, orig_array_size * stride,
-		              MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		              MPI_DOUBLE, MPI_SUM, global_comm::team_communicator);
 	}
 }
 

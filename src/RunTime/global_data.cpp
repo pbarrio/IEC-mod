@@ -36,6 +36,10 @@ global_data::global_data(int mn, int oas, int of, bool iro):
 	id(mn), orig_array_size(oas), offset(of), is_read_only(iro){
 
 	is_constrained = false;
+
+	// By default, assume that this array will be last written in the current
+	// loop. When we initialize the loops, we'll find out if it's not.
+	lastWriteInPipeline = true;
 }
 
 

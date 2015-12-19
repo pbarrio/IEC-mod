@@ -107,10 +107,6 @@ private:
 
 	static int max_nprocs_write_recv;
 
-	static MPI_Comm global_iec_communicator;
-
-	static MPI_Comm team_communicator;
-
 	static MPI_Request* read_send_end_request;
 
 	static MPI_Status* read_recv_end_status;
@@ -166,6 +162,9 @@ private:
 	void InitWriteGhosts();
 
 public:
+
+	static MPI_Comm global_iec_communicator;
+	static MPI_Comm team_communicator;
 
 	void print_comm();
 
