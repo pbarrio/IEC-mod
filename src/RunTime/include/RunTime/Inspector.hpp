@@ -407,8 +407,9 @@ public:
 		MPI_Barrier(global_comm::global_iec_communicator);
 	}
 
-	// Communication function between producers and consumers
-	void pipe_communicate(int iter);
+	// Communication functions between producers and consumers
+	void pipe_receive(int iter);
+	void pipe_send(int iter);
 };
 
 

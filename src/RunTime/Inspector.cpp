@@ -1462,19 +1462,86 @@ void Inspector::pipe_init_loop(int loopID,
 
 
 /**
- * \brief Communicates to consumers and gets from producers
+ * \brief Gets data from producers
  *
  * This function must be called before the start of the iteration. It will
- * take care of sending data calculated in the previous iteration to the
- * consumers and receive data needed for the next iteration from the
- * producers. This function assumes for now that each process only computes
+ * take care of receiving data needed for the next iteration from the
+ * producers. This function assumes that each process only computes
  * one loop. All other loops are consumers, producers or unrelated loops.
  *
  * \param iter The iteration of the loop that is about to start.
  */
-void Inspector::pipe_communicate(int iter){
+void Inspector::pipe_receive(int iter){
 
 	pipe_reset_counts_and_displs();
+
+	// Prepare structures for receiving
+	for (int iProc = 0; iProc < nProcs; ++iProc){
+
+		for (global_loop::ArrayIDList::iterator
+			     arrayIt = myLoop->used_arrays_begin(iProc),
+			     arrayEnd = myLoop->used_arrays_end(iProc);
+		     arrayIt != arrayEnd;
+		     ++arrayIt){
+
+			local_data* localArray = allLocalData[*arrayIt];
+			pipeRecvCounts[iProc] +=
+				localArray->pipe_get_recvcounts(iter, iProc);
+		}
+
+		if (pipeRecvCounts[iProc] != 0){
+
+
+
+
+			MPI_Recv(pipeRecvBuf + pipeRecvDispls[iProc],
+			         pipeRecvCounts[iProc],
+			         MPI_BYTE,
+			         iProc,
+			         PIPE_TAG,
+			         global_comm::global_iec_communicator,
+			         MPI_STATUS_IGNORE);
+		}
+		// Update the displacements for the next process
+		if (iProc + 1 < nProcs)
+			pipeRecvDispls[iProc + 1] =
+				pipeRecvDispls[iProc] + pipeRecvCounts[iProc];
+	}
+
+	// Move received data to the local array
+	char* received = pipeRecvBuf;
+	for (int iProc = 0; iProc < nProcs; ++iProc){
+
+		for (global_loop::ArrayIDList::iterator
+			     arrayIt = myLoop->used_arrays_begin(iProc),
+			     arrayEnd = myLoop->used_arrays_end(iProc);
+		     arrayIt != arrayEnd;
+		     ++arrayIt){
+
+			local_data* localArray = allLocalData[*arrayIt];
+			localArray->pipe_update(iter, iProc, received);
+			received += localArray->pipe_get_recvcounts(iter, iProc);
+		}
+	}
+}
+
+
+/**
+ * \brief Communicates to consumers
+ *
+ * This function must be called at the end of the iteration. It will
+ * take care of sending data calculated in the previous iteration to the
+ * consumers. This function assumes for now that each process only computes
+ * one loop. All other loops are consumers, producers or unrelated loops.
+ *
+ * \param iter The iteration of the loop that just finished.
+ */
+void Inspector::pipe_send(int iter){
+
+	pipe_reset_counts_and_displs();
+
+	int nReqs = 0;
+	MPI_Request reqs[nProcs];
 
 	// Prepare structures for sendreceiving
 	for (int iProc = 0; iProc < nProcs; ++iProc){
@@ -1496,46 +1563,24 @@ void Inspector::pipe_communicate(int iter){
 				 iProc,
 				 pipeSendBuf + pipeSendDispls[iProc] + pipeSendCounts[iProc]);
 		}
+
 		// Update the send displacements for the next process
 		if (iProc + 1 < nProcs)
 			pipeSendDispls[iProc + 1] =
 				pipeSendDispls[iProc] + pipeSendCounts[iProc];
 
-		// This is the "receive" part
-		for (global_loop::ArrayIDList::iterator
-			     arrayIt = myLoop->used_arrays_begin(iProc),
-			     arrayEnd = myLoop->used_arrays_end(iProc);
-		     arrayIt != arrayEnd;
-		     ++arrayIt){
+		if (pipeSendCounts[iProc] != 0){
 
-			local_data* localArray = allLocalData[*arrayIt];
-
-			pipeRecvCounts[iProc] +=
-				localArray->pipe_get_recvcounts(iter, iProc);
-		}
-		// Update the displacements for the next process
-		if (iProc + 1 < nProcs)
-			pipeRecvDispls[iProc + 1] =
-				pipeRecvDispls[iProc] + pipeRecvCounts[iProc];
-	}
-
-	MPI_Alltoallv(pipeSendBuf, pipeSendCounts, pipeSendDispls, MPI_BYTE,
-	              pipeRecvBuf, pipeRecvCounts, pipeRecvDispls, MPI_BYTE,
-	              global_comm::global_iec_communicator);
-
-	// Move received data to the local array
-	char* received = pipeRecvBuf;
-	for (int iProc = 0; iProc < nProcs; ++iProc){
-
-		for (global_loop::ArrayIDList::iterator
-			     arrayIt = myLoop->used_arrays_begin(iProc),
-			     arrayEnd = myLoop->used_arrays_end(iProc);
-		     arrayIt != arrayEnd;
-		     ++arrayIt){
-
-			local_data* localArray = allLocalData[*arrayIt];
-			localArray->pipe_update(iter, iProc, received);
-			received += localArray->pipe_get_recvcounts(iter, iProc);
+			MPI_Issend(pipeSendBuf + pipeSendDispls[iProc],
+			           pipeSendCounts[iProc],
+			           MPI_BYTE,
+			           iProc,
+			           PIPE_TAG,
+			           global_comm::global_iec_communicator,
+			           &reqs[nReqs++]);
 		}
 	}
-}
+
+	if (nReqs != 0)
+		MPI_Waitall(nReqs, reqs, MPI_STATUS_IGNORE);
+

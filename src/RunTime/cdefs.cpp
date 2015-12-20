@@ -587,18 +587,12 @@ extern "C" {
 	}
 
 
-	/**
-	 * \brief Communicates to consumers and gets from producers
-	 *
-	 * This function must be called before the start of the iteration. It will
-	 * take care of sending data calculated in the previous iteration to the
-	 * consumers and receive data needed for the next iteration from the
-	 * producers. This function assumes for now that each process only computes
-	 * one loop. All other loops are consumers, producers or unrelated loops.
-	 *
-	 * \param iter The iteration of the loop that is about to start.
-	 */
-	void pipe_communicate(int iter){
-		Inspector::instance()->pipe_communicate(iter);
+	void pipe_send(int iter){
+		Inspector::instance()->pipe_send(iter);
+	}
+
+
+	void pipe_receive(int iter){
+		Inspector::instance()->pipe_receive(iter);
 	}
 }
