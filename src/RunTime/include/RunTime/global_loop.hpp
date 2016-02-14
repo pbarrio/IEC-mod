@@ -55,6 +55,8 @@ public:
 
 	~global_loop();
 
+	int get_loop_id(){return my_num;}
+
 	/**
 	 * \brief Get the owner process of this loop iteration
 	 *

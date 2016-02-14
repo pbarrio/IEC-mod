@@ -20,6 +20,7 @@
 #define __GLOBAL_DATA_HPP__
 
 #include <map>
+#include <vector>
 #include "RunTime/hypergraph.hpp"
 
 class inspector;
@@ -41,6 +42,14 @@ public:
 
 	/// A map to write/use information for all indices, for all loops
 	typedef std::map<int,  ArrayUseMapInLoop> ArrayUseMap;
+
+	/// Pointers to nets for each array value, for each team
+	typedef std::map<int, net**> LoopNets;
+
+	typedef std::map<int, std::map<int, int> > CountsPerProcPerIter;
+
+	// map < iterations, map < processes, vector<indexes> > >
+	typedef std::map<int, std::map<int, std::vector<int> > > IdxsPerProcPerIter;
 
 private:
 	/// For each loop, true if the array is read in the loop.
@@ -64,8 +73,8 @@ private:
 
 protected:
 
-	/// Pointers to nets for each array value, for each team
-	typedef std::map<int, net**> LoopNets;
+	/// Our process Id
+	int procId;
 
 	/// The identifier assigned to this global_data.
 	const int id;
@@ -90,8 +99,22 @@ protected:
 	/// Unimportant for the quake benchmark
 	bool is_constrained;
 
+	/// For each iteration and producer, the receive size in bytes.
+	CountsPerProcPerIter pipeRecvCounts;
+
+	/// For each iteration and consumer, the send size in bytes.
+	CountsPerProcPerIter pipeSendCounts;
+
+	/// For each iteration and producer, a list of positions in the local array
+	/// that we need to receive from the the producer.
+	IdxsPerProcPerIter pipeRecvIndexes;
+
+	/// For each iteration and consumer, a list of positions in the local array
+	/// that we need to send to the consumer.
+	IdxsPerProcPerIter pipeSendIndexes;
+
 public:
-	global_data(int, int, int, bool);
+	global_data(int, int, int, int, bool);
 
 	virtual ~global_data();
 
@@ -134,18 +157,26 @@ public:
 		return (finalUse[loopID].find(index) != finalUse[loopID].end());
 	}
 
+	int get_final_use(int loop, int index){
+		return finalUse[loop][index];
+	}
+
 	bool is_read(int loop){return isReadInLoop[loop];}
 	bool is_write(int loop){return isWriteInLoop[loop];}
 	bool is_last_write_in_pipeline(){return lastWriteInPipeline;}
 	void set_not_last_write_in_pipeline(){lastWriteInPipeline = false;}
 
+	void pipe_calc_comms(int myLoop, bool verbose);
+
 	friend class Inspector;
+	friend class local_data;
+	friend class local_data_double;
 };
 
 class global_data_double: public global_data{
 public:
 
-	global_data_double(int, int, int, bool);
+	global_data_double(int, int, int, int, bool);
 
 	~global_data_double();
 

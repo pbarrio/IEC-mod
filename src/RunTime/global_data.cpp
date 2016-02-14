@@ -18,6 +18,7 @@
  */
 #include <cassert>
 #include <cstdio>
+#include <iostream>
 
 #include "RunTime/global_data.hpp"
 
@@ -26,14 +27,15 @@ using namespace std;
 /**
  * \brief Constructor
  *
+ * <param proc Our process ID
  * \param mn Identifier for this data
  * \param oas Size of the original array
  * \param of Offset: address of the first elem if we put all global data in a
  *           single buffer in ID order
  * \param iro True if read-only array
  */
-global_data::global_data(int mn, int oas, int of, bool iro):
-	id(mn), orig_array_size(oas), offset(of), is_read_only(iro){
+global_data::global_data(int proc, int mn, int oas, int of, bool iro):
+	procId(proc), id(mn), orig_array_size(oas), offset(of), is_read_only(iro){
 
 	is_constrained = false;
 
@@ -89,6 +91,39 @@ void global_data::use_in_loop(int loopID, int iter, int index){
 
 
 /**
+ * \brief Populate the pipeline send information for this array
+ *
+ * This is later used to know which parts of the array must be communicated in
+ * which iteration.
+ */
+void global_data::pipe_calc_comms(int myLoop, bool verbose){
+
+	//For all loops that use this array
+	for (global_data::LoopNets::iterator netIt = data_net_info.begin(),
+		     netEnd = data_net_info.end();
+	     netIt != netEnd;
+	     ++netIt){
+
+		int consumerId = netIt->first;
+		if (consumerId == procId)
+			continue;
+
+		if (isReadInLoop[consumerId])
+			for (int index = 0; index < orig_array_size; ++index){
+				pipeSendIndexes[finalUse[myLoop][index]][consumerId]
+					.push_back(index);
+			}
+
+		// If the consumer writes into the array, stop adding more consumers.
+		// The next consumers should get the values from him (not from us),
+		// because it is the most up-to-date value.
+		if (isWriteInLoop[consumerId])
+			break;
+	}
+}
+
+
+/**
  * \brief Constructor
  *
  * \param mn Identifier for this data
@@ -97,8 +132,9 @@ void global_data::use_in_loop(int loopID, int iter, int index){
  *           single buffer in ID order.
  * \param iro True if read-only array
  */
-global_data_double::global_data_double(int mn, int oas, int of, bool iro):
-	global_data(mn, oas, of, iro){
+global_data_double::global_data_double
+(int proc, int mn, int oas, int of, bool iro):
+	global_data(proc, mn, oas, of, iro){
 
 	// Set default stride between elements
 	stride_size = sizeof(double);

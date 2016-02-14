@@ -696,69 +696,100 @@ int main(int argc,char **argv)
 	int __shadow_1__ = 0;
 
 	// Pipeline array usage initialization
-	int used_arrays_loop0[1] = {6};
-	int used_arrays_loop1[3] = {6, 7, 9};
-	int used_arrays_loop2[8] = {0, 1, 2, 3, 4, 6, 7, 8};
-	int used_arrays_loop3[3] = {0, 1, 6};
-	int used_arrays_loop4[3] = {5, 6, 8};
-	int used_arrays_loop5[1] = {8};
-	int used_arrays_loop6[3] = {6, 8, 9};
-	int used_arrays_loop7[8] = {0, 1, 2, 3, 4, 6, 7, 8};
-	int used_arrays_loop8[3] = {0, 1, 8};
-	int used_arrays_loop9[3] = {5, 7, 8};
-	int used_arrays_loop10[1] = {7};
-	int used_arrays_loop11[3] = {7, 8, 9};
-	int used_arrays_loop12[8] = {0, 1, 2, 3, 4, 6, 7, 8};
-	int used_arrays_loop13[3] = {0, 1, 7};
-	int used_arrays_loop14[3] = {5, 6, 7};
+	const int usedArraysLoop0[1] = {6};
+	const int usedArraysLoop1[3] = {6, 7, 9};
+	const int usedArraysLoop2[8] = {0, 1, 2, 3, 4, 6, 7, 8};
+	const int usedArraysLoop3[3] = {0, 1, 6};
+	const int usedArraysLoop4[3] = {5, 6, 8};
+	const int usedArraysLoop5[1] = {8};
+	const int usedArraysLoop6[3] = {6, 8, 9};
+	const int usedArraysLoop7[8] = {0, 1, 2, 3, 4, 6, 7, 8};
+	const int usedArraysLoop8[3] = {0, 1, 8};
+	const int usedArraysLoop9[3] = {5, 7, 8};
+	const int usedArraysLoop10[1] = {7};
+	const int usedArraysLoop11[3] = {7, 8, 9};
+	const int usedArraysLoop12[8] = {0, 1, 2, 3, 4, 6, 7, 8};
+	const int usedArraysLoop13[3] = {0, 1, 7};
+	const int usedArraysLoop14[3] = {5, 6, 7};
 
-	int read_in_loop0[1] = {0};
-	int read_in_loop1[3] = {1, 1, 1};
-	int read_in_loop2[8] = {1, 1, 1, 1, 1, 1, 1, 1};
-	int read_in_loop3[3] = {1, 1, 1};
-	int read_in_loop4[3] = {0, 1, 1};
-	int read_in_loop5[1] = {0};
-	int read_in_loop6[3] = {1, 1, 1};
-	int read_in_loop7[8] = {1, 1, 1, 1, 1, 1, 1, 1};
-	int read_in_loop8[3] = {1, 1, 1};
-	int read_in_loop9[3] = {0, 1, 1};
-	int read_in_loop10[1] = {1};
-	int read_in_loop11[3] = {1, 1, 1};
-	int read_in_loop12[8] = {1, 1, 1, 1, 1, 1, 1, 1};
-	int read_in_loop13[3] = {1, 1, 1};
-	int read_in_loop14[3] = {0, 1, 1};
+	const int readInLoop0[1] = {0};
+	const int readInLoop1[3] = {1, 1, 1};
+	const int readInLoop2[8] = {1, 1, 1, 1, 1, 1, 1, 1};
+	const int readInLoop3[3] = {1, 1, 1};
+	const int readInLoop4[3] = {0, 1, 1};
+	const int readInLoop5[1] = {0};
+	const int readInLoop6[3] = {1, 1, 1};
+	const int readInLoop7[8] = {1, 1, 1, 1, 1, 1, 1, 1};
+	const int readInLoop8[3] = {1, 1, 1};
+	const int readInLoop9[3] = {0, 1, 1};
+	const int readInLoop10[1] = {1};
+	const int readInLoop11[3] = {1, 1, 1};
+	const int readInLoop12[8] = {1, 1, 1, 1, 1, 1, 1, 1};
+	const int readInLoop13[3] = {1, 1, 1};
+	const int readInLoop14[3] = {0, 1, 1};
 
-	int write_in_loop0[1] = {1};
-	int write_in_loop1[3] = {1, 0, 0};
-	int write_in_loop2[8] = {0, 0, 0, 0, 0, 1, 0, 0};
-	int write_in_loop3[3] = {0, 0, 1};
-	int write_in_loop4[3] = {1, 0, 0};
-	int write_in_loop5[1] = {1};
-	int write_in_loop6[3] = {0, 1, 0};
-	int write_in_loop7[8] = {0, 0, 0, 0, 0, 0, 0, 1};
-	int write_in_loop8[3] = {0, 0, 1};
-	int write_in_loop9[3] = {1, 0, 0};
-	int write_in_loop10[1] = {1};
-	int write_in_loop11[3] = {1, 0, 0};
-	int write_in_loop12[8] = {0, 0, 0, 0, 0, 0, 1, 0};
-	int write_in_loop13[3] = {0, 0, 1};
-	int write_in_loop14[3] = {1, 0, 0};
+	const int writeInLoop0[1] = {1};
+	const int writeInLoop1[3] = {1, 0, 0};
+	const int writeInLoop2[8] = {0, 0, 0, 0, 0, 1, 0, 0};
+	const int writeInLoop3[3] = {0, 0, 1};
+	const int writeInLoop4[3] = {1, 0, 0};
+	const int writeInLoop5[1] = {1};
+	const int writeInLoop6[3] = {0, 1, 0};
+	const int writeInLoop7[8] = {0, 0, 0, 0, 0, 0, 0, 1};
+	const int writeInLoop8[3] = {0, 0, 1};
+	const int writeInLoop9[3] = {1, 0, 0};
+	const int writeInLoop10[1] = {1};
+	const int writeInLoop11[3] = {1, 0, 0};
+	const int writeInLoop12[8] = {0, 0, 0, 0, 0, 0, 1, 0};
+	const int writeInLoop13[3] = {0, 0, 1};
+	const int writeInLoop14[3] = {1, 0, 0};
 
-	pipe_init_loop(0, used_arrays_loop0, read_in_loop0, write_in_loop0, 1);
-	pipe_init_loop(1, used_arrays_loop1, read_in_loop1, write_in_loop1, 3);
-	pipe_init_loop(2, used_arrays_loop2, read_in_loop2, write_in_loop2, 8);
-	pipe_init_loop(3, used_arrays_loop3, read_in_loop3, write_in_loop3, 3);
-	pipe_init_loop(4, used_arrays_loop4, read_in_loop4, write_in_loop4, 3);
-	pipe_init_loop(5, used_arrays_loop5, read_in_loop5, write_in_loop5, 1);
-	pipe_init_loop(6, used_arrays_loop6, read_in_loop6, write_in_loop6, 3);
-	pipe_init_loop(7, used_arrays_loop7, read_in_loop7, write_in_loop7, 8);
-	pipe_init_loop(8, used_arrays_loop8, read_in_loop8, write_in_loop8, 3);
-	pipe_init_loop(9, used_arrays_loop9, read_in_loop9, write_in_loop9, 3);
-	pipe_init_loop(10, used_arrays_loop10, read_in_loop10, write_in_loop10, 1);
-	pipe_init_loop(11, used_arrays_loop11, read_in_loop11, write_in_loop11, 3);
-	pipe_init_loop(12, used_arrays_loop12, read_in_loop12, write_in_loop12, 8);
-	pipe_init_loop(13, used_arrays_loop13, read_in_loop13, write_in_loop13, 3);
-	pipe_init_loop(14, used_arrays_loop14, read_in_loop14, write_in_loop14, 3);
+	const int lastWrite0[] = {0};
+	const int lastWrite1[] = {0, 0, 0};
+	const int lastWrite2[] = {0, 0, 0, 0, 0, 0, 0, 0};
+	const int lastWrite3[] = {0, 0, 1};
+	const int lastWrite4[] = {0, 0, 0};
+	const int lastWrite5[] = {0};
+	const int lastWrite6[] = {0, 0, 0};
+	const int lastWrite7[] = {0, 0, 0, 0, 0, 0, 0, 0};
+	const int lastWrite8[] = {0, 0, 1};
+	const int lastWrite9[] = {0, 0, 0};
+	const int lastWrite10[] = {0};
+	const int lastWrite11[] = {0, 0, 0};
+	const int lastWrite12[] = {0, 0, 0, 0, 0, 0, 0, 0};
+	const int lastWrite13[] = {0, 0, 1};
+	const int lastWrite14[] = {1, 0, 0};
+
+	pipe_init_loop(0, usedArraysLoop0, readInLoop0, writeInLoop0,
+	               lastWrite0, 1);
+	pipe_init_loop(1, usedArraysLoop1, readInLoop1, writeInLoop1,
+	               lastWrite1, 3);
+	pipe_init_loop(2, usedArraysLoop2, readInLoop2, writeInLoop2,
+	               lastWrite2, 8);
+	pipe_init_loop(3, usedArraysLoop3, readInLoop3, writeInLoop3,
+	               lastWrite3, 3);
+	pipe_init_loop(4, usedArraysLoop4, readInLoop4, writeInLoop4,
+	               lastWrite4, 3);
+	pipe_init_loop(5, usedArraysLoop5, readInLoop5, writeInLoop5,
+	               lastWrite5, 1);
+	pipe_init_loop(6, usedArraysLoop6, readInLoop6, writeInLoop6,
+	               lastWrite6, 3);
+	pipe_init_loop(7, usedArraysLoop7, readInLoop7, writeInLoop7,
+	               lastWrite7, 8);
+	pipe_init_loop(8, usedArraysLoop8, readInLoop8, writeInLoop8,
+	               lastWrite8, 3);
+	pipe_init_loop(9, usedArraysLoop9, readInLoop9, writeInLoop9,
+	               lastWrite9, 3);
+	pipe_init_loop(10, usedArraysLoop10, readInLoop10, writeInLoop10,
+	               lastWrite10, 1);
+	pipe_init_loop(11, usedArraysLoop11, readInLoop11, writeInLoop11,
+	               lastWrite11, 3);
+	pipe_init_loop(12, usedArraysLoop12, readInLoop12, writeInLoop12,
+	               lastWrite12, 8);
+	pipe_init_loop(13, usedArraysLoop13, readInLoop13, writeInLoop13,
+	               lastWrite13, 3);
+	pipe_init_loop(14, usedArraysLoop14, readInLoop14, writeInLoop14,
+	               lastWrite14, 3);
 
 	do {
 
@@ -1046,6 +1077,8 @@ int main(int argc,char **argv)
 	}while (!done_graph_gen());
 
 	partition_hypergraph(2);
+
+	pipe_calculate_info();
 
 	free(__0_status__);
 	__0_status__ = ((int *)(malloc(sizeof(int ) * get_proc_iter_size(0))));
@@ -1946,7 +1979,9 @@ int main(int argc,char **argv)
 	/*
 	 * EXECUTOR
 	 */
+
 	setup_executor();;;
+
 	for (iter = 1; iter <= timesteps; ) {
 
 		if (myTeam == 0){

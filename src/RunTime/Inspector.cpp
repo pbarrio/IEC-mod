@@ -113,8 +113,9 @@ Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
 	dataNumOffset[0] = 0;
 	for (int i = 0; i < nd; i++){
 		global_data* new_data;
-		new_data = new global_data_double(i, dataNumCount[i], dataNumOffset[i],
-		                                  ro[i] == 1? true : false);
+		new_data = new global_data_double
+			(procId, i, dataNumCount[i], dataNumOffset[i],
+			 ro[i] == 1? true : false);
 		allData.push_back(new_data);
 
 		dataNumOffset[i + 1] = dataNumOffset[i] + dataNumCount[i];
@@ -233,6 +234,11 @@ Inspector::~Inspector(){
 		MPI_Comm_free(&global_comm::team_communicator);
 	if (global_comm::global_iec_communicator != MPI_COMM_NULL)
 		MPI_Comm_free(&global_comm::global_iec_communicator);
+
+	if (pipeSendBuf)
+		delete pipeSendBuf;
+	if (pipeRecvBuf)
+		delete pipeRecvBuf;
 }
 
 
@@ -405,11 +411,13 @@ void Inspector::AddPinToNet
 		loop->add_used_array(iter, arrayID);
 	// We care about write arrays in producers and our loops, because that's how
 	// we calculate when the producer will communicate data to our loop.
-	if ((loop->is_producer() || loop->is_my_loop()) && data->is_write(loopID))
+	if ((loop->is_producer() || loop->is_my_loop()) && data->is_write(loopID)){
 		loop->add_computed_array(iter, arrayID);
+		data->use_in_loop(loopID, iter, index);
+	}
 
 	// Get the current net
-	net* net_num = allData[arrayID]->data_net_info[loopID][index];
+	net* net_num = data->data_net_info[loopID][index];
 	vertex* curr_vertex = loop->iter_vertex[iter];
 	pin_info new_pin(curr_vertex, is_direct != 0 ? true : false);
 
@@ -853,18 +861,6 @@ void Inspector::AfterPartition(int loop){
 }
 
 
-/**
- * \brief Zeroes all pipeline communication control arrays (counts, displs)
- */
-void Inspector::pipe_reset_counts_and_displs(){
-
-	for (int i = 0; i < nProcs; ++i){
-		pipeSendCounts[i] = pipeSendDispls[i] = 0;
-		pipeRecvCounts[i] = pipeRecvDispls[i] = 0;
-	}
-}
-
-
 void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
                                  int** count){
 
@@ -1176,17 +1172,17 @@ void Inspector::CommunicateGhosts(){
 	// Same explanation as senddispl but for receive-ghosts
 	int recvdispl[teamSize + 1];
 
-	// Number of R/W arrays
-	int n_data = 0;
+	// Number of R/W arrays used in this team
+	int nArrays = 0;
 
 	for (deque<global_data*>::iterator it = allData.begin();
 	     it != allData.end(); it++ )
 
-		if (!(*it)->is_read_only)
-			n_data++;
+		if ((*it)->is_write(myLoop->get_loop_id()))
+			nArrays++;
 
 	// #send-ghosts per target process, per R/W array
-	int* sendghosts_count = new int[teamSize * n_data];
+	int* sendghosts_count = new int[teamSize * nArrays];
 
 	for (int i = 0; i < teamSize; i++){
 		sendcount[i] = 0;
@@ -1207,37 +1203,33 @@ void Inspector::CommunicateGhosts(){
 
 			if (!array->is_read_only){
 				int nghosts = array->global_ghosts[dest_proc].size();
-				sendghosts_count[dest_proc * n_data + d] = nghosts;
+				sendghosts_count[dest_proc * nArrays + d] = nghosts;
 				sendcount[i] += nghosts;
 				d++;
+
 			}
 		}
 	}
 
-	// Calculate indices where send-ghosts start & end for all processes
+	// Calculate indexes where send-ghosts start & end for all processes
 	senddispl[0] = 0;
 	for (int i = 0; i < teamSize; i++)
 		senddispl[i + 1] = senddispl[i] + sendcount[i];
 
 	// #receive-ghosts per target process, per R/W array
-	int* recvghosts_count = new int[teamSize * n_data];
+	int* recvghosts_count = new int[teamSize * nArrays];
 
 	// Send counts of send-ghosts and receive counts of receive-ghosts
-	MPI_Alltoall(sendghosts_count, n_data, MPI_INT, recvghosts_count, n_data,
+	MPI_Alltoall(sendghosts_count, nArrays, MPI_INT, recvghosts_count, nArrays,
 	             MPI_INT, global_comm::team_communicator);
 
 	// Extract #receive-ghosts for all sender processes
-	for (int i = 0; i < teamSize; i++){
-		int send_proc = i;
-
+	for (int i = 0; i < teamSize; i++)
 		// For all arrays
-		for (int d = 0; d < n_data; d++){
-			int nghosts = recvghosts_count[i * n_data + d];
-			recvcount[i] += nghosts;
-		}
-	}
+		for (int d = 0; d < nArrays; d++)
+			recvcount[i] += recvghosts_count[i * nArrays + d];
 
-	// Calculate indices where receive-ghosts start & end for all processes
+	// Calculate indexes where receive-ghosts start & end for all processes
 	recvdispl[0] = 0;
 	for (int i = 0; i < teamSize; i++)
 		recvdispl[i + 1] = recvdispl[i] + recvcount[i];
@@ -1283,9 +1275,11 @@ void Inspector::CommunicateGhosts(){
 		     it != allLocalData.end(); it++){
 
 			local_data* array = it->second;
+			global_data* globalArray = allData[array->GetMyNum()];
 
-			if (!array->is_read_only){
-				int nghosts = recvghosts_count[i * n_data + d];
+			if (globalArray->is_write(myLoop->get_loop_id())){
+
+				int nghosts = recvghosts_count[i * nArrays + d];
 				for (int g = 0; g < nghosts; g++)
 					array->global_owned[i].insert(ghosts_recv_val[counter++]);
 				d++;
@@ -1404,7 +1398,7 @@ void Inspector::PopulateGlobalArrays(){
 /**
  * \brief Populates a local array from its corresponding global array
  *
- * \param an ID of the local array to be populated
+ * \param an ID of the array to be populated
  * \param lb Allocated clean array to be populated
  * \param oa Original array
  * \param st Stride. Not sure what this is.
@@ -1412,7 +1406,7 @@ void Inspector::PopulateGlobalArrays(){
 void Inspector::PopulateLocalArray(int an, double* lb, double* oa, int st){
 
 	local_data* local = allLocalData[an];
-	local->PopulateLocalArray(lb, oa, st);
+	local->PopulateLocalArray(allData[an], lb, oa, st);
 }
 
 
@@ -1424,14 +1418,23 @@ void Inspector::PopulateLocalArray(int an, double* lb, double* oa, int st){
  * \brief Initializes structures required by the Inspector for this loop
  *
  * Mark arrays as used
+ *
+ * \param loopID Loop identifier
+ * \param usedArrays List of array identifiers used in this loop
+ * \param readInfo Flags for each array in usedArrays; =1 if the array is read
+ *                 in the loop
+ * \param writeInfo Flags for each array in usedArrays; =1 if the array is
+ *                  written in the loop
+ * \param lastWrite Flags for each array in usedArrays; =1 if the array is
+ *                  written in this loop for the last time in the pipeline
+ * \param nArrays Number of arrays used in the loop
  */
-void Inspector::pipe_init_loop(int loopID,
-                               int usedArrays[],
+void Inspector::pipe_init_loop(const int loopID,
+                               const int usedArrays[],
                                const bool readInfo[],
                                const bool writeInfo[],
-                               int nArrays){
-
-	bool arraysWrittenInAFutureLoop = false;
+                               const bool lastWrite[],
+                               const int nArrays){
 
 	// Find loop type
 	global_loop* loop = allLoops[loopID];
@@ -1442,7 +1445,6 @@ void Inspector::pipe_init_loop(int loopID,
 	else if (loopID > teamNum){
 		loop->set_as_consumer();
 		consumerLoops[loopID] = loop;
-		arraysWrittenInAFutureLoop = true;
 	}
 	else{
 		loop->set_as_my_loop();
@@ -1453,10 +1455,71 @@ void Inspector::pipe_init_loop(int loopID,
 
 		global_data* array = allData[usedArrays[i]];
 
-		if (arraysWrittenInAFutureLoop && writeInfo[i])
+		if (!lastWrite[i])
 			array->set_not_last_write_in_pipeline();
 
 		array->use_in_loop(loopID, readInfo[i], writeInfo[i]);
+	}
+}
+
+
+/**
+ * \brief Calculate required communications between us and producer/consumers.
+ */
+void Inspector::pipe_calculate_comm_info(){
+
+	// For all arrays in the code
+	for (std::deque<global_data*>::iterator dataIt = allData.begin(),
+		     dataEnd = allData.end();
+	     dataIt != dataEnd;
+	     ++dataIt){
+
+		global_data* array = *dataIt;
+
+		bool verbose = false;
+		if (procId == 0)
+			verbose = true;
+
+		// Only if the array is writable in our loop
+		int myLoopId = myLoop->get_loop_id();
+		if (array->is_write(myLoopId))
+			array->pipe_calc_comms(myLoopId, verbose);
+	}
+}
+
+
+/**
+ * \brief Initialize common structures required for communications
+ */
+void Inspector::pipe_init_comm_structs(){
+
+	int maxItemsSent = 0;
+	int maxItemsRecvd = 0;
+
+	for (std::map<int, local_data*>::iterator
+		     localIt = allLocalData.begin(),
+		     localEnd = allLocalData.end();
+	     localIt != localEnd;
+	     ++localIt){
+
+		local_data* array = localIt->second;
+		maxItemsSent += array->pipe_get_max_sendcounts();
+		maxItemsRecvd += array->pipe_get_max_recvcounts();
+	}
+
+	pipeSendBuf = (char*)malloc(maxItemsSent * sizeof(char));
+	pipeRecvBuf = (char*)malloc(maxItemsRecvd * sizeof(char));
+}
+
+
+/**
+ * \brief Zeroes all pipeline communication control arrays (counts, displs)
+ */
+void Inspector::pipe_reset_counts_and_displs(){
+
+	for (int i = 0; i < nProcs; ++i){
+		pipeSendCounts[i] = pipeSendDispls[i] = 0;
+		pipeRecvCounts[i] = pipeRecvDispls[i] = 0;
 	}
 }
 
@@ -1543,7 +1606,7 @@ void Inspector::pipe_send(int iter){
 	int nReqs = 0;
 	MPI_Request reqs[nProcs];
 
-	// Prepare structures for sendreceiving
+	// Prepare structures for sending
 	for (int iProc = 0; iProc < nProcs; ++iProc){
 
 		// This is the "send" part
@@ -1561,7 +1624,7 @@ void Inspector::pipe_send(int iter){
 			localArray->pipe_populate_send_buf
 				(iter,
 				 iProc,
-				 pipeSendBuf + pipeSendDispls[iProc] + pipeSendCounts[iProc]);
+				 pipeSendBuf + pipeSendDispls[iProc]);
 		}
 
 		// Update the send displacements for the next process

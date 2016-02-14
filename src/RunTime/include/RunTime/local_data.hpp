@@ -19,11 +19,12 @@
 #ifndef __LOCAL_DATA_HPP__
 #define __LOCAL_DATA_HPP__
 
-#include "RunTime/hypergraph.hpp"
-
 #include <cstdio>
 #include <cassert>
 #include <vector>
+
+#include "RunTime/hypergraph.hpp"
+#include "RunTime/global_data.hpp"
 
 int binary_search(int* const, const int, const int);
 
@@ -36,11 +37,6 @@ int binary_search(int* const, const int, const int);
  * possible to get rid of them.
  */
 class local_data{
-
-private:
-
-	typedef std::map<int, std::map<int, int> > CountsPerProcPerIter;
-	typedef std::map<int, std::map<int, std::vector<int> > > IdxsPerProcPerIter;
 
 protected:
 
@@ -71,7 +67,7 @@ protected:
 	/// Number of direct accesses
 	long direct_access_size;
 
-	/// Mapping from local to global indices for direct accesses. If
+	/// Mapping from local to global indexes for direct accesses. If
 	/// direct_access_array[a] = b, then index 'b' in the global array
 	/// corresponds to a local index 'a'.
 	int* direct_access_array;
@@ -99,28 +95,29 @@ protected:
 
 	int block_owned_offset;
 
+	/// Maximum number of sent and received items (in bytes)
+	int maxSendCounts, maxRecvCounts;
+
 	/// For each iteration and producer, the receive size in bytes.
-	CountsPerProcPerIter pipeRecvCounts;
+	global_data::CountsPerProcPerIter pipeRecvCounts;
 
 	/// For each iteration and consumer, the send size in bytes.
-	CountsPerProcPerIter pipeSendCounts;
+	global_data::CountsPerProcPerIter pipeSendCounts;
 
 	/// For each iteration and producer, a list of positions in the local array
 	/// that we need to receive from the the producer.
-	IdxsPerProcPerIter pipeRecvIndexes;
+	global_data::IdxsPerProcPerIter pipeRecvIndexes;
 
 	/// For each iteration and consumer, a list of positions in the local array
 	/// that we need to send to the consumer.
-	IdxsPerProcPerIter pipeSendIndexes;
+	global_data::IdxsPerProcPerIter pipeSendIndexes;
 
 	int GetLocalIndex(int global_index) const;
 
 public:
 
-	// Ghosts of all arrays in this process
 	std::set<int> *global_ghosts;
 
-	// Data on all arrays owned by this process
 	std::set<int> *global_owned;
 
 	local_data(int, int, int, int, const net**, int, bool, bool);
@@ -131,7 +128,8 @@ public:
 
 	virtual int GetOwnedCount(int) const = 0;
 
-	virtual void PopulateLocalArray(double*, double*, int) = 0;
+	virtual void PopulateLocalArray
+	(const global_data*, double*, double*, int) = 0;
 
 	virtual void PopulateGlobalArray() = 0;
 
@@ -182,13 +180,19 @@ public:
 
 	virtual void SetLocalArray(void*) = 0;
 
-	int pipe_get_sendcounts(int iter, int proc){
-		return pipeSendCounts[iter][proc];
-	}
+	/**
+	 * \brief Get the send size in bytes for an iteration and process
+	 */
+	virtual int pipe_get_sendcounts(int iter, int proc) = 0;
 
-	int pipe_get_recvcounts(int iter, int proc){
-		return pipeRecvCounts[iter][proc];
-	}
+	/**
+	 * \brief Get the receive size in bytes for an iteration and process
+	 */
+	virtual int pipe_get_recvcounts(int iter, int proc) = 0;
+
+	virtual int pipe_get_max_sendcounts() = 0;
+
+	virtual int pipe_get_max_recvcounts() = 0;
 
 	virtual int pipe_populate_send_buf(int, int, char*) = 0;
 	virtual void pipe_update(int, int, char*) = 0;
@@ -212,7 +216,7 @@ public:
 
 	~local_data_double();
 
-	void PopulateLocalArray(double*, double*, int);
+	void PopulateLocalArray(const global_data*, double*, double*, int);
 
 	inline int get_size() const{return sizeof(double);}
 
@@ -251,7 +255,21 @@ public:
 		local_array = static_cast<double*>(la);
 	}
 
-	int pipe_get_sendcounts(int iter, int proc){}
+	int pipe_get_sendcounts(int iter, int proc){
+		return pipeSendIndexes[iter][proc].size() * sizeof(double) * stride;
+	}
+
+	int pipe_get_recvcounts(int iter, int proc){
+		return pipeRecvIndexes[iter][proc].size() * sizeof(double) * stride;
+	}
+
+	int pipe_get_max_sendcounts(){
+		return maxSendCounts * sizeof(double) * stride;
+	}
+
+	int pipe_get_max_recvcounts(){
+		return maxRecvCounts * sizeof(double) * stride;
+	}
 
 	int pipe_populate_send_buf(int, int, char*);
 

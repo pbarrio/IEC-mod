@@ -318,7 +318,7 @@ extern "C" {
 	/**
 	 * \brief Populates a local array from its corresponding global array
 	 *
-	 * \param an ID of the local array to be populated
+	 * \param an ID of the array to be populated (local and global have same ID)
 	 * \param lb Allocated clean array to be populated
 	 * \param oa Original array
 	 * \param st Stride. e.g. A bidimensional array containing 100 coordinates
@@ -361,6 +361,9 @@ extern "C" {
 	 * This function must run immediately before the start of the computations.
 	 */
 	void setup_executor(){
+
+		Inspector::instance()->pipe_init_comm_structs();
+
 		Inspector::instance()->GenerateGhosts();
 
 #ifndef NDEBUG
@@ -369,6 +372,7 @@ extern "C" {
 #endif
 
 		Inspector::instance()->CommunicateGhosts();
+
 #ifndef NDEBUG
 		printf("Global ghosts done\n");
 		fflush(stdout);
@@ -559,27 +563,40 @@ extern "C" {
 	 *
 	 * \param loop ID of the loop to be initialized
 	 * \param usedArrays List of array IDs that are used in the loop
-	 * \param readInfo Binary list defining which of the arrays are read
-	 * \param writeInfo Binary list defining which of the arrays are written
+	 * \param readInfo Flags defining which of the arrays are read
+	 * \param writeInfo Flags defining which of the arrays are written
+	 * \param lastWrite Flags for each array in usedArrays; =1 if the array is
+	 *                  written in this loop for the last time in the pipeline
 	 * \param nArrays Number of arrays
 	 */
-	void pipe_init_loop
-	(int loop, int usedArrays[], int readInfo[], int writeInfo[], int nArrays){
+	void pipe_init_loop(const int loop, const int usedArrays[],
+	                    const int readInfo[], const int writeInfo[],
+	                    const int lastWrite[], const int nArrays){
 
 		// Transform rwInfo into booleans
 		bool* readInfoBool = new bool[nArrays];
 		bool* writeInfoBool = new bool[nArrays];
+		bool* lastWriteBool = new bool[nArrays];
 		for (int i = 0; i < nArrays; ++i){
 			readInfoBool[i] = readInfo[i] == 0 ? false : true;
 			writeInfoBool[i] = writeInfo[i] == 0 ? false : true;
+			lastWriteBool[i] = lastWrite[i] == 0 ? false : true;
 		}
 
-		Inspector::instance()->pipe_init_loop
-			(loop, usedArrays, readInfoBool, writeInfoBool, nArrays);
+		Inspector::instance()->pipe_init_loop(loop, usedArrays, readInfoBool,
+		                                      writeInfoBool, lastWriteBool,
+		                                      nArrays);
 
 		delete [] readInfoBool;
 		delete [] writeInfoBool;
 	}
+
+
+	void pipe_calculate_info(){
+
+		Inspector::instance()->pipe_calculate_comm_info();
+	}
+
 
 	void pipe_endExternalIter(){
 

@@ -356,34 +356,124 @@ local_data_double::~local_data_double(){}
  * \param orig Original array
  * \param st Stride. See populate_local_array() in cdefs.cpp for more info.
  */
-void local_data_double::PopulateLocalArray(double* local_base,
-                                           double* orig, int st){
+void local_data_double::PopulateLocalArray(const global_data* globalArray,
+                                           double* local_base, double* orig,
+                                           int st){
 
 	assert(stride == st && orig_array == NULL && local_array == NULL);
 	orig_array = orig;
 	local_array = local_base;
 
+	std::map<int, int> posMap; // Mapping from global index to local index
 	int counter = 0;
 
 	if (stride != 1){
 
 		for (int j = 0; j < direct_access_size; j++, counter++){
 			int orig_offset = direct_access_array[j] * stride;
-			for (int i = 0; i < stride; i++)
-				local_array[counter * stride + i] = orig_array[orig_offset + i];
+			for (int i = 0; i < stride; i++){
+				int localIndex = counter * stride + i;
+				int globalIndex = orig_offset + i;
+				local_array[localIndex] = orig_array[globalIndex];
+				posMap[globalIndex] = localIndex;
+			}
 		}
 
 		for (int j = 0; j < indirect_access_size; j++, counter++){
 			int orig_offset = indirect_access_array[j] * stride;
-			for (int i = 0; i < stride; i++)
-				local_array[counter * stride + i] = orig_array[orig_offset + i];
+			for (int i = 0; i < stride; i++){
+				int localIndex = counter * stride + i;
+				int globalIndex = orig_offset + i;
+				local_array[localIndex] = orig_array[globalIndex];
+				posMap[globalIndex] = localIndex;
+			}
 		}
 	}
 	else{
-		for (int i = 0; i < direct_access_size; i++, counter++)
+		for (int i = 0; i < direct_access_size; i++, counter++){
 			local_array[counter] = orig_array[direct_access_array[i]];
-		for (int i = 0; i < indirect_access_size; i++, counter++)
-		  local_array[counter] = orig_array[indirect_access_array[i]];
+			posMap[direct_access_array[i]] = counter;
+		}
+		for (int i = 0; i < indirect_access_size; i++, counter++){
+			local_array[counter] = orig_array[indirect_access_array[i]];
+			posMap[indirect_access_array[i]] = counter;
+		}
+	}
+
+	// Convert comm info from global to local indexes; register in local array.
+
+	// Send info
+	maxSendCounts = 0;
+
+	// For all iterations in our loop
+	for (global_data::IdxsPerProcPerIter::const_iterator
+		     iterIt = globalArray->pipeSendIndexes.begin(),
+		     iterEnd = globalArray->pipeSendIndexes.end();
+	     iterIt != iterEnd;
+	     ++iterIt){
+
+		int iter = iterIt->first;
+		const std::map<int, std::vector<int> > idxsPerProc = iterIt->second;
+
+		// For all consumer processes
+		int count = 0;
+		for (std::map<int, std::vector<int> >::const_iterator
+			     procIt = idxsPerProc.begin(),
+			     procEnd = idxsPerProc.end();
+		     procIt != procEnd;
+		     ++procIt){
+
+			int proc = procIt->first;
+			std::vector<int> idxs = procIt->second;
+			for (std::vector<int>::const_iterator idxIt = idxs.begin(),
+				     idxEnd = idxs.end();
+			     idxIt != idxEnd;
+			     ++idxIt)
+
+				if (posMap.find(*idxIt) != posMap.end()){
+					++count;
+					pipeSendIndexes[iter][proc].push_back(posMap[*idxIt]);
+				}
+		}
+
+		if (count > maxSendCounts)
+			maxSendCounts = count;
+	}
+
+	// Receive info
+	maxRecvCounts = 0;
+	for (global_data::IdxsPerProcPerIter::const_iterator
+		     iterIt = globalArray->pipeRecvIndexes.begin(),
+		     iterEnd = globalArray->pipeRecvIndexes.end();
+	     iterIt != iterEnd;
+	     ++iterIt){
+
+		int iter = iterIt->first;
+		const std::map<int, std::vector<int> > idxsPerProc = iterIt->second;
+
+		for (std::map<int, std::vector<int> >::const_iterator
+			     procIt = idxsPerProc.begin(),
+			     procEnd = idxsPerProc.end();
+		     procIt != procEnd;
+		     ++procIt){
+
+			int proc = procIt->first;
+			std::vector<int> idxs = procIt->second;
+
+			int count = 0;
+			for (std::vector<int>::const_iterator idxIt = idxs.begin(),
+				     idxEnd = idxs.end();
+			     idxIt != idxEnd;
+			     ++idxIt)
+
+				if (posMap.find(*idxIt) != posMap.end()){
+					++count;
+					pipeRecvIndexes[iter][proc].push_back(posMap[*idxIt]);
+				}
+
+			if (count > maxRecvCounts)
+				maxRecvCounts = count;
+		}
 	}
 }
 
@@ -618,7 +708,7 @@ int local_data_double::pipe_populate_send_buf(int iter, int proc, char* buf){
 	     idxIt != idxEnd;
 	     ++idxIt)
 
-		memcpy(buf, local_array + *idxIt, sizeof(double));
+		memcpy(buf, local_array + *idxIt, sizeof(double) * stride);
 }
 
 

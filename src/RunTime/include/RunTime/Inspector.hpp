@@ -400,7 +400,12 @@ public:
 	 * NEW FUNCTIONS FOR PIPELINING
 	 */
 
-	void pipe_init_loop(int, int[], const bool[], const bool[], int);
+	void pipe_init_loop(const int, const int[], const bool[], const bool[],
+	                    const bool[], const int);
+
+	void pipe_calculate_comm_info();
+
+	void pipe_init_comm_structs();
 
 	inline void pipe_endExternalIter(){
 
