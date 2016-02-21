@@ -442,6 +442,8 @@ void local_data_double::PopulateLocalArray(const global_data* globalArray,
 
 	// Receive info
 	maxRecvCounts = 0;
+
+	// For all iterations in our loop
 	for (global_data::IdxsPerProcPerIter::const_iterator
 		     iterIt = globalArray->pipeRecvIndexes.begin(),
 		     iterEnd = globalArray->pipeRecvIndexes.end();
@@ -451,6 +453,8 @@ void local_data_double::PopulateLocalArray(const global_data* globalArray,
 		int iter = iterIt->first;
 		const std::map<int, std::vector<int> > idxsPerProc = iterIt->second;
 
+		// For all producer processes
+		int count = 0;
 		for (std::map<int, std::vector<int> >::const_iterator
 			     procIt = idxsPerProc.begin(),
 			     procEnd = idxsPerProc.end();
@@ -459,8 +463,6 @@ void local_data_double::PopulateLocalArray(const global_data* globalArray,
 
 			int proc = procIt->first;
 			std::vector<int> idxs = procIt->second;
-
-			int count = 0;
 			for (std::vector<int>::const_iterator idxIt = idxs.begin(),
 				     idxEnd = idxs.end();
 			     idxIt != idxEnd;
@@ -470,10 +472,10 @@ void local_data_double::PopulateLocalArray(const global_data* globalArray,
 					++count;
 					pipeRecvIndexes[iter][proc].push_back(posMap[*idxIt]);
 				}
-
-			if (count > maxRecvCounts)
-				maxRecvCounts = count;
 		}
+
+		if (count > maxRecvCounts)
+			maxRecvCounts = count;
 	}
 }
 

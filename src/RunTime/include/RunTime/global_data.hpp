@@ -166,7 +166,8 @@ public:
 	bool is_last_write_in_pipeline(){return lastWriteInPipeline;}
 	void set_not_last_write_in_pipeline(){lastWriteInPipeline = false;}
 
-	void pipe_calc_comms(int myLoop, bool verbose);
+	void pipe_calc_sends(int myLoop);
+	void pipe_calc_recvs();
 
 	friend class Inspector;
 	friend class local_data;

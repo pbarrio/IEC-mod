@@ -96,16 +96,16 @@ void global_data::use_in_loop(int loopID, int iter, int index){
  * This is later used to know which parts of the array must be communicated in
  * which iteration.
  */
-void global_data::pipe_calc_comms(int myLoop, bool verbose){
+void global_data::pipe_calc_sends(int myLoop){
 
-	//For all loops that use this array
+	// For all loops that use this array
 	for (global_data::LoopNets::iterator netIt = data_net_info.begin(),
 		     netEnd = data_net_info.end();
 	     netIt != netEnd;
 	     ++netIt){
 
 		int consumerId = netIt->first;
-		if (consumerId == procId)
+		if (consumerId <= procId)
 			continue;
 
 		if (isReadInLoop[consumerId])
@@ -119,6 +119,34 @@ void global_data::pipe_calc_comms(int myLoop, bool verbose){
 		// because it is the most up-to-date value.
 		if (isWriteInLoop[consumerId])
 			break;
+	}
+}
+
+
+/**
+ * \brief Populate the pipeline receive information
+ */
+void global_data::pipe_calc_recvs(){
+
+	int producer = -1;
+
+	// Find the latest loop that writes to this array before our loop
+	for (global_data::LoopNets::iterator netIt = data_net_info.begin(),
+		     netEnd = data_net_info.end();
+	     netIt != netEnd;
+	     ++netIt){
+
+		int pId = netIt->first;
+		if (pId >= procId)
+			continue;
+
+		if (isWriteInLoop[pId] && (pId > producer))
+			producer = pId;
+	}
+
+	for (int index = 0; index < orig_array_size; ++index){
+		pipeRecvIndexes[finalUse[producer][index]][producer]
+			.push_back(index);
 	}
 }
 

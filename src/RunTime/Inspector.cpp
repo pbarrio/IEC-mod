@@ -1476,14 +1476,14 @@ void Inspector::pipe_calculate_comm_info(){
 
 		global_data* array = *dataIt;
 
-		bool verbose = false;
-		if (procId == 0)
-			verbose = true;
-
-		// Only if the array is writable in our loop
+		// Only if the array is writable in our loop, calculate send info
 		int myLoopId = myLoop->get_loop_id();
 		if (array->is_write(myLoopId))
-			array->pipe_calc_comms(myLoopId, verbose);
+			array->pipe_calc_sends(myLoopId);
+
+		// Only if the array is readable in our loop, calculate receive info
+		if (array->is_read(myLoopId))
+			array->pipe_calc_recvs();
 	}
 }
 
