@@ -709,8 +709,8 @@ int local_data_double::pipe_populate_send_buf(int iter, int proc, char* buf){
 		     idxEnd = indexes.end();
 	     idxIt != idxEnd;
 	     ++idxIt)
+		memcpy(buf, local_array + (*idxIt * stride), sizeof(double) * stride);
 
-		memcpy(buf, local_array + *idxIt, sizeof(double) * stride);
 }
 
 
