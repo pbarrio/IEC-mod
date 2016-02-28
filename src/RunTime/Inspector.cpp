@@ -1554,9 +1554,6 @@ void Inspector::pipe_receive(int iter){
 
 		if (pipeRecvCounts[iProc] != 0){
 
-
-
-
 			MPI_Recv(pipeRecvBuf + pipeRecvDispls[iProc],
 			         pipeRecvCounts[iProc],
 			         MPI_BYTE,
@@ -1564,6 +1561,7 @@ void Inspector::pipe_receive(int iter){
 			         PIPE_TAG,
 			         global_comm::global_iec_communicator,
 			         MPI_STATUS_IGNORE);
+
 		}
 		// Update the displacements for the next process
 		if (iProc + 1 < nProcs)
@@ -1617,7 +1615,6 @@ void Inspector::pipe_send(int iter){
 		     ++arrayIt){
 
 			local_data* localArray = allLocalData[*arrayIt];
-
 			pipeSendCounts[iProc] +=
 				localArray->pipe_get_sendcounts(iter, iProc);
 
@@ -1646,4 +1643,4 @@ void Inspector::pipe_send(int iter){
 
 	if (nReqs != 0)
 		MPI_Waitall(nReqs, reqs, MPI_STATUS_IGNORE);
-
+}

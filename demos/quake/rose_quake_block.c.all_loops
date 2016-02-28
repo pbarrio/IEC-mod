@@ -802,7 +802,6 @@ int main(int argc,char **argv)
 			}
 
 		//Loop 1
-		if (myTeam == 1){
 		__shadow_0__ = 0;
 		__shadow_1__ = 0;
 		for (i = __local_block_1_start__; i < __local_block_1_end__; i++)
@@ -852,7 +851,6 @@ int main(int argc,char **argv)
 				}
 				add_pin_to_net(6, i, 1, i, 1, 1);
 			}
-		}
 
 		//Loop 2
 		for (i = __local_block_2_start__; i < __local_block_2_end__; i++)
@@ -2121,7 +2119,7 @@ int main(int argc,char **argv)
 						   ((__local_V23__[i][j] * phi0(time,Exc_t0)) / 2.0))));
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 
 		}
@@ -2134,7 +2132,7 @@ int main(int argc,char **argv)
 			__body_3__ = 0;
 			for (i = 0; i < __nlocal_3__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_disp0__[i][j] =
@@ -2144,9 +2142,8 @@ int main(int argc,char **argv)
 
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
-
 
 		}
 
@@ -2158,7 +2155,7 @@ int main(int argc,char **argv)
 			__body_4__ = 0;
 			for (i = 0; i < __nlocal_4__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_vel__[i][j] =
@@ -2166,7 +2163,7 @@ int main(int argc,char **argv)
 						 (__local_disp0__[i][j] - __local_disp2__[i][j]));;
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 		}
 		iter += 1;
@@ -2180,13 +2177,13 @@ int main(int argc,char **argv)
 			__body_5__ = 0;
 			for (i = 0; i < __nlocal_5__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_disp2__[i][j] = 0.0;;
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 		}
 
@@ -2202,7 +2199,7 @@ int main(int argc,char **argv)
 			init_write_ghosts(6);
 			for (i = 0; i < __nlocal_6__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				sum0 =
 					(((__local_K__[__i_K_i_22_[i]][0] * __local_disp0__[i][0]) +
@@ -2273,7 +2270,7 @@ int main(int argc,char **argv)
 				__local_disp2__[i][1] += sum1;
 				__local_disp2__[i][2] += sum2;;
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 			/* communicate_writes(6); */
 		}
@@ -2288,7 +2285,7 @@ int main(int argc,char **argv)
 			__body_7__ = 0;
 			for (i = 0; i < __nlocal_7__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_disp2__[i][j] =
@@ -2304,7 +2301,7 @@ int main(int argc,char **argv)
 						   ((__local_V23__[i][j] * phi0(time,Exc_t0)) / 2.0))));
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 		}
 
@@ -2316,7 +2313,7 @@ int main(int argc,char **argv)
 			__body_8__ = 0;
 			for (i = 0; i < __nlocal_8__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_disp2__[i][j] =
@@ -2325,7 +2322,7 @@ int main(int argc,char **argv)
 						                       __local_C__[i][j])));
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 		}
 
@@ -2337,7 +2334,7 @@ int main(int argc,char **argv)
 			__body_9__ = 0;
 			for (i = 0; i < __nlocal_9__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_vel__[i][j] =
@@ -2345,7 +2342,7 @@ int main(int argc,char **argv)
 						 (__local_disp2__[i][j] - __local_disp1__[i][j]));;
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 		}
 		iter += 1;
@@ -2358,13 +2355,13 @@ int main(int argc,char **argv)
 			__body_10__ = 0;
 			for (i = 0; i < __nlocal_10__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_disp1__[i][j] = 0.0;;
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 		}
 
@@ -2380,7 +2377,7 @@ int main(int argc,char **argv)
 			init_write_ghosts(11);
 			for (i = 0; i < __nlocal_11__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				sum0 =
 					(((__local_K__[__i_K_i_43_[i]][0] * __local_disp2__[i][0]) +
@@ -2449,7 +2446,7 @@ int main(int argc,char **argv)
 				__local_disp1__[i][1] += sum1;
 				__local_disp1__[i][2] += sum2;;
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 			/* communicate_writes(11); */
 		}
@@ -2464,7 +2461,7 @@ int main(int argc,char **argv)
 			__body_12__ = 0;
 			for (i = 0; i < __nlocal_12__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_disp1__[i][j] =
@@ -2480,7 +2477,7 @@ int main(int argc,char **argv)
 						   ((__local_V23__[i][j] * phi0(time,Exc_t0)) / 2.0))));
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 		}
 
@@ -2492,7 +2489,7 @@ int main(int argc,char **argv)
 			__body_13__ = 0;
 			for (i = 0; i < __nlocal_13__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_disp1__[i][j] =
@@ -2501,7 +2498,7 @@ int main(int argc,char **argv)
 						  ((Exc_dt / 2.0) * __local_C__[i][j])));;
 				};
 
-				/* pipe_send(i); */
+				pipe_send(i);
 			}
 		}
 
@@ -2513,7 +2510,7 @@ int main(int argc,char **argv)
 			__body_14__ = 0;
 			for (i = 0; i < __nlocal_14__; ++i) {
 
-				/* pipe_receive(i); */
+				pipe_receive(i);
 
 				for (j = 0; j < 3; j++) {
 					__local_vel__[i][j] =
