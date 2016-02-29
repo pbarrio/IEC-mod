@@ -352,8 +352,9 @@ local_data_double::~local_data_double(){}
 /**
  * \brief Populate local array with the contents of the global array
  *
- * \param local_base Allocated clean array to be populated
- * \param orig Original array
+ * \param globalArray Global array with the same id as this local array.
+ * \param local_base Allocated clean array to be populated.
+ * \param orig Original array.
  * \param st Stride. See populate_local_array() in cdefs.cpp for more info.
  */
 void local_data_double::PopulateLocalArray(const global_data* globalArray,
@@ -709,8 +710,8 @@ int local_data_double::pipe_populate_send_buf(int iter, int proc, char* buf){
 		     idxEnd = indexes.end();
 	     idxIt != idxEnd;
 	     ++idxIt)
-		memcpy(buf, local_array + (*idxIt * stride), sizeof(double) * stride);
 
+		memcpy(buf, local_array + (*idxIt * stride), sizeof(double) * stride);
 }
 
 
@@ -722,5 +723,5 @@ void local_data_double::pipe_update(int iter, int proc, char* buf){
 	     idxIt != idxEnd;
 	     ++idxIt)
 
-		memcpy(local_array + *idxIt, buf, sizeof(double));
+		memcpy(local_array + (*idxIt * stride), buf, sizeof(double) * stride);
 }
