@@ -71,6 +71,12 @@ private:
 	/// methods use_in_loop() and is_already_used_in_loop() to enforce it.
 	ArrayUseMap finalUse;
 
+	/// Track the first time that a position is used. This allows consumers to
+	/// contrast their first uses with the data received from producers and
+	/// decide whether they can start the current iteration or they need to wait
+	/// for more data.
+	ArrayUseMap initialUse;
+
 protected:
 
 	/// Our process Id
@@ -112,6 +118,11 @@ protected:
 	/// For each iteration and consumer, a list of positions in the local array
 	/// that we need to send to the consumer.
 	IdxsPerProcPerIter pipeSendIndexes;
+
+	/// For each iteration, the corresponding iteration in the producer that
+	/// ensures that we have all the required data (in this array) to start
+	/// doing the computations.
+	std::vector<int> producerIter;
 
 public:
 	global_data(int, int, int, int, bool);
@@ -168,6 +179,8 @@ public:
 
 	void pipe_calc_sends(int myLoop);
 	void pipe_calc_recvs();
+	int pipe_safe_iteration(int index){
+		return producerIter.size() > index ? producerIter[index] : -1;}
 
 	friend class Inspector;
 	friend class local_data;

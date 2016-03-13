@@ -1496,6 +1496,24 @@ void Inspector::pipe_calculate_comm_info(){
 	 * RECEIVE INFO
 	 */
 
+	safeIter.resize(myLoop->num_iters, 0);
+	for (int iter = 0; iter < myLoop->num_iters; ++iter){
+
+		// We must wait at least as much as the previous iteration
+		if (iter > 0)
+			safeIter[iter] = safeIter[iter - 1];
+
+		for (global_loop::ArrayIDList::iterator
+			     aIt = myLoop->used_arrays_begin(procId),
+			     aEnd = myLoop->used_arrays_end(procId);
+		     aIt != aEnd;
+		     ++aIt){
+
+			int safe = allData[*aIt]->pipe_safe_iteration(iter);
+			if (safeIter[iter] < safe)
+				safeIter[iter] = safe;
+		}
+	}
 }
 
 
@@ -1547,53 +1565,57 @@ void Inspector::pipe_reset_counts_and_displs(){
  */
 void Inspector::pipe_receive(int iter){
 
-	pipe_reset_counts_and_displs();
+	int start = (iter == 0 ? 0 : safeIter[iter - 1] + 1);
+	int end = safeIter[iter] + 1;
 
-	// Prepare structures for receiving
-	for (int iProc = 0; iProc < nProcs; ++iProc){
+	for (int it = start; it < end; ++it){
 
-		for (global_loop::ArrayIDList::iterator
-			     arrayIt = myLoop->used_arrays_begin(iProc),
-			     arrayEnd = myLoop->used_arrays_end(iProc);
-		     arrayIt != arrayEnd;
-		     ++arrayIt){
+		pipe_reset_counts_and_displs();
 
-			local_data* localArray = allLocalData[*arrayIt];
-			pipeRecvCounts[iProc] +=
-				localArray->pipe_get_recvcounts(iter, iProc);
+		// Prepare structures for receiving
+		for (int iProc = 0; iProc < nProcs; ++iProc){
+
+			for (global_loop::ArrayIDList::iterator
+				     arrayIt = myLoop->used_arrays_begin(iProc),
+				     arrayEnd = myLoop->used_arrays_end(iProc);
+			     arrayIt != arrayEnd;
+			     ++arrayIt){
+
+				local_data* localArray = allLocalData[*arrayIt];
+				pipeRecvCounts[iProc] +=
+					localArray->pipe_get_recvcounts(iter, iProc);
+			}
+
+			if (pipeRecvCounts[iProc] != 0)
+				MPI_Recv(pipeRecvBuf + pipeRecvDispls[iProc],
+				         pipeRecvCounts[iProc],
+				         MPI_BYTE,
+				         iProc,
+				         PIPE_TAG,
+				         global_comm::global_iec_communicator,
+				         MPI_STATUS_IGNORE);
+			// Update the displacements for the next process
+			if (iProc + 1 < nProcs)
+				pipeRecvDispls[iProc + 1] =
+					pipeRecvDispls[iProc] + pipeRecvCounts[iProc];
 		}
 
-		if (pipeRecvCounts[iProc] != 0){
+		// Move received data to the local array
+		char* received = pipeRecvBuf;
+		for (int iProc = 0; iProc < nProcs; ++iProc){
 
-			MPI_Recv(pipeRecvBuf + pipeRecvDispls[iProc],
-			         pipeRecvCounts[iProc],
-			         MPI_BYTE,
-			         iProc,
-			         PIPE_TAG,
-			         global_comm::global_iec_communicator,
-			         MPI_STATUS_IGNORE);
+			for (global_loop::ArrayIDList::iterator
+				     arrayIt = myLoop->used_arrays_begin(iProc),
+				     arrayEnd = myLoop->used_arrays_end(iProc);
+			     arrayIt != arrayEnd;
+			     ++arrayIt){
 
+				local_data* localArray = allLocalData[*arrayIt];
+				localArray->pipe_update(iter, iProc, received);
+				received += localArray->pipe_get_recvcounts(iter, iProc);
+			}
 		}
-		// Update the displacements for the next process
-		if (iProc + 1 < nProcs)
-			pipeRecvDispls[iProc + 1] =
-				pipeRecvDispls[iProc] + pipeRecvCounts[iProc];
-	}
 
-	// Move received data to the local array
-	char* received = pipeRecvBuf;
-	for (int iProc = 0; iProc < nProcs; ++iProc){
-
-		for (global_loop::ArrayIDList::iterator
-			     arrayIt = myLoop->used_arrays_begin(iProc),
-			     arrayEnd = myLoop->used_arrays_end(iProc);
-		     arrayIt != arrayEnd;
-		     ++arrayIt){
-
-			local_data* localArray = allLocalData[*arrayIt];
-			localArray->pipe_update(iter, iProc, received);
-			received += localArray->pipe_get_recvcounts(iter, iProc);
-		}
 	}
 }
 
@@ -1640,8 +1662,7 @@ void Inspector::pipe_send(int iter){
 			pipeSendDispls[iProc + 1] =
 				pipeSendDispls[iProc] + pipeSendCounts[iProc];
 
-		if (pipeSendCounts[iProc] != 0){
-
+		if (pipeSendCounts[iProc] != 0)
 			MPI_Issend(pipeSendBuf + pipeSendDispls[iProc],
 			           pipeSendCounts[iProc],
 			           MPI_BYTE,
@@ -1649,7 +1670,6 @@ void Inspector::pipe_send(int iter){
 			           PIPE_TAG,
 			           global_comm::global_iec_communicator,
 			           &reqs[nReqs++]);
-		}
 	}
 
 	if (nReqs != 0)

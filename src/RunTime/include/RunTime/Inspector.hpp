@@ -115,6 +115,11 @@ private:
 	int *pipeSendCounts, *pipeSendDispls, *pipeRecvCounts, *pipeRecvDispls;
 	char *pipeSendBuf, *pipeRecvBuf;
 
+	/// Contains, for each iteration here, the iteration in the producers after
+	/// which it is safe to start computations (because we have all required
+	/// data).
+	std::vector<int> safeIter;
+
 	/**
 	 * \brief Returns the team ID of a process
 	 *

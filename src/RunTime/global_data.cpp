@@ -87,6 +87,10 @@ void global_data::use_in_loop(int loopID, bool isRead, bool isWrite){
 void global_data::use_in_loop(int loopID, int iter, int index){
 
 	finalUse[loopID][index] = iter;
+
+	// If this is the first time that we visit this index, mark it as first use
+	if (!initialUse[loopID].count(index) || (initialUse[loopID][index] > index))
+		initialUse[loopID][index] = iter;
 }
 
 
@@ -144,9 +148,21 @@ void global_data::pipe_calc_recvs(){
 			producer = pId;
 	}
 
+	// For each index and iteration, find when the producer will send it to us
 	for (int index = 0; index < orig_array_size; ++index){
-		pipeRecvIndexes[finalUse[producer][index]][producer]
+
+		int lastUse = finalUse[producer][index];
+		int firstUse = initialUse[procId][index];
+
+		pipeRecvIndexes[lastUse][producer]
 			.push_back(index);
+
+		// Mark the (producer) iteration where we will receive the data
+		if (producerIter.size() <= firstUse){
+			producerIter.resize(firstUse + 1, -1);
+		}
+		if (producerIter[firstUse] < lastUse)
+			producerIter[firstUse] = lastUse;
 	}
 }
 
