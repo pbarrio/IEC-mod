@@ -1548,6 +1548,8 @@ void Inspector::pipe_init_comm_structs(){
 	     ++pIt)
 
 		pipeRecvBuf[pIt->first] = (char*)malloc(maxItemsRecvd * sizeof(char));
+
+	lastReceived[0] = -1;
 }
 
 
@@ -1574,10 +1576,9 @@ void Inspector::pipe_reset_counts_and_displs(){
  */
 void Inspector::pipe_receive(int iter){
 
-	int start = (iter == 0 ? 0 : safeIter[iter - 1] + 1);
-	int end = safeIter[iter] + 1;
+	lastReceived[0] = (iter == 0 ? 0 : safeIter[iter - 1] + 1);
 
-	for (int it = start; it < end; ++it){
+	while (!pipe_ready(iter)){
 
 		pipe_reset_counts_and_displs();
 
@@ -1675,4 +1676,15 @@ void Inspector::pipe_send(int iter){
 
 	if (nReqs != 0)
 		MPI_Waitall(nReqs, reqs, MPI_STATUS_IGNORE);
+}
+
+
+/*
+ * \brief Check that this process received everything needed for this iteration.
+ *
+ * \param iter The local iteration that we are receiving for.
+ */
+bool Inspector::pipe_ready(int iter){
+
+	return safeIter[iter] <= lastReceived[0];
 }

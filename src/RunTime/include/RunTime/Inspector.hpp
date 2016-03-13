@@ -121,6 +121,9 @@ private:
 	/// data).
 	std::vector<int> safeIter;
 
+	/// For each producer, last iteration that we have received from it
+	std::map<int, int> lastReceived;
+
 	/**
 	 * \brief Returns the team ID of a process
 	 *
@@ -421,6 +424,10 @@ public:
 	// Communication functions between producers and consumers
 	void pipe_receive(int iter);
 	void pipe_send(int iter);
+
+protected:
+
+	bool pipe_ready(int);
 };
 
 
