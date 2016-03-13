@@ -24,17 +24,16 @@ using namespace std;
 global_loop::global_loop(int mn, int nit, int offset):
   my_num(mn),
   num_iters(nit),
-  iter_vertex(new vertex*[nit]),
-  nproc_local(0)
-{
-  for( int i = 0 ; i < num_iters ; i++ )
-    iter_vertex[i] = new vertex(my_num,i,offset+i);
+  iter_vertex(new vertex * [nit]),
+  nproc_local(0){
+
+  for (int i = 0; i < num_iters; i++)
+    iter_vertex[i] = new vertex(my_num, i, offset + i);
 }
 
-global_loop::~global_loop()
-{
-  for( int i = 0 ; i < num_iters ; i++ )
+global_loop::~global_loop(){
+
+  for (int i = 0; i < num_iters; i++)
     delete iter_vertex[i];
   delete[] iter_vertex;
 }
-

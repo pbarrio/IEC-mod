@@ -281,7 +281,7 @@ int main(int argc,char **argv)
 	/* Search for all the elements that contain the source node */
 	if (Src.sourcenode != 0) {
 		for (i = 0; i < ARCHelems; i++) {{
-				for (j = 0; j < 4; j++) 
+				for (j = 0; j < 4; j++)
 					cor[j] = ARCHvertex[i][j];
 			}
 			if ((((cor[0] == Src.sourcenode) || (cor[1] == Src.sourcenode)) ||
@@ -2144,7 +2144,6 @@ int main(int argc,char **argv)
 
 				pipe_send(i);
 			}
-
 		}
 
 		if (myTeam == 4){
@@ -2217,6 +2216,7 @@ int main(int argc,char **argv)
 					   __local_disp0__[i][1])) +
 					 (__local_K__[__i_K_i_22_[i]][8] * __local_disp0__[i][2]));
 				__o_K_j_24__offset = __o_K_j_24_[__loop_i_11__];
+
 				for (j = __lb_j_i_11__[__loop_i_11__];
 				     j < __ub_j_i_11__[__loop_i_11__];
 				     ++j) {
@@ -2264,7 +2264,9 @@ int main(int argc,char **argv)
 						 (__local_K__[__o_K_j_24__offset + j][8] *
 						  __local_disp0__[i][2]));
 					__body_i_11__ = __body_i_11__ + 1;;
+
 				}
+
 				__loop_i_11__ = __loop_i_11__ + 1;
 				__local_disp2__[i][0] += sum0;
 				__local_disp2__[i][1] += sum1;

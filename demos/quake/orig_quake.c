@@ -530,15 +530,15 @@ int main(int argc, char **argv){
       sum2 = K[Anext_7][6]*disp0[i_7][0] + K[Anext_7][7]*disp0[i_7][1] + K[Anext_7][8]*disp0[i_7][2];
 
       for( j_7 = ARCHmatrixindex[i_7]+1 ; j_7 < ARCHmatrixindex[i_7+1] ; j_7++){
-    	col_7 = ARCHmatrixcol[j_7];
+	      col_7 = ARCHmatrixcol[j_7];
 
-    	sum0 += K[j_7][0]*disp0[col_7][0] + K[j_7][1]*disp0[col_7][1] + K[j_7][2]*disp0[col_7][2];
-    	sum1 += K[j_7][3]*disp0[col_7][0] + K[j_7][4]*disp0[col_7][1] + K[j_7][5]*disp0[col_7][2];
-    	sum2 += K[j_7][6]*disp0[col_7][0] + K[j_7][7]*disp0[col_7][1] + K[j_7][8]*disp0[col_7][2];
+	      sum0 += K[j_7][0]*disp0[col_7][0] + K[j_7][1]*disp0[col_7][1] + K[j_7][2]*disp0[col_7][2];
+	      sum1 += K[j_7][3]*disp0[col_7][0] + K[j_7][4]*disp0[col_7][1] + K[j_7][5]*disp0[col_7][2];
+	      sum2 += K[j_7][6]*disp0[col_7][0] + K[j_7][7]*disp0[col_7][1] + K[j_7][8]*disp0[col_7][2];
 
-    	disp2[col_7][0] += K[j_7][0]*disp0[i_7][0] + K[j_7][3]*disp0[i_7][1] + K[j_7][6]*disp0[i_7][2];
-    	disp2[col_7][1] += K[j_7][1]*disp0[i_7][0] + K[j_7][4]*disp0[i_7][1] + K[j_7][7]*disp0[i_7][2];
-    	disp2[col_7][2] += K[j_7][2]*disp0[i_7][0] + K[j_7][5]*disp0[i_7][1] + K[j_7][8]*disp0[i_7][2];
+	      disp2[col_7][0] += K[j_7][0]*disp0[i_7][0] + K[j_7][3]*disp0[i_7][1] + K[j_7][6]*disp0[i_7][2];
+	      disp2[col_7][1] += K[j_7][1]*disp0[i_7][0] + K[j_7][4]*disp0[i_7][1] + K[j_7][7]*disp0[i_7][2];
+	      disp2[col_7][2] += K[j_7][2]*disp0[i_7][0] + K[j_7][5]*disp0[i_7][1] + K[j_7][8]*disp0[i_7][2];
       }
       disp2[i_7][0] += sum0;
       disp2[i_7][1] += sum1;

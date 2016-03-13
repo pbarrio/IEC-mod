@@ -879,8 +879,7 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	bool* is_direct = new bool[teamSize];
 	bool* flags = new bool[teamSize];
 
-	// Find all the processes that access the blocked part of array owned
-	// by the process
+	// Find all the processes that access the part of array owned by the process
 	for (int i = curr_start; i < curr_end; i++){
 
 		const net* curr_net = curr_nets[i];
@@ -961,8 +960,11 @@ void Inspector::GetLocalAccesses(int array_num, int** recvbuf, int** displ,
 	*count = new int[teamSize * 2];
 	recvdispl[0] = 0;
 	int curr_recv_displ = 0;
+
 	for (int i = 0; i < teamSize; i++){
 		recvcount_mpi[i] = 0;
+
+		// k=0 for direct accesses, k=1 for indirect accesses
 		for (int k = 0; k < 2; k++){
 			(*count)[i * 2 + k] = recvcount[i * 2 + k];
 			recvcount_mpi[i] += recvcount[i * 2 + k];
@@ -1468,6 +1470,10 @@ void Inspector::pipe_init_loop(const int loopID,
  */
 void Inspector::pipe_calculate_comm_info(){
 
+	/*
+	 * SEND INFO
+	 */
+
 	// For all arrays in the code
 	for (std::deque<global_data*>::iterator dataIt = allData.begin(),
 		     dataEnd = allData.end();
@@ -1485,6 +1491,11 @@ void Inspector::pipe_calculate_comm_info(){
 		if (array->is_read(myLoopId))
 			array->pipe_calc_recvs();
 	}
+
+	/*
+	 * RECEIVE INFO
+	 */
+
 }
 
 
