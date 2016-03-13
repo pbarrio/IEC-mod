@@ -112,8 +112,9 @@ private:
 
 	/// Temporary buffers for pipeline comms. They belong to the Inspector
 	/// so that they are only allocated once.
-	int *pipeSendCounts, *pipeSendDispls, *pipeRecvCounts, *pipeRecvDispls;
-	char *pipeSendBuf, *pipeRecvBuf;
+	int *pipeSendCounts, *pipeSendDispls, *pipeRecvCounts;
+	char *pipeSendBuf;
+	std::map<int, char*> pipeRecvBuf;
 
 	/// Contains, for each iteration here, the iteration in the producers after
 	/// which it is safe to start computations (because we have all required

@@ -142,7 +142,6 @@ Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
 	pipeSendCounts = new int[np];
 	pipeSendDispls = new int[np];
 	pipeRecvCounts = new int[np];
-	pipeRecvDispls = new int[np];
 
 	send_info = new set<int>*[teamSize * 2];
 	for (int i = 0; i < teamSize * 2; i++)
@@ -226,7 +225,6 @@ Inspector::~Inspector(){
 	delete [] pipeSendCounts;
 	delete [] pipeSendDispls;
 	delete [] pipeRecvCounts;
-	delete [] pipeRecvDispls;
 
 	// Deallocate MPI communicator common to all participating processes
 	// in the inspector/executor.
@@ -237,8 +235,10 @@ Inspector::~Inspector(){
 
 	if (pipeSendBuf)
 		delete pipeSendBuf;
-	if (pipeRecvBuf)
-		delete pipeRecvBuf;
+
+	for (int iProc = 0; iProc < nProcs; ++iProc)
+		if (pipeRecvBuf[iProc])
+			delete pipeRecvBuf[iProc];
 }
 
 
@@ -1533,11 +1533,21 @@ void Inspector::pipe_init_comm_structs(){
 
 		local_data* array = localIt->second;
 		maxItemsSent += array->pipe_get_max_sendcounts();
-		maxItemsRecvd += array->pipe_get_max_recvcounts();
+
+		int arrayMaxRecvd = array->pipe_get_max_recvcounts();
+		if (arrayMaxRecvd > maxItemsRecvd)
+			maxItemsRecvd = arrayMaxRecvd;
 	}
 
 	pipeSendBuf = (char*)malloc(maxItemsSent * sizeof(char));
-	pipeRecvBuf = (char*)malloc(maxItemsRecvd * sizeof(char));
+
+	for (std::map<int, global_loop*>::iterator
+		     pIt = producerLoops.begin(),
+		     pEnd = producerLoops.end();
+	     pIt != pEnd;
+	     ++pIt)
+
+		pipeRecvBuf[pIt->first] = (char*)malloc(maxItemsRecvd * sizeof(char));
 }
 
 
@@ -1547,8 +1557,7 @@ void Inspector::pipe_init_comm_structs(){
 void Inspector::pipe_reset_counts_and_displs(){
 
 	for (int i = 0; i < nProcs; ++i){
-		pipeSendCounts[i] = pipeSendDispls[i] = 0;
-		pipeRecvCounts[i] = pipeRecvDispls[i] = 0;
+		pipeSendCounts[i] = pipeSendDispls[i] = pipeRecvCounts[i] = 0;
 	}
 }
 
@@ -1572,9 +1581,9 @@ void Inspector::pipe_receive(int iter){
 
 		pipe_reset_counts_and_displs();
 
-		// Prepare structures for receiving
 		for (int iProc = 0; iProc < nProcs; ++iProc){
 
+			// Prepare structures for receiving
 			for (global_loop::ArrayIDList::iterator
 				     arrayIt = myLoop->used_arrays_begin(iProc),
 				     arrayEnd = myLoop->used_arrays_end(iProc);
@@ -1586,24 +1595,17 @@ void Inspector::pipe_receive(int iter){
 					localArray->pipe_get_recvcounts(iter, iProc);
 			}
 
+			char* received = pipeRecvBuf[iProc];
 			if (pipeRecvCounts[iProc] != 0)
-				MPI_Recv(pipeRecvBuf + pipeRecvDispls[iProc],
+				MPI_Recv(received,
 				         pipeRecvCounts[iProc],
 				         MPI_BYTE,
 				         iProc,
 				         PIPE_TAG,
 				         global_comm::global_iec_communicator,
 				         MPI_STATUS_IGNORE);
-			// Update the displacements for the next process
-			if (iProc + 1 < nProcs)
-				pipeRecvDispls[iProc + 1] =
-					pipeRecvDispls[iProc] + pipeRecvCounts[iProc];
-		}
 
-		// Move received data to the local array
-		char* received = pipeRecvBuf;
-		for (int iProc = 0; iProc < nProcs; ++iProc){
-
+			// Move received data to the local array
 			for (global_loop::ArrayIDList::iterator
 				     arrayIt = myLoop->used_arrays_begin(iProc),
 				     arrayEnd = myLoop->used_arrays_end(iProc);
@@ -1615,7 +1617,6 @@ void Inspector::pipe_receive(int iter){
 				received += localArray->pipe_get_recvcounts(iter, iProc);
 			}
 		}
-
 	}
 }
 
