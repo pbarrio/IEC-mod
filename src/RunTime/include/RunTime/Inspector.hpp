@@ -119,10 +119,17 @@ private:
 	/// Contains, for each iteration here, the iteration in the producers after
 	/// which it is safe to start computations (because we have all required
 	/// data).
-	std::vector<int> safeIter;
+	//std::vector<int> safeIter;
+	std::vector<std::map<int, int> > safeIter;
 
 	/// For each producer, last iteration that we have received from it
 	std::map<int, int> lastReceived;
+
+	/// For each producer, a data structure to wait on the current comm to end.
+	MPI_Request* internalMPIRequest;
+
+	/// A convenient mapping between producers and their assigned wait structure
+	std::map<int, MPI_Request*> recvWaitStruct;
 
 	/**
 	 * \brief Returns the team ID of a process
@@ -422,11 +429,13 @@ public:
 	}
 
 	// Communication functions between producers and consumers
-	void pipe_receive(int iter);
-	void pipe_send(int iter);
+	void pipe_initial_receive();
+	void pipe_receive(int);
+	void pipe_send(int);
 
 protected:
 
+	bool internal_issue_recv(int, int);
 	bool pipe_ready(int);
 };
 

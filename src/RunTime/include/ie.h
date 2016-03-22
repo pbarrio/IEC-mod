@@ -81,8 +81,10 @@ extern void free_2d_float(float**);
  */
 extern void pipe_init_loop(const int, const int[], const int[], const int[],
                            const int[], const int);
-extern void pipe_endExternalIter();
-extern void pipe_communicate(int);
-
+void pipe_calculate_info();
+void pipe_endExternalIter();
+void pipe_send(int);
+void pipe_initial_receive();
+void pipe_receive(int);
 
 #endif

@@ -121,7 +121,8 @@ protected:
 
 	/// For each iteration, the corresponding iteration in the producer that
 	/// ensures that we have all the required data (in this array) to start
-	/// doing the computations.
+	/// doing the computations. THIS IS PROBABLY WRONG, because we may have more
+	/// than one producer per array (e.g. different processes in the same team).
 	std::vector<int> producerIter;
 
 public:

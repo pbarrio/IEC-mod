@@ -239,6 +239,9 @@ Inspector::~Inspector(){
 	for (int iProc = 0; iProc < nProcs; ++iProc)
 		if (pipeRecvBuf[iProc])
 			delete pipeRecvBuf[iProc];
+
+	if (internalMPIRequest)
+		delete [] internalMPIRequest;
 }
 
 
@@ -1496,12 +1499,10 @@ void Inspector::pipe_calculate_comm_info(){
 	 * RECEIVE INFO
 	 */
 
-	safeIter.resize(myLoop->num_iters, 0);
+	// Make a list with all the producers for this process
+	std::set<int> allProducers;
+	safeIter.resize(myLoop->num_iters);
 	for (int iter = 0; iter < myLoop->num_iters; ++iter){
-
-		// We must wait at least as much as the previous iteration
-		if (iter > 0)
-			safeIter[iter] = safeIter[iter - 1];
 
 		for (global_loop::ArrayIDList::iterator
 			     aIt = myLoop->used_arrays_begin(procId),
@@ -1509,10 +1510,31 @@ void Inspector::pipe_calculate_comm_info(){
 		     aIt != aEnd;
 		     ++aIt){
 
-			int safe = allData[*aIt]->pipe_safe_iteration(iter);
-			if (safeIter[iter] < safe)
-				safeIter[iter] = safe;
+			std::map<int, int> countMap = allData[*aIt]->pipeRecvCounts[iter];
+			for (std::map<int, int>::iterator
+				     procIt = countMap.begin(),
+				     procEnd = countMap.end();
+			     procIt != procEnd;
+			     ++procIt){
+
+				int producer = procIt->first;
+				int nBytes = procIt->second;
+
+				if (nBytes != 0)
+					allProducers.insert(producer);
+
+				int safe = allData[*aIt]->pipe_safe_iteration(iter);
+				if (safeIter[iter][producer] < safe)
+					safeIter[iter][producer] = safe;
+			}
 		}
+	}
+
+	// Init required MPI structures for unblocking receives
+	internalMPIRequest = new MPI_Request[allProducers.size()];
+	for (int iProc = 0; iProc < allProducers.size(); ++iProc){
+		recvWaitStruct[iProc] = internalMPIRequest + iProc;
+		lastReceived[iProc] = -1;
 	}
 }
 
@@ -1548,8 +1570,6 @@ void Inspector::pipe_init_comm_structs(){
 	     ++pIt)
 
 		pipeRecvBuf[pIt->first] = (char*)malloc(maxItemsRecvd * sizeof(char));
-
-	lastReceived[0] = -1;
 }
 
 
@@ -1560,64 +1580,6 @@ void Inspector::pipe_reset_counts_and_displs(){
 
 	for (int i = 0; i < nProcs; ++i){
 		pipeSendCounts[i] = pipeSendDispls[i] = pipeRecvCounts[i] = 0;
-	}
-}
-
-
-/**
- * \brief Gets data from producers
- *
- * This function must be called before the start of the iteration. It will
- * take care of receiving data needed for the next iteration from the
- * producers. This function assumes that each process only computes
- * one loop. All other loops are consumers, producers or unrelated loops.
- *
- * \param iter The iteration of the loop that is about to start.
- */
-void Inspector::pipe_receive(int iter){
-
-	lastReceived[0] = (iter == 0 ? 0 : safeIter[iter - 1] + 1);
-
-	while (!pipe_ready(iter)){
-
-		pipe_reset_counts_and_displs();
-
-		for (int iProc = 0; iProc < nProcs; ++iProc){
-
-			// Prepare structures for receiving
-			for (global_loop::ArrayIDList::iterator
-				     arrayIt = myLoop->used_arrays_begin(iProc),
-				     arrayEnd = myLoop->used_arrays_end(iProc);
-			     arrayIt != arrayEnd;
-			     ++arrayIt){
-
-				local_data* localArray = allLocalData[*arrayIt];
-				pipeRecvCounts[iProc] +=
-					localArray->pipe_get_recvcounts(iter, iProc);
-			}
-
-			char* received = pipeRecvBuf[iProc];
-			if (pipeRecvCounts[iProc] != 0)
-				MPI_Recv(received,
-				         pipeRecvCounts[iProc],
-				         MPI_BYTE,
-				         iProc,
-				         PIPE_TAG,
-				         global_comm::global_iec_communicator,
-				         MPI_STATUS_IGNORE);
-
-			// Move received data to the local array
-			for (global_loop::ArrayIDList::iterator
-				     arrayIt = myLoop->used_arrays_begin(iProc),
-				     arrayEnd = myLoop->used_arrays_end(iProc);
-			     arrayIt != arrayEnd;
-			     ++arrayIt){
-
-				local_data* localArray = allLocalData[*arrayIt];
-				localArray->pipe_update(iter, iProc, received);
-				received += localArray->pipe_get_recvcounts(iter, iProc);
-			}
-		}
 	}
 }
 
@@ -1679,6 +1641,87 @@ void Inspector::pipe_send(int iter){
 }
 
 
+void Inspector::pipe_initial_receive(){
+
+	for (std::map<int, MPI_Request*>::iterator
+		     prodIt = recvWaitStruct.begin(), prodEnd = recvWaitStruct.end();
+	     prodIt != prodEnd;
+	     ++prodIt){
+
+		// Try to receive from the producer in that iteration until we find the
+		// first iteration where we really have to receive something from it.
+		for (int iter = 0; !internal_issue_recv(iter, prodIt->first); ++iter);
+	}
+}
+
+
+/**
+ * \brief Gets data from producers
+ *
+ * This function must be called before the start of the iteration. It will
+ * take care of receiving data needed for the next iteration from the
+ * producers. This function assumes that each process only computes
+ * one loop. All other loops are consumers, producers or unrelated loops.
+ */
+void Inspector::pipe_receive(int iter){
+
+	while (!pipe_ready(iter)){
+
+		int receivedProd;
+		MPI_Waitany(recvWaitStruct.size(), internalMPIRequest, &receivedProd,
+		            MPI_STATUS_IGNORE);
+
+		// Move received data to the local array
+		char* received = pipeRecvBuf[receivedProd];
+		for (global_loop::ArrayIDList::iterator
+			     arrayIt = myLoop->used_arrays_begin(receivedProd),
+			     arrayEnd = myLoop->used_arrays_end(receivedProd);
+		     arrayIt != arrayEnd;
+		     ++arrayIt){
+
+			local_data* localArray = allLocalData[*arrayIt];
+			localArray->pipe_update(iter, receivedProd, received);
+			received += localArray->pipe_get_recvcounts(iter, receivedProd);
+		}
+
+		lastReceived[receivedProd] += 1;
+		internal_issue_recv(lastReceived[receivedProd] + 1, receivedProd);
+	}
+}
+
+
+bool Inspector::internal_issue_recv(int iter, int iProc){
+
+	pipe_reset_counts_and_displs();
+
+	// Prepare structures for receiving
+	for (global_loop::ArrayIDList::iterator
+		     arrayIt = myLoop->used_arrays_begin(iProc),
+		     arrayEnd = myLoop->used_arrays_end(iProc);
+	     arrayIt != arrayEnd;
+	     ++arrayIt){
+
+		local_data* localArray = allLocalData[*arrayIt];
+		pipeRecvCounts[iProc] +=
+			localArray->pipe_get_recvcounts(iter, iProc);
+	}
+
+	char* received = pipeRecvBuf[iProc];
+	if (pipeRecvCounts[iProc] != 0){
+		MPI_Irecv(received,
+		          pipeRecvCounts[iProc],
+		          MPI_BYTE,
+		          iProc,
+		          PIPE_TAG,
+		          global_comm::global_iec_communicator,
+		          recvWaitStruct[iProc]);
+		return true;
+	}
+
+	return false;
+}
+
+
 /*
  * \brief Check that this process received everything needed for this iteration.
  *
@@ -1686,5 +1729,18 @@ void Inspector::pipe_send(int iter){
  */
 bool Inspector::pipe_ready(int iter){
 
-	return safeIter[iter] <= lastReceived[0];
+	for (std::map<int, MPI_Request*>::iterator
+		     procIt = recvWaitStruct.begin(),
+		     procEnd = recvWaitStruct.end();
+	     procIt != procEnd;
+	     ++procIt){
+
+		int producer = procIt->first;
+		if (lastReceived[producer] < safeIter[iter][producer])
+			return false;
+	}
+
+	return true;
+
+	// return safeIter[iter] <= lastReceived[0];
 }

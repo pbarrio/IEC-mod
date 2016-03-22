@@ -609,6 +609,11 @@ extern "C" {
 	}
 
 
+	void pipe_initial_receive(){
+		Inspector::instance()->pipe_initial_receive();
+	}
+
+
 	void pipe_receive(int iter){
 		Inspector::instance()->pipe_receive(iter);
 	}
