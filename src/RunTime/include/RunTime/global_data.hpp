@@ -77,6 +77,9 @@ private:
 	/// for more data.
 	ArrayUseMap initialUse;
 
+	/// The producer that gives us the data (in case we use this array)
+	int producer;
+
 protected:
 
 	/// Our process Id

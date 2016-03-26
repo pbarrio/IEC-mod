@@ -132,7 +132,7 @@ void global_data::pipe_calc_sends(int myLoop){
  */
 void global_data::pipe_calc_recvs(){
 
-	int producer = -1;
+	producer = -1;
 
 	// Find the latest loop that writes to this array before our loop
 	for (global_data::LoopNets::iterator netIt = data_net_info.begin(),
