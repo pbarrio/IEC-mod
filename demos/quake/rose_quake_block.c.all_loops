@@ -722,7 +722,7 @@ int main(int argc,char **argv)
 	const int readInLoop7[8] = {1, 1, 1, 1, 1, 1, 1, 1};
 	const int readInLoop8[3] = {1, 1, 1};
 	const int readInLoop9[3] = {0, 1, 1};
-	const int readInLoop10[1] = {1};
+	const int readInLoop10[1] = {0};
 	const int readInLoop11[3] = {1, 1, 1};
 	const int readInLoop12[8] = {1, 1, 1, 1, 1, 1, 1, 1};
 	const int readInLoop13[3] = {1, 1, 1};
@@ -2177,10 +2177,9 @@ int main(int argc,char **argv)
 			 * LOOP 5
 			 */
 			__body_5__ = 0;
-			pipe_initial_receive();
-			for (i = 0; i < __nlocal_5__; ++i) {
 
-				pipe_receive(i);
+			// Team 5 doesn't receive from anyone (no pipe_receive)
+			for (i = 0; i < __nlocal_5__; ++i) {
 
 				for (j = 0; j < 3; j++) {
 					__local_disp2__[i][j] = 0.0;;
@@ -2363,10 +2362,9 @@ int main(int argc,char **argv)
 			 * LOOP 10
 			 */
 			__body_10__ = 0;
-			pipe_initial_receive();
-			for (i = 0; i < __nlocal_10__; ++i) {
 
-				pipe_receive(i);
+			// Team 10 doesn't receive from anyone (no pipe_receive)
+			for (i = 0; i < __nlocal_10__; ++i) {
 
 				for (j = 0; j < 3; j++) {
 					__local_disp1__[i][j] = 0.0;;
