@@ -236,9 +236,14 @@ Inspector::~Inspector(){
 	if (pipeSendBuf)
 		delete pipeSendBuf;
 
-	for (int iProc = 0; iProc < nProcs; ++iProc)
-		if (pipeRecvBuf[iProc])
-			delete pipeRecvBuf[iProc];
+	for (std::map<int, char*>::iterator
+		     buf = pipeRecvBuf.begin(),
+		     end = pipeRecvBuf.end();
+	     buf != end;
+	     ++buf)
+
+		if (buf->second)
+			free(pipeRecvBuf[buf->first]);
 
 	if (internalMPIRequest)
 		delete [] internalMPIRequest;
@@ -1501,31 +1506,26 @@ void Inspector::pipe_calculate_comm_info(){
 		     aIt != aEnd;
 		     ++aIt){
 
-			std::map<int, int> countMap = allData[*aIt]->pipeRecvCounts[iter];
-			for (std::map<int, int>::iterator
-				     procIt = countMap.begin(),
-				     procEnd = countMap.end();
-			     procIt != procEnd;
-			     ++procIt){
-
-				int producer = procIt->first;
-				int nBytes = procIt->second;
-
-				if (nBytes != 0)
-					allProducers.insert(producer);
-
-				int safe = allData[*aIt]->pipe_safe_iteration(iter);
-				if (safeIter[iter][producer] < safe)
-					safeIter[iter][producer] = safe;
-			}
+			local_data* localArray = allLocalData[*aIt];
+			global_data* globalArray = allData[*aIt];
+			int producer = globalArray->producer;
+			if (producer >= 0)
+				allProducers.insert(producer);
+			int safe = globalArray->pipe_safe_iteration(iter);
+			if (safeIter[iter][producer] < safe)
+				safeIter[iter][producer] = safe;
 		}
 	}
 
 	// Init required MPI structures for unblocking receives
 	internalMPIRequest = new MPI_Request[allProducers.size()];
-	for (int iProc = 0; iProc < allProducers.size(); ++iProc){
-		recvWaitStruct[iProc] = internalMPIRequest + iProc;
-		receivedSoFar[iProc] = -1;
+	int iPos = 0;
+	for (std::set<int>::iterator iProc = allProducers.begin();
+	     iProc != allProducers.end(); ++iProc, iPos++){
+
+		recvWaitStruct[*iProc] = internalMPIRequest + iPos;
+		recvWaitStructInv[iPos] = *iProc;
+		receivedSoFar[*iProc] = -1;
 	}
 }
 
@@ -1565,12 +1565,12 @@ void Inspector::pipe_init_comm_structs(){
 
 
 /**
- * \brief Zeroes all pipeline communication control arrays (counts, displs)
+ * \brief Zeroes all send pipeline communication control arrays (counts, displs)
  */
 void Inspector::pipe_reset_counts_and_displs(){
 
 	for (int i = 0; i < nProcs; ++i){
-		pipeSendCounts[i] = pipeSendDispls[i] = pipeRecvCounts[i] = 0;
+		pipeSendCounts[i] = pipeSendDispls[i] = 0;
 	}
 }
 
@@ -1680,9 +1680,18 @@ void Inspector::pipe_receive(int iter){
 
 	while (!pipe_ready(iter)){
 
-		int receivedProd;
-		MPI_Waitany(recvWaitStruct.size(), internalMPIRequest, &receivedProd,
+		int receivedIdx;
+		MPI_Waitany(recvWaitStruct.size(), internalMPIRequest, &receivedIdx,
 		            MPI_STATUS_IGNORE);
+		assert(receivedIdx != MPI_UNDEFINED);
+		int receivedProd = recvWaitStructInv[receivedIdx];
+		int& iterReceivedFromProd = receivedSoFar[receivedProd];
+		iterReceivedFromProd++;
+
+#ifndef NDEBUG
+	cout << "[Proc " << procId << "] Received iter " << iterReceivedFromProd
+	     << " for producer " << receivedProd << " DONE" << endl;
+#endif
 
 		// Move received data to the local array
 		char* receivedData = pipeRecvBuf[receivedProd];
@@ -1693,11 +1702,14 @@ void Inspector::pipe_receive(int iter){
 		     ++arrayIt){
 
 			local_data* localArray = allLocalData[*arrayIt];
-			localArray->pipe_update(iter, receivedProd, receivedData);
-			receivedData += localArray->pipe_get_recvcounts(iter, receivedProd);
+			localArray->pipe_update(iterReceivedFromProd,
+			                        receivedProd,
+			                        receivedData);
+			receivedData += localArray->pipe_get_recvcounts
+				(iterReceivedFromProd, receivedProd);
 		}
 
-		internal_issue_recv(lastReceived[receivedProd] + 1, receivedProd);
+		internal_issue_recv(iterReceivedFromProd + 1, receivedProd);
 	}
 
 #ifndef NDEBUG
@@ -1712,7 +1724,8 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
 	cout << "[Proc " << procId << "] Issuing receive " << (iter)
 	     << " for producer " << iProc << endl;
 #endif
-	pipe_reset_counts_and_displs();
+
+	pipeRecvCounts[iProc] = 0;
 
 	// Prepare structures for receiving
 	for (global_loop::ArrayIDList::iterator

@@ -119,7 +119,6 @@ private:
 	/// Contains, for each iteration here, the iteration in the producers after
 	/// which it is safe to start computations (because we have all required
 	/// data).
-	//std::vector<int> safeIter;
 	std::vector<std::map<int, int> > safeIter;
 
 	/// For each producer, how many iterations we have received from it.
@@ -128,8 +127,14 @@ private:
 	/// For each producer, a data structure to wait on the current comm to end.
 	MPI_Request* internalMPIRequest;
 
-	/// A convenient mapping between producers and their assigned wait structure.
+	/// A convenient mapping between producers and their assigned wait
+	/// structure. This is the forward mapping (producer -> MPI_Request)
 	std::map<int, MPI_Request*> recvWaitStruct;
+
+	/// A convenient mapping between producers and their assigned wait
+	/// structure. This is the reverse mapping (index in the MPI_Request array
+	/// -> producer)
+	std::map<int, int> recvWaitStructInv;
 
 	/**
 	 * \brief Returns the team ID of a process
