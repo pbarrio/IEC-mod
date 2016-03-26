@@ -28,7 +28,7 @@ class global_loop{
 
 public:
 	typedef std::set<int> ArrayIDList;
-	typedef std::map<int, ArrayIDList> ArraysPerProcess;
+	typedef std::map<int, ArrayIDList> ArraysPerIter;
 
 private:
 
@@ -43,11 +43,11 @@ private:
 
 	int nproc_local;
 
-	/// Arrays needed in this loop (per producer)
-	ArraysPerProcess usedArrays;
+	/// Arrays needed in each iteration of this loop
+	ArraysPerIter usedArrays;
 
 	/// Arrays calculated in this loop (per consumer)
-	ArraysPerProcess computedArrays;
+	ArraysPerIter computedArrays;
 
 public:
 
@@ -77,28 +77,28 @@ public:
 	bool is_consumer(){return type == CONSUMER;}
 	bool is_my_loop(){return type == MY_LOOP;}
 
-	void add_used_array(int proc, int arrayID){
-		usedArrays[proc].insert(arrayID);
+	void add_used_array(int iter, int arrayID){
+		usedArrays[iter].insert(arrayID);
 	}
 
-	void add_computed_array(int proc, int arrayID){
-		computedArrays[proc].insert(arrayID);
+	void add_computed_array(int iter, int arrayID){
+		computedArrays[iter].insert(arrayID);
 	}
 
-	ArrayIDList::iterator computed_arrays_begin(int proc){
-		return computedArrays[proc].begin();
+	ArrayIDList::iterator computed_arrays_begin(int iter){
+		return computedArrays[iter].begin();
 	}
 
-	ArrayIDList::iterator computed_arrays_end(int proc){
-		return computedArrays[proc].end();
+	ArrayIDList::iterator computed_arrays_end(int iter){
+		return computedArrays[iter].end();
 	}
 
-	ArrayIDList::iterator used_arrays_begin(int proc){
-		return usedArrays[proc].begin();
+	ArrayIDList::iterator used_arrays_begin(int iter){
+		return usedArrays[iter].begin();
 	}
 
-	ArrayIDList::iterator used_arrays_end(int proc){
-		return usedArrays[proc].end();
+	ArrayIDList::iterator used_arrays_end(int iter){
+		return usedArrays[iter].end();
 	}
 
 	friend class Inspector;

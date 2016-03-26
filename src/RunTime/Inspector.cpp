@@ -1496,8 +1496,8 @@ void Inspector::pipe_calculate_comm_info(){
 	for (int iter = 0; iter < myLoop->num_iters; ++iter){
 
 		for (global_loop::ArrayIDList::iterator
-			     aIt = myLoop->used_arrays_begin(procId),
-			     aEnd = myLoop->used_arrays_end(procId);
+			     aIt = myLoop->used_arrays_begin(iter),
+			     aEnd = myLoop->used_arrays_end(iter);
 		     aIt != aEnd;
 		     ++aIt){
 
@@ -1601,8 +1601,8 @@ void Inspector::pipe_send(int iter){
 
 		// This is the "send" part
 		for (global_loop::ArrayIDList::iterator
-			     arrayIt = myLoop->computed_arrays_begin(iProc),
-			     arrayEnd = myLoop->computed_arrays_end(iProc);
+			     arrayIt = myLoop->computed_arrays_begin(iter),
+			     arrayEnd = myLoop->computed_arrays_end(iter);
 		     arrayIt != arrayEnd;
 		     ++arrayIt){
 
@@ -1687,8 +1687,8 @@ void Inspector::pipe_receive(int iter){
 		// Move received data to the local array
 		char* receivedData = pipeRecvBuf[receivedProd];
 		for (global_loop::ArrayIDList::iterator
-			     arrayIt = myLoop->used_arrays_begin(receivedProd),
-			     arrayEnd = myLoop->used_arrays_end(receivedProd);
+			     arrayIt = myLoop->used_arrays_begin(iterReceivedFromProd),
+			     arrayEnd = myLoop->used_arrays_end(iterReceivedFromProd);
 		     arrayIt != arrayEnd;
 		     ++arrayIt){
 
@@ -1716,8 +1716,8 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
 
 	// Prepare structures for receiving
 	for (global_loop::ArrayIDList::iterator
-		     arrayIt = myLoop->used_arrays_begin(iProc),
-		     arrayEnd = myLoop->used_arrays_end(iProc);
+		     arrayIt = myLoop->used_arrays_begin(iter),
+		     arrayEnd = myLoop->used_arrays_end(iter);
 	     arrayIt != arrayEnd;
 	     ++arrayIt){
 
