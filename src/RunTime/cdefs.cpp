@@ -78,10 +78,6 @@ extern "C" {
 			Inspector::instance(md, np, team, pid_team, teamsize, nloops, ndata,
 			                    nac, nic, ndc, ro);
 		scalar_holder = new double[1];
-#ifndef NDEBUG
-		fprintf(stdout, "PID:%d,Creating inspector:%p\n", md, new_inspector);
-		fflush(stdout);
-#endif
 	}
 
 
@@ -363,23 +359,9 @@ extern "C" {
 	void setup_executor(){
 
 		Inspector::instance()->pipe_init_comm_structs();
-
 		Inspector::instance()->GenerateGhosts();
-
-#ifndef NDEBUG
-		printf("LocalGhostsDone\n");
-		fflush(stdout);
-#endif
-
 		Inspector::instance()->CommunicateGhosts();
-
-#ifndef NDEBUG
-		printf("Global ghosts done\n");
-		fflush(stdout);
-#endif
-
 		Inspector::instance()->GenerateOwned();
-
 		Inspector::instance()->GetBufferSize();
 		inspector_stop = rtclock();
 		if (Inspector::instance()->get_proc_id() == 0)

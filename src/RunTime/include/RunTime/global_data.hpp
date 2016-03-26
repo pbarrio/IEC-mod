@@ -112,7 +112,7 @@ protected:
 	CountsPerProcPerIter pipeSendCounts;
 
 	/// For each iteration and producer, a list of positions in the local array
-	/// that we need to receive from the the producer.
+	/// that we need to receive from the producer.
 	IdxsPerProcPerIter pipeRecvIndexes;
 
 	/// For each iteration and consumer, a list of positions in the local array

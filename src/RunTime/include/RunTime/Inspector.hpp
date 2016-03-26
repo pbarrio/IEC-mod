@@ -122,13 +122,13 @@ private:
 	//std::vector<int> safeIter;
 	std::vector<std::map<int, int> > safeIter;
 
-	/// For each producer, last iteration that we have received from it
-	std::map<int, int> lastReceived;
+	/// For each producer, how many iterations we have received from it.
+	std::map<int, int> receivedSoFar;
 
 	/// For each producer, a data structure to wait on the current comm to end.
 	MPI_Request* internalMPIRequest;
 
-	/// A convenient mapping between producers and their assigned wait structure
+	/// A convenient mapping between producers and their assigned wait structure.
 	std::map<int, MPI_Request*> recvWaitStruct;
 
 	/**

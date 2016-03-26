@@ -1147,15 +1147,6 @@ void Inspector::GetBufferSize(){
 		global_comm::write_recv_start_request = new MPI_Request[array_size];
 		global_comm::write_recv_signal = new char[array_size];
 	}
-
-
-#ifndef NDEBUG
-	printf("PID:%d,SendBufferSize:%d,", procId, global_comm::max_send_size);
-	printf("Send_Buffer:%p, ", global_comm::send_buffer);
-	printf("RecvBufferSize:%d, ", global_comm::max_recv_size);
-	printf("RecvBuffer:%p\n", global_comm::recv_buffer);
-	fflush(stdout);
-#endif
 }
 
 
@@ -1534,7 +1525,7 @@ void Inspector::pipe_calculate_comm_info(){
 	internalMPIRequest = new MPI_Request[allProducers.size()];
 	for (int iProc = 0; iProc < allProducers.size(); ++iProc){
 		recvWaitStruct[iProc] = internalMPIRequest + iProc;
-		lastReceived[iProc] = -1;
+		receivedSoFar[iProc] = -1;
 	}
 }
 
@@ -1596,6 +1587,10 @@ void Inspector::pipe_reset_counts_and_displs(){
  */
 void Inspector::pipe_send(int iter){
 
+#ifndef NDEBUG
+	cout << "[Proc " << procId << "] Sending" << endl;
+#endif
+
 	pipe_reset_counts_and_displs();
 
 	int nReqs = 0;
@@ -1638,10 +1633,18 @@ void Inspector::pipe_send(int iter){
 
 	if (nReqs != 0)
 		MPI_Waitall(nReqs, reqs, MPI_STATUS_IGNORE);
+
+#ifndef NDEBUG
+	cout << "[Proc " << procId << "] Sending DONE" << endl;
+#endif
 }
 
 
 void Inspector::pipe_initial_receive(){
+
+#ifndef NDEBUG
+	cout << "[Proc " << procId << "] Issuing initial receives" << endl;
+#endif
 
 	for (std::map<int, MPI_Request*>::iterator
 		     prodIt = recvWaitStruct.begin(), prodEnd = recvWaitStruct.end();
@@ -1650,8 +1653,14 @@ void Inspector::pipe_initial_receive(){
 
 		// Try to receive from the producer in that iteration until we find the
 		// first iteration where we really have to receive something from it.
-		for (int iter = 0; !internal_issue_recv(iter, prodIt->first); ++iter);
+		int iter;
+		int prod = prodIt->first;
+		for (iter = 0; !internal_issue_recv(iter, prodIt->first); ++iter);
 	}
+
+#ifndef NDEBUG
+	cout << "[Proc " << procId << "] Issuing initial receives DONE" << endl;
+#endif
 }
 
 
@@ -1665,6 +1674,10 @@ void Inspector::pipe_initial_receive(){
  */
 void Inspector::pipe_receive(int iter){
 
+#ifndef NDEBUG
+	cout << "[Proc " << procId << "] Receiving for local iter " << iter << endl;
+#endif
+
 	while (!pipe_ready(iter)){
 
 		int receivedProd;
@@ -1672,7 +1685,7 @@ void Inspector::pipe_receive(int iter){
 		            MPI_STATUS_IGNORE);
 
 		// Move received data to the local array
-		char* received = pipeRecvBuf[receivedProd];
+		char* receivedData = pipeRecvBuf[receivedProd];
 		for (global_loop::ArrayIDList::iterator
 			     arrayIt = myLoop->used_arrays_begin(receivedProd),
 			     arrayEnd = myLoop->used_arrays_end(receivedProd);
@@ -1680,18 +1693,25 @@ void Inspector::pipe_receive(int iter){
 		     ++arrayIt){
 
 			local_data* localArray = allLocalData[*arrayIt];
-			localArray->pipe_update(iter, receivedProd, received);
-			received += localArray->pipe_get_recvcounts(iter, receivedProd);
+			localArray->pipe_update(iter, receivedProd, receivedData);
+			receivedData += localArray->pipe_get_recvcounts(iter, receivedProd);
 		}
 
-		lastReceived[receivedProd] += 1;
 		internal_issue_recv(lastReceived[receivedProd] + 1, receivedProd);
 	}
+
+#ifndef NDEBUG
+	cout << "[Proc " << procId << "] Receiving DONE" << endl;
+#endif
 }
 
 
 bool Inspector::internal_issue_recv(int iter, int iProc){
 
+#ifndef NDEBUG
+	cout << "[Proc " << procId << "] Issuing receive " << (iter)
+	     << " for producer " << iProc << endl;
+#endif
 	pipe_reset_counts_and_displs();
 
 	// Prepare structures for receiving
@@ -1706,9 +1726,8 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
 			localArray->pipe_get_recvcounts(iter, iProc);
 	}
 
-	char* received = pipeRecvBuf[iProc];
 	if (pipeRecvCounts[iProc] != 0){
-		MPI_Irecv(received,
+		MPI_Irecv(pipeRecvBuf[iProc],
 		          pipeRecvCounts[iProc],
 		          MPI_BYTE,
 		          iProc,
@@ -1736,11 +1755,23 @@ bool Inspector::pipe_ready(int iter){
 	     ++procIt){
 
 		int producer = procIt->first;
-		if (lastReceived[producer] < safeIter[iter][producer])
+		if (receivedSoFar[producer] < safeIter[iter][producer]){
+
+#ifndef NDEBUG
+			cout << "[Proc " << procId << "] Have iter "
+			     << receivedSoFar[producer] << " from producer " << producer
+			     << ", need at least iter " << safeIter[iter][producer]
+			     << ". NOT READY." << endl;
+#endif
 			return false;
+		}
+
+#ifndef NDEBUG
+		cout << "[Proc " << procId << "] Have iter "
+		     << receivedSoFar[producer] << " from producer " << producer
+		     << ", need at least iter " << safeIter[iter][producer]
+		     << ". CONTINUE." << endl;
+#endif
 	}
-
 	return true;
-
-	// return safeIter[iter] <= lastReceived[0];
 }

@@ -2010,7 +2010,7 @@ int main(int argc,char **argv)
 			__body_i_6__ = 0;
 			/* communicate_reads(1); */
 			init_write_ghosts(1);
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_1__; ++i) {
 
 				pipe_receive(i);
@@ -2102,7 +2102,7 @@ int main(int argc,char **argv)
 			 * LOOP 2
 			 */
 			__body_2__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_2__; ++i) {
 
 				pipe_receive(i);
@@ -2123,7 +2123,6 @@ int main(int argc,char **argv)
 
 				pipe_send(i);
 			}
-
 		}
 
 		if (myTeam == 3){
@@ -2132,7 +2131,7 @@ int main(int argc,char **argv)
 			 * LOOP 3
 			 */
 			__body_3__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_3__; ++i) {
 
 				pipe_receive(i);
@@ -2155,7 +2154,7 @@ int main(int argc,char **argv)
 			 * LOOP 4
 			 */
 			__body_4__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_4__; ++i) {
 
 				pipe_receive(i);
@@ -2178,7 +2177,7 @@ int main(int argc,char **argv)
 			 * LOOP 5
 			 */
 			__body_5__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_5__; ++i) {
 
 				pipe_receive(i);
@@ -2201,7 +2200,7 @@ int main(int argc,char **argv)
 			__body_i_11__ = 0;
 			/* communicate_reads(6); */
 			init_write_ghosts(6);
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_6__; ++i) {
 
 				pipe_receive(i);
@@ -2291,7 +2290,7 @@ int main(int argc,char **argv)
 			 * LOOP 7
 			 */
 			__body_7__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_7__; ++i) {
 
 				pipe_receive(i);
@@ -2320,7 +2319,7 @@ int main(int argc,char **argv)
 			 * LOOP 8
 			 */
 			__body_8__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_8__; ++i) {
 
 				pipe_receive(i);
@@ -2342,7 +2341,7 @@ int main(int argc,char **argv)
 			 * LOOP 9
 			 */
 			__body_9__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_9__; ++i) {
 
 				pipe_receive(i);
@@ -2364,7 +2363,7 @@ int main(int argc,char **argv)
 			 * LOOP 10
 			 */
 			__body_10__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_10__; ++i) {
 
 				pipe_receive(i);
@@ -2387,7 +2386,7 @@ int main(int argc,char **argv)
 			__body_i_16__ = 0;
 			/* communicate_reads(11); */
 			init_write_ghosts(11);
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_11__; ++i) {
 
 				pipe_receive(i);
@@ -2472,7 +2471,7 @@ int main(int argc,char **argv)
 			 * LOOP 12
 			 */
 			__body_12__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_12__; ++i) {
 
 				pipe_receive(i);
@@ -2501,7 +2500,7 @@ int main(int argc,char **argv)
 			 * LOOP 13
 			 */
 			__body_13__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_13__; ++i) {
 
 				pipe_receive(i);
@@ -2523,7 +2522,7 @@ int main(int argc,char **argv)
 			 * LOOP 14
 			 */
 			__body_14__ = 0;
-			initial_pipe_receive();
+			pipe_initial_receive();
 			for (i = 0; i < __nlocal_14__; ++i) {
 
 				pipe_receive(i);
