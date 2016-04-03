@@ -1587,7 +1587,7 @@ void Inspector::pipe_reset_counts_and_displs(){
  */
 void Inspector::pipe_send(int iter){
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Sending" << endl;
 #endif
 
@@ -1634,7 +1634,7 @@ void Inspector::pipe_send(int iter){
 	if (nReqs != 0)
 		MPI_Waitall(nReqs, reqs, MPI_STATUS_IGNORE);
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Sending DONE" << endl;
 #endif
 }
@@ -1642,7 +1642,7 @@ void Inspector::pipe_send(int iter){
 
 void Inspector::pipe_initial_receive(){
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Issuing initial receives" << endl;
 #endif
 
@@ -1658,7 +1658,7 @@ void Inspector::pipe_initial_receive(){
 		for (iter = 0; !internal_issue_recv(iter, prodIt->first); ++iter);
 	}
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Issuing initial receives DONE" << endl;
 #endif
 }
@@ -1674,7 +1674,7 @@ void Inspector::pipe_initial_receive(){
  */
 void Inspector::pipe_receive(int iter){
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Receiving for local iter " << iter << endl;
 #endif
 
@@ -1688,7 +1688,7 @@ void Inspector::pipe_receive(int iter){
 		int& iterReceivedFromProd = receivedSoFar[receivedProd];
 		iterReceivedFromProd++;
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Received iter " << iterReceivedFromProd
 	     << " for producer " << receivedProd << " DONE" << endl;
 #endif
@@ -1712,7 +1712,7 @@ void Inspector::pipe_receive(int iter){
 		internal_issue_recv(iterReceivedFromProd + 1, receivedProd);
 	}
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Receiving DONE" << endl;
 #endif
 }
@@ -1720,7 +1720,7 @@ void Inspector::pipe_receive(int iter){
 
 bool Inspector::internal_issue_recv(int iter, int iProc){
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Issuing receive " << (iter)
 	     << " for producer " << iProc << endl;
 #endif
@@ -1770,7 +1770,7 @@ bool Inspector::pipe_ready(int iter){
 		int producer = procIt->first;
 		if (receivedSoFar[producer] < safeIter[iter][producer]){
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 			cout << "[Proc " << procId << "] Have iter "
 			     << receivedSoFar[producer] << " from producer " << producer
 			     << ", need at least iter " << safeIter[iter][producer]
@@ -1779,7 +1779,7 @@ bool Inspector::pipe_ready(int iter){
 			return false;
 		}
 
-#ifndef NDEBUG
+#ifdef INSPECTOR_DBG
 		cout << "[Proc " << procId << "] Have iter "
 		     << receivedSoFar[producer] << " from producer " << producer
 		     << ", need at least iter " << safeIter[iter][producer]
