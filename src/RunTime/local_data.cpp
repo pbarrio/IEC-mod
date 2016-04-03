@@ -230,9 +230,7 @@ void local_data::RenumberOffsetArray(int array_size, int* offset_array,
 
 	for (int i = 0; i < array_size; i++){
 
-		int curr_index = offset_array[i];
-		int curr_posn = binary_search(direct_access_array, direct_access_size,
-		                              curr_index);
+		int curr_posn = GetLocalIndex(offset_array[i]);
 		if (curr_posn == -1){
 			offset_array[i] = -1;
 		}
