@@ -199,7 +199,6 @@ int local_data::GetLocalIndex(int global_index) const{
 		assert(indirect_access_size > 0);
 		local_index = binary_search(indirect_access_array, indirect_access_size,
 		                            global_index);
-		assert(local_index != -1);
 		local_index += direct_access_size;
 	}
 
