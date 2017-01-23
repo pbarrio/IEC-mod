@@ -19,8 +19,8 @@
 #ifndef __LOCAL_DATA_HPP__
 #define __LOCAL_DATA_HPP__
 
-#include <cstdio>
 #include <cassert>
+#include <cstdio>
 #include <vector>
 
 #include "RunTime/hypergraph.hpp"

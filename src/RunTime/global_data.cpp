@@ -154,8 +154,7 @@ void global_data::pipe_calc_recvs(){
 		int lastUse = finalUse[producer][index];
 		int firstUse = initialUse[procId][index];
 
-		pipeRecvIndexes[lastUse][producer]
-			.push_back(index);
+		pipeRecvIndexes[lastUse][producer].push_back(index);
 
 		// Mark the (producer) iteration where we will receive the data
 		if (producerIter.size() <= firstUse){

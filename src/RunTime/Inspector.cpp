@@ -1420,15 +1420,17 @@ void Inspector::PopulateLocalArray(int an, double* lb, double* oa, int st){
  *
  * Mark arrays as used
  *
- * \param loopID Loop identifier
- * \param usedArrays List of array identifiers used in this loop
+ * \param loopID Loop identifier.
+ * \param usedArrays List of array identifiers used in this loop.
  * \param readInfo Flags for each array in usedArrays; =1 if the array is read
- *                 in the loop
+ *                 in the loop.
  * \param writeInfo Flags for each array in usedArrays; =1 if the array is
- *                  written in the loop
+ *                  written in the loop.
  * \param lastWrite Flags for each array in usedArrays; =1 if the array is
- *                  written in this loop for the last time in the pipeline
- * \param nArrays Number of arrays used in the loop
+ *                  written in this loop for the last time in the pipeline.
+ * \param rNoPrevW Flags for each array in usedArrays; =1 if read and no
+ *                 previous write, and array is not read-only.
+ * \param nArrays Number of arrays used in the loop.
  */
 void Inspector::pipe_init_loop(const int loopID,
                                const int usedArrays[],
@@ -1567,7 +1569,7 @@ void Inspector::pipe_init_comm_structs(){
 /**
  * \brief Zeroes all send pipeline communication control arrays (counts, displs)
  */
-void Inspector::pipe_reset_counts_and_displs(){
+void Inspector::pipe_reset_counts_and_displs() {
 
 	for (int i = 0; i < nProcs; ++i){
 		pipeSendCounts[i] = pipeSendDispls[i] = 0;

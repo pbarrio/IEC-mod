@@ -687,12 +687,13 @@ void local_data_double::UpdateLocalOwned(local_data* source_array, int source){
 void local_data_double::PopulateGlobalArray(){
 
 	if (!is_read_only && !is_constrained){
-		memset((void*)orig_array,0,orig_array_size*stride*sizeof(double));
-		for( int i = 0 ; i < local_array_size ; i++ ){
+		memset((void*)orig_array, 0, orig_array_size * stride * sizeof(double));
+		for (int i = 0; i < local_array_size; i++){
 			int global_index = l_to_g[i];
-			if( global_index != -1 )
-				for( int j = 0 ; j < stride ; j++ )
-					orig_array[global_index*stride+j] = local_array[i*stride+j];
+			if(global_index != -1)
+				for (int j = 0; j < stride; j++)
+					orig_array[global_index * stride + j] =
+						local_array[i * stride + j];
 		}
 		MPI_Allreduce(MPI_IN_PLACE, orig_array, orig_array_size * stride,
 		              MPI_DOUBLE, MPI_SUM, global_comm::team_communicator);
