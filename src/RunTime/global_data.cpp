@@ -41,7 +41,7 @@ global_data::global_data(int proc, int mn, int oas, int of, bool iro):
 
 	// By default, assume that this array will be last written in the current
 	// loop. When we initialize the loops, we'll find out if it's not.
-	lastWriteInPipeline = true;
+	lastWriteInPipeline = -1;
 }
 
 
@@ -165,6 +165,29 @@ void global_data::pipe_calc_recvs(){
 	}
 }
 
+
+void global_data::pipe_calc_interiter_sends() {
+
+	// For all the readers of this array that need comms from a previous iter
+	for (std::set<int>::iterator loopIt = needsInterIterReceive.begin(),
+		     loopEnd = needsInterIterReceive.end();
+	     loopIt != loopEnd;
+	     ++loopIt)
+
+		// Register positions of the array to communicate to consumers
+		for (int index = 0; index < orig_array_size; ++index)
+			pipeInterIterSendIndexes[*loopIt].push_back(index);
+}
+
+void global_data::pipe_calc_interiter_recvs() {
+
+	if (needs_interiter_receive(procId)) {
+
+		unsigned sender = get_last_write_in_pipeline();
+		for (unsigned index = 0; index < orig_array_size; ++index)
+			pipeInterIterRecvIndexes[sender].push_back(index);
+	}
+}
 
 /**
  * \brief Constructor

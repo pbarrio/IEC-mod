@@ -112,6 +112,14 @@ protected:
 	/// that we need to send to the consumer.
 	global_data::IdxsPerProcPerIter pipeSendIndexes;
 
+	/// For each process that needs data from us in the next iteration, a list
+	/// of positions in the local array that we need to send.
+	global_data::IdxsPerProc pipeInterIterSendIndexes;
+
+	/// For each process from the previous iteration that needs to send us data,
+	/// a list of positions in the local array that we need to receive.
+	global_data::IdxsPerProc pipeInterIterRecvIndexes;
+
 	int GetLocalIndex(int global_index) const;
 
 public:
@@ -167,7 +175,7 @@ public:
 
 	virtual void InitWriteGhosts() = 0;
 
-	virtual int get_size() const = 0;
+	virtual int get_elem_size() const = 0;
 
 	virtual int get_stride_size() const = 0;
 
@@ -185,6 +193,46 @@ public:
 	 */
 	virtual int pipe_get_sendcounts(int iter, int proc) = 0;
 
+	global_data::IdxsPerProc::iterator interiter_send_indexes_begin(){
+		return pipeInterIterSendIndexes.begin();
+	}
+
+	global_data::IdxsPerProc::iterator interiter_send_indexes_end(){
+		return pipeInterIterSendIndexes.end();
+	}
+
+	std::vector<int>::iterator interiter_send_indexes_begin(unsigned p){
+		return pipeInterIterSendIndexes[p].begin();
+	}
+
+	std::vector<int>::iterator interiter_send_indexes_end(unsigned p){
+		return pipeInterIterSendIndexes[p].end();
+	}
+
+	global_data::IdxsPerProc::iterator interiter_recv_indexes_begin(){
+		return pipeInterIterRecvIndexes.begin();
+	}
+
+	global_data::IdxsPerProc::iterator interiter_recv_indexes_end(){
+		return pipeInterIterRecvIndexes.end();
+	}
+
+	std::vector<int>::iterator interiter_recv_indexes_begin(unsigned p){
+		return pipeInterIterRecvIndexes[p].begin();
+	}
+
+	std::vector<int>::iterator interiter_recv_indexes_end(unsigned p){
+		return pipeInterIterRecvIndexes[p].end();
+	}
+
+	unsigned get_num_interiter_sends(unsigned p) {
+		return pipeInterIterSendIndexes[p].size();
+	}
+
+	unsigned get_num_interiter_receives(unsigned p) {
+		return pipeInterIterRecvIndexes[p].size();
+	}
+
 	/**
 	 * \brief Get the receive size in bytes for an iteration and process
 	 */
@@ -193,9 +241,10 @@ public:
 	virtual int pipe_get_max_sendcounts() = 0;
 
 	virtual int pipe_get_max_recvcounts() = 0;
-
 	virtual int pipe_populate_send_buf(int, int, char*) = 0;
 	virtual void pipe_update(int, int, char*) = 0;
+	virtual unsigned pipe_populate_interiter_sends(int process, char* buffer) = 0;
+	virtual unsigned pipe_populate_interiter_recvs(int process, char* buffer) = 0;
 
 	friend class Inspector;
 };
@@ -218,9 +267,9 @@ public:
 
 	void PopulateLocalArray(const global_data*, double*, double*, int);
 
-	inline int get_size() const{return sizeof(double);}
+	inline int get_elem_size() const{return sizeof(double);}
 
-	inline int get_stride_size() const{return sizeof(double) * stride;}
+	inline int get_stride_size() const{return stride;}
 
 	void print_data();
 
@@ -272,8 +321,9 @@ public:
 	}
 
 	int pipe_populate_send_buf(int, int, char*);
-
 	void pipe_update(int, int, char*);
+	unsigned pipe_populate_interiter_sends(int, char*);
+	unsigned pipe_populate_interiter_recvs(int, char*);
 
 	friend class Inspector;
 };

@@ -549,28 +549,35 @@ extern "C" {
 	 * \param writeInfo Flags defining which of the arrays are written
 	 * \param lastWrite Flags for each array in usedArrays; =1 if the array is
 	 *                  written in this loop for the last time in the pipeline
+	 * \param rNoPrevW Flags for each array in usedArrays; =1 if read and no
+	 *                 previous write, and array is not read-only.
 	 * \param nArrays Number of arrays
 	 */
 	void pipe_init_loop(const int loop, const int usedArrays[],
 	                    const int readInfo[], const int writeInfo[],
-	                    const int lastWrite[], const int nArrays){
+	                    const int lastWrite[], const int rNoPrevW[],
+	                    const int nArrays){
 
 		// Transform rwInfo into booleans
 		bool* readInfoBool = new bool[nArrays];
 		bool* writeInfoBool = new bool[nArrays];
 		bool* lastWriteBool = new bool[nArrays];
+		bool* rNoPrevWBool = new bool[nArrays];
 		for (int i = 0; i < nArrays; ++i){
 			readInfoBool[i] = readInfo[i] == 0 ? false : true;
 			writeInfoBool[i] = writeInfo[i] == 0 ? false : true;
 			lastWriteBool[i] = lastWrite[i] == 0 ? false : true;
+			rNoPrevWBool[i] = rNoPrevW[i] == 0 ? false : true;
 		}
 
 		Inspector::instance()->pipe_init_loop(loop, usedArrays, readInfoBool,
 		                                      writeInfoBool, lastWriteBool,
-		                                      nArrays);
+		                                      rNoPrevWBool, nArrays);
 
 		delete [] readInfoBool;
 		delete [] writeInfoBool;
+		delete [] lastWriteBool;
+		delete [] rNoPrevWBool;
 	}
 
 

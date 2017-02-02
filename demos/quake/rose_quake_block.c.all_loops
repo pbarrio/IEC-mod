@@ -744,6 +744,27 @@ int main(int argc,char **argv)
 	const int writeInLoop13[3] = {0, 0, 1};
 	const int writeInLoop14[3] = {1, 0, 0};
 
+	// If an array is read in a loop and it hasn't been written in a previous
+	// loop, it needs to get data from last writer in the previous iteration.
+	// This is, if there is such a last writer (some arrays are read-only and
+	// do not need to be communicated at all). Then, set it to 1 in the
+	// corresponding loop's array.
+	const int readNoPreviousWrite0[] = {0};
+	const int readNoPreviousWrite1[] = {0, 1, 0};
+	const int readNoPreviousWrite2[] = {0, 0, 0, 0, 0, 0, 1, 1};
+	const int readNoPreviousWrite3[] = {0, 0, 0};
+	const int readNoPreviousWrite4[] = {0, 0, 1};
+	const int readNoPreviousWrite5[] = {0};
+	const int readNoPreviousWrite6[] = {0, 0, 0};
+	const int readNoPreviousWrite7[] = {0, 0, 0, 0, 0, 0, 1, 0};
+	const int readNoPreviousWrite8[] = {0, 0, 0};
+	const int readNoPreviousWrite9[] = {0, 1, 0};
+	const int readNoPreviousWrite10[] = {0};
+	const int readNoPreviousWrite11[] = {0, 0, 0};
+	const int readNoPreviousWrite12[] = {0, 0, 0, 0, 0, 0, 0, 0};
+	const int readNoPreviousWrite13[] = {0, 0, 0};
+	const int readNoPreviousWrite14[] = {0, 0, 0};
+
 	const int lastWrite0[] = {0};
 	const int lastWrite1[] = {0, 0, 0};
 	const int lastWrite2[] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -761,35 +782,35 @@ int main(int argc,char **argv)
 	const int lastWrite14[] = {1, 0, 0};
 
 	pipe_init_loop(0, usedArraysLoop0, readInLoop0, writeInLoop0,
-	               lastWrite0, 1);
+	               lastWrite0, readNoPreviousWrite0, 1);
 	pipe_init_loop(1, usedArraysLoop1, readInLoop1, writeInLoop1,
-	               lastWrite1, 3);
+	               lastWrite1, readNoPreviousWrite1, 3);
 	pipe_init_loop(2, usedArraysLoop2, readInLoop2, writeInLoop2,
-	               lastWrite2, 8);
+	               lastWrite2, readNoPreviousWrite2, 8);
 	pipe_init_loop(3, usedArraysLoop3, readInLoop3, writeInLoop3,
-	               lastWrite3, 3);
+	               lastWrite3, readNoPreviousWrite3, 3);
 	pipe_init_loop(4, usedArraysLoop4, readInLoop4, writeInLoop4,
-	               lastWrite4, 3);
+	               lastWrite4, readNoPreviousWrite4, 3);
 	pipe_init_loop(5, usedArraysLoop5, readInLoop5, writeInLoop5,
-	               lastWrite5, 1);
+	               lastWrite5, readNoPreviousWrite5, 1);
 	pipe_init_loop(6, usedArraysLoop6, readInLoop6, writeInLoop6,
-	               lastWrite6, 3);
+	               lastWrite6, readNoPreviousWrite6, 3);
 	pipe_init_loop(7, usedArraysLoop7, readInLoop7, writeInLoop7,
-	               lastWrite7, 8);
+	               lastWrite7, readNoPreviousWrite7, 8);
 	pipe_init_loop(8, usedArraysLoop8, readInLoop8, writeInLoop8,
-	               lastWrite8, 3);
+	               lastWrite8, readNoPreviousWrite8, 3);
 	pipe_init_loop(9, usedArraysLoop9, readInLoop9, writeInLoop9,
-	               lastWrite9, 3);
+	               lastWrite9, readNoPreviousWrite9, 3);
 	pipe_init_loop(10, usedArraysLoop10, readInLoop10, writeInLoop10,
-	               lastWrite10, 1);
+	               lastWrite10, readNoPreviousWrite10, 1);
 	pipe_init_loop(11, usedArraysLoop11, readInLoop11, writeInLoop11,
-	               lastWrite11, 3);
+	               lastWrite11, readNoPreviousWrite11, 3);
 	pipe_init_loop(12, usedArraysLoop12, readInLoop12, writeInLoop12,
-	               lastWrite12, 8);
+	               lastWrite12, readNoPreviousWrite12, 8);
 	pipe_init_loop(13, usedArraysLoop13, readInLoop13, writeInLoop13,
-	               lastWrite13, 3);
+	               lastWrite13, readNoPreviousWrite13, 3);
 	pipe_init_loop(14, usedArraysLoop14, readInLoop14, writeInLoop14,
-	               lastWrite14, 3);
+	               lastWrite14, readNoPreviousWrite14, 3);
 
 	do {
 

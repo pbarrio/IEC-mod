@@ -51,6 +51,9 @@ public:
 	// map < iterations, map < processes, vector<indexes> > >
 	typedef std::map<int, std::map<int, std::vector<int> > > IdxsPerProcPerIter;
 
+	// map < processes, vector<indexes> >
+	typedef std::map<int, std::vector<int> > IdxsPerProc;
+
 private:
 	/// For each loop, true if the array is read in the loop.
 	std::map<int, bool> isReadInLoop;
@@ -61,9 +64,12 @@ private:
 	/// per-loop basis.
 	std::map<int, bool> isWriteInLoop;
 
-	/// True if this loop is the last in the pipeline that writes to the array,
-	/// false otherwise.
-	bool lastWriteInPipeline;
+	/// Id of the loop that is the last in the pipeline to write to the array.
+	int lastWriteInPipeline;
+
+	/// List of loop IDs that require data to be transferred from the previous
+	/// outer iteration.
+	std::set<int> needsInterIterReceive;
 
 	/// Map to the write/use information for this array for all loops.
 	/// Consumers don't need to keep track of these values. Note that these
@@ -95,7 +101,9 @@ protected:
 	/// Size of the original array
 	const int orig_array_size;
 
-	/// Size of each element of the array in bytes (e.g. for int. stride_size=4)
+	/// Size of each group of elements of the array in bytes. e.g. for an array
+	/// of 3D integer coordinates where each element = (x, y, z), we will have
+	/// 4 bytes/component * 3 components = 12. The stride is 12 bytes.
 	int stride_size;
 
 	/// Offset: address of the first elem if we put all global data in a single
@@ -114,13 +122,21 @@ protected:
 	/// For each iteration and consumer, the send size in bytes.
 	CountsPerProcPerIter pipeSendCounts;
 
-	/// For each iteration and producer, a list of positions in the local array
+	/// For each iteration and producer, a list of positions in the global array
 	/// that we need to receive from the producer.
 	IdxsPerProcPerIter pipeRecvIndexes;
 
-	/// For each iteration and consumer, a list of positions in the local array
+	/// For each iteration and consumer, a list of positions in the global array
 	/// that we need to send to the consumer.
 	IdxsPerProcPerIter pipeSendIndexes;
+
+	/// For each process that needs data from us in the next iteration, a list
+	/// of positions that we need to send.
+	IdxsPerProc pipeInterIterSendIndexes;
+
+	/// For each process from the previous iteration that needs to send us data,
+	/// a list of positions that we need to receive.
+	IdxsPerProc pipeInterIterRecvIndexes;
 
 	/// For each iteration, the corresponding iteration in the producer that
 	/// ensures that we have all the required data (in this array) to start
@@ -178,13 +194,25 @@ public:
 
 	bool is_read(int loop){return isReadInLoop[loop];}
 	bool is_write(int loop){return isWriteInLoop[loop];}
-	bool is_last_write_in_pipeline(){return lastWriteInPipeline;}
-	void set_not_last_write_in_pipeline(){lastWriteInPipeline = false;}
+	bool is_last_write_in_pipeline(int p){return lastWriteInPipeline == p;}
+	unsigned get_last_write_in_pipeline(){return lastWriteInPipeline;}
+	void set_last_write_in_pipeline(int p){lastWriteInPipeline = p;}
+
+	bool needs_interiter_receive(int p){
+		return needsInterIterReceive.count(p) != 0;
+	}
+
+	void set_needs_interiter_receive(int p){
+		needsInterIterReceive.insert(p);
+	}
 
 	void pipe_calc_sends(int myLoop);
 	void pipe_calc_recvs();
-	int pipe_safe_iteration(int index){
-		return producerIter.size() > index ? producerIter[index] : -1;}
+	void pipe_calc_interiter_sends();
+	void pipe_calc_interiter_recvs();
+	int pipe_safe_iteration(int index) {
+		return producerIter.size() > index ? producerIter[index] : -1;
+	}
 
 	friend class Inspector;
 	friend class local_data;

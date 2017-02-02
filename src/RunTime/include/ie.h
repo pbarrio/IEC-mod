@@ -80,7 +80,7 @@ extern void free_2d_float(float**);
  * NEW FUNCTIONS FOR PIPELINING
  */
 extern void pipe_init_loop(const int, const int[], const int[], const int[],
-                           const int[], const int);
+                           const int[], const int[], const int);
 void pipe_calculate_info();
 void pipe_endExternalIter();
 void pipe_send(int);

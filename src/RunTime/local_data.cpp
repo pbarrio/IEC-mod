@@ -438,6 +438,30 @@ void local_data_double::PopulateLocalArray(const global_data* globalArray,
 			maxSendCounts = count;
 	}
 
+	// Inter-iteration sends
+	int count = 0;
+	for (global_data::IdxsPerProc::const_iterator
+		     procIt = globalArray->pipeInterIterSendIndexes.begin(),
+		     procEnd = globalArray->pipeInterIterSendIndexes.end();
+	     procIt != procEnd;
+	     ++procIt){
+
+		int proc = procIt->first;
+		std::vector<int> idxs = procIt->second;
+		for (std::vector<int>::const_iterator idxIt = idxs.begin(),
+			     idxEnd = idxs.end();
+		     idxIt != idxEnd;
+		     ++idxIt)
+
+			if (posMap.find(*idxIt) != posMap.end()){
+				++count;
+				pipeInterIterSendIndexes[proc].push_back(posMap[*idxIt]);
+			}
+	}
+
+	if (count > maxSendCounts)
+		maxSendCounts = count;
+
 	// Receive info
 	maxRecvCounts = 0;
 
@@ -475,6 +499,30 @@ void local_data_double::PopulateLocalArray(const global_data* globalArray,
 		if (count > maxRecvCounts)
 			maxRecvCounts = count;
 	}
+
+	// Inter-iteration receives
+	count = 0;
+	for (global_data::IdxsPerProc::const_iterator
+		     procIt = globalArray->pipeInterIterRecvIndexes.begin(),
+		     procEnd = globalArray->pipeInterIterRecvIndexes.end();
+	     procIt != procEnd;
+	     ++procIt){
+
+		int proc = procIt->first;
+		std::vector<int> idxs = procIt->second;
+		for (std::vector<int>::const_iterator idxIt = idxs.begin(),
+			     idxEnd = idxs.end();
+		     idxIt != idxEnd;
+		     ++idxIt)
+
+			if (posMap.find(*idxIt) != posMap.end()){
+				++count;
+				pipeInterIterRecvIndexes[proc].push_back(posMap[*idxIt]);
+			}
+	}
+
+	if (count > maxRecvCounts)
+		maxRecvCounts = count;
 }
 
 
@@ -713,6 +761,23 @@ int local_data_double::pipe_populate_send_buf(int iter, int proc, char* buf){
 }
 
 
+unsigned local_data_double::pipe_populate_interiter_sends(int proc, char* buf) {
+
+	std::vector<int> indexes = pipeInterIterSendIndexes[proc];
+	unsigned elemSize = get_elem_size() * get_stride_size();
+	for (std::vector<int>::iterator idxIt = indexes.begin(),
+		     idxEnd = indexes.end();
+	     idxIt != idxEnd;
+	     ++idxIt) {
+
+		memcpy(buf, local_array + (*idxIt * stride), elemSize);
+		buf += elemSize;
+	}
+
+	return elemSize * indexes.size();
+}
+
+
 void local_data_double::pipe_update(int iter, int proc, char* buf){
 
 	std::vector<int> indexes = pipeRecvIndexes[iter][proc];
@@ -722,4 +787,21 @@ void local_data_double::pipe_update(int iter, int proc, char* buf){
 	     ++idxIt)
 
 		memcpy(local_array + (*idxIt * stride), buf, sizeof(double) * stride);
+}
+
+
+unsigned local_data_double::pipe_populate_interiter_recvs(int proc, char* buf) {
+
+	std::vector<int> indexes = pipeInterIterRecvIndexes[proc];
+	unsigned elemSize = sizeof(double) * stride;
+	for (std::vector<int>::iterator idxIt = indexes.begin(),
+		     idxEnd = indexes.end();
+	     idxIt != idxEnd;
+	     ++idxIt) {
+
+		memcpy(local_array + (*idxIt * stride), buf, elemSize);
+		buf += elemSize;
+	}
+
+	return elemSize * indexes.size();
 }

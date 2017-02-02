@@ -1390,7 +1390,7 @@ void Inspector::PopulateGlobalArrays(){
 	     it != allLocalData.end(); it++){
 
 		global_data* global_array = allData[it->first];
-		if (global_array->is_last_write_in_pipeline())
+		if (global_array->is_last_write_in_pipeline(myLoop->get_loop_id()))
 			it->second->PopulateGlobalArray();
 	}
 }
@@ -1437,6 +1437,7 @@ void Inspector::pipe_init_loop(const int loopID,
                                const bool readInfo[],
                                const bool writeInfo[],
                                const bool lastWrite[],
+                               const bool rNoPrevW[],
                                const int nArrays){
 
 	// Find loop type
@@ -1458,8 +1459,10 @@ void Inspector::pipe_init_loop(const int loopID,
 
 		global_data* array = allData[usedArrays[i]];
 
-		if (!lastWrite[i])
-			array->set_not_last_write_in_pipeline();
+		if (lastWrite[i])
+			array->set_last_write_in_pipeline(loopID);
+		if (rNoPrevW[i])
+			array->set_needs_interiter_receive(loopID);
 
 		array->use_in_loop(loopID, readInfo[i], writeInfo[i]);
 	}
@@ -1485,12 +1488,25 @@ void Inspector::pipe_calculate_comm_info(){
 
 		// Only if the array is writable in our loop, calculate send info
 		int myLoopId = myLoop->get_loop_id();
-		if (array->is_write(myLoopId))
+		if (array->is_write(myLoopId)) {
+
 			array->pipe_calc_sends(myLoopId);
 
+			// If our loop is the last to write to the array, calculate info
+			// to send to the next iteration.
+			if (array->is_last_write_in_pipeline(myLoopId))
+				array->pipe_calc_interiter_sends();
+		}
+
 		// Only if the array is readable in our loop, calculate receive info
-		if (array->is_read(myLoopId))
+		if (array->is_read(myLoopId)) {
+
 			array->pipe_calc_recvs();
+
+			// If our loop reads the array and no previous loop writes to it,
+			// calculate info to receive from the previous iteration.
+			array->pipe_calc_interiter_recvs();
+		}
 	}
 
 	/*
@@ -1563,6 +1579,138 @@ void Inspector::pipe_init_comm_structs(){
 	     ++pIt)
 
 		pipeRecvBuf[pIt->first] = (char*)malloc(maxItemsRecvd * sizeof(char));
+}
+
+
+void Inspector::pipe_endExternalIter() {
+
+	// For each process that we communicate to, the list of arrays that it is
+	// expecting.
+	std::map<unsigned, std::set<local_data*> > expectedArrays;
+
+	int sendcounts[nProcs], senddispls[nProcs];
+	for (unsigned p = 0; p < nProcs; ++p)
+		sendcounts[p] = 0;
+
+	/*
+	 * SEND INFO
+	 */
+
+	// Sort the arrays to be sent by receiver process. Because expectedArrays is
+	// a map, its elements are sorted by key (i.e. by process).
+	// Also, count the number of bytes that we need.
+	for (std::map<int, local_data*>::iterator aIt = allLocalData.begin(),
+		     aEnd = allLocalData.end();
+	     aIt != aEnd; ++aIt) {
+
+		local_data* a = aIt->second;
+		int stride = a->get_stride_size();
+		for (int p = 0; p < nProcs; ++p) {
+
+			int nElems = a->get_num_interiter_sends(p);
+			if (nElems != 0) {
+				expectedArrays[p].insert(a);
+				sendcounts[p] += nElems * a->get_elem_size() *
+					a->get_stride_size();
+			}
+		}
+	}
+
+	// Now we know how much we need to send. Allocate the buffer.
+	unsigned nBytes = 0;
+	for (int p = 0; p < nProcs; ++p)
+		nBytes += sendcounts[p];
+	char* sends = (char*)malloc(nBytes);
+
+	unsigned next_senddispls = 0;
+	for (unsigned p = 0; p < nProcs; ++p) {
+		if (sendcounts[p] != 0) {
+			senddispls[p] = next_senddispls;
+			next_senddispls += sendcounts[p];
+		}
+		else
+			senddispls[p] = 0;
+		char* buf = sends + senddispls[p];
+
+		for (std::set<local_data*>::iterator aIt = expectedArrays[p].begin(),
+			     aEnd = expectedArrays[p].end();
+		     aIt != aEnd; ++aIt) {
+
+			buf += (*aIt)->pipe_populate_interiter_sends(p, buf);
+		}
+	}
+
+	/*
+	 * RECEIVE INFO
+	 */
+
+	expectedArrays.clear();
+	int recvcounts[nProcs], recvdispls[nProcs];
+	for (unsigned p = 0; p < nProcs; ++p)
+		recvcounts[p] = 0;
+
+	// Sort the arrays to be received by receiver process. Also, count the
+	// number of bytes that we will receive in order to allocate the buffer.
+	for (std::map<int, local_data*>::iterator arrayIt = allLocalData.begin(),
+		     arrayEnd = allLocalData.end();
+	     arrayIt != arrayEnd; ++arrayIt) {
+
+		local_data* a = arrayIt->second;
+		int stride = a->get_stride_size();
+		for (int p = 0; p < nProcs; ++p) {
+
+			int nElems = a->get_num_interiter_receives(p);
+			if (nElems != 0) {
+				expectedArrays[p].insert(a);
+				recvcounts[p] += nElems * a->get_elem_size() *
+					a->get_stride_size();
+			}
+		}
+	}
+
+	// Now we know how much we need to receive. Allocate the buffer
+	nBytes = 0;
+	for (int p = 0; p < nProcs; ++p)
+		nBytes += recvcounts[p];
+	char* recvs = (char*)malloc(nBytes);
+
+	unsigned next_recvdispls = 0;
+	for (unsigned p = 0; p < nProcs; ++p)
+		if (recvcounts[p] != 0) {
+			recvdispls[p] = next_recvdispls;
+			next_recvdispls += recvcounts[p];
+		}
+		else
+			recvdispls[p] = 0;
+
+	// Communicate inter-iteration data
+	MPI_Alltoallv(sends, sendcounts, senddispls, MPI_BYTE, recvs, recvcounts,
+	              recvdispls, MPI_BYTE, global_comm::global_iec_communicator);
+
+	// This barrier should probably be removed
+	MPI_Barrier(global_comm::global_iec_communicator);
+
+	// Write the received data back into the local arrays
+	for (unsigned p = 0; p < nProcs; ++p){
+
+		char* procData = recvs + recvdispls[p];
+		for (std::set<local_data*>::iterator aIt = expectedArrays[p].begin(),
+			     aEnd = expectedArrays[p].end();
+		     aIt != aEnd; ++aIt) {
+
+			local_data* a = (*aIt);
+			procData += a->pipe_populate_interiter_recvs(p, procData);
+		}
+	}
+
+	// Set up structs for next external iteration
+	for (std::map<int, int>::iterator recvdIt = receivedSoFar.begin(),
+		     recvdEnd = receivedSoFar.end();
+	     recvdIt != recvdEnd; ++recvdIt)
+
+		recvdIt->second = -1;
+
+	delete sends;
 }
 
 
