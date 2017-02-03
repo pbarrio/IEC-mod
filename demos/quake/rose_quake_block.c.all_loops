@@ -2591,21 +2591,23 @@ int main(int argc,char **argv)
 	free(__ub_j_i_16__);
 	delete_inspector();;
 
-	fprintf(stderr,"Time step %d\n",iter);
-	if (Src.sourcenode <= ARCHmine)
-		printf("%d: %.2e %.2e %.2e\n",
-		       ARCHglobalnode[Src.sourcenode], disp0[Src.sourcenode][0],
-		       disp0[Src.sourcenode][1],disp0[Src.sourcenode][2]);
-	if (Src.epicenternode <= ARCHmine)
-		printf("%d: %.2e %.2e %.2e\n",
-		       ARCHglobalnode[Src.epicenternode], disp0[Src.epicenternode][0],
-		       disp0[Src.epicenternode][1],disp0[Src.epicenternode][2]);
-	fprintf(stderr, "%s: %d nodes %d elems %d timesteps\n",
-	        progname, ARCHglobalnodes, ARCHglobalelems, timesteps);
-	fprintf(stderr,"\n");
-	fflush(stderr);
-	if (!(options.quiet != 0)) {
-		fprintf(stderr,"%s: Done. Terminating the simulation.\n",progname);
+	if (myTeam == 3) {
+		fprintf(stderr,"Time step %d\n",iter);
+		if (Src.sourcenode <= ARCHmine)
+			printf("%d: %.2e %.2e %.2e\n",
+			       ARCHglobalnode[Src.sourcenode], disp0[Src.sourcenode][0],
+			       disp0[Src.sourcenode][1],disp0[Src.sourcenode][2]);
+		if (Src.epicenternode <= ARCHmine)
+			printf("%d: %.2e %.2e %.2e\n",
+			       ARCHglobalnode[Src.epicenternode], disp0[Src.epicenternode][0],
+			       disp0[Src.epicenternode][1],disp0[Src.epicenternode][2]);
+		fprintf(stderr, "%s: %d nodes %d elems %d timesteps\n",
+		        progname, ARCHglobalnodes, ARCHglobalelems, timesteps);
+		fprintf(stderr,"\n");
+		fflush(stderr);
+		if (!(options.quiet != 0)) {
+			fprintf(stderr,"%s: Done. Terminating the simulation.\n",progname);
+		}
 	}
 
 	ARMCI_Finalize();
