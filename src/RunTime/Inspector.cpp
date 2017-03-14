@@ -1593,7 +1593,7 @@ void Inspector::pipe_endExternalIter() {
 		sendcounts[p] = 0;
 
 	/*
-	 * SEND INFO
+	 * SEND-INFO REQUIRED BETWEEN ITERATIONS
 	 */
 
 	// Sort the arrays to be sent by receiver process. Because expectedArrays is
@@ -1641,7 +1641,7 @@ void Inspector::pipe_endExternalIter() {
 	}
 
 	/*
-	 * RECEIVE INFO
+	 * RECEIVE-INFO BETWEEN ITERATIONS
 	 */
 
 	expectedArrays.clear();

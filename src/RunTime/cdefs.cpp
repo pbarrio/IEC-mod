@@ -200,11 +200,13 @@ extern "C" {
 	void partition_hypergraph(int useType){
 		switch(useType){
 		case 0:
-			Inspector::instance()->PatohPartitionAll();
-			return;
+			assert(0 && "Patoh partitioning not available");
+		// 	Inspector::instance()->PatohPartitionAll();
+		// 	return;
 		case 1:
-			Inspector::instance()->MetisPartitionAll();
-			return;
+			assert(0 && "Metis partitioning not available");
+		// 	Inspector::instance()->MetisPartitionAll();
+		// 	return;
 		case 2:
 			Inspector::instance()->BlockPartition();
 			return;

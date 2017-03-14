@@ -18,7 +18,7 @@
  */
 #include <cassert>
 #include "mpi.h"
-#include "parmetis.h"
+//#include "parmetis.h"
 #include "RunTime/Inspector.hpp"
 
 using namespace std;
@@ -614,9 +614,9 @@ void Inspector::MetisPartition(int loop){
 	int *vertex_home = new int[num_local_vertex];
 	MPI_Comm world_comm = MPI_COMM_WORLD;
 
-	ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, vwgt, adjwgt, &wgtflag,
-	                     &numflag, &ncon, &nparts, tpwgts, ubvec, options,
-	                     &nedgecuts, vertex_home, &world_comm);
+	// ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, vwgt, adjwgt, &wgtflag,
+	//                      &numflag, &ncon, &nparts, tpwgts, ubvec, options,
+	//                      &nedgecuts, vertex_home, &world_comm);
 
 #ifndef NDEBUG
 	printf("ID=%d, Done graphpartition\n",procId);

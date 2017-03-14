@@ -222,8 +222,12 @@ public:
 
 	void MetisReplicateHypergraph(int loop);
 	void BlockPartition();
+
+private:
 	void MetisPartitionAll();
 	void MetisPartition(int loop);
+
+public:
 	void MetisPrePartition(int loop);
 	void MetisAfterPartition(int loop);
 
