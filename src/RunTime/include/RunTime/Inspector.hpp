@@ -35,7 +35,12 @@
 #include <deque>
 #include <vector>
 
+#define INSPECTOR_DBG
+
 #define PIPE_TAG 9813 // For instance :D
+
+// Group comms from many iterations into one message. Value must be >= 1.
+#define GROUP_ITER_COMMS 2
 
 //Class for the inspector to generate and partition hypergraph
 
@@ -115,6 +120,7 @@ private:
 	int *pipeSendCounts, *pipeSendDispls, *pipeRecvCounts;
 	char *pipeSendBuf;
 	std::map<int, char*> pipeRecvBuf;
+	std::map<int, char*> pipeRecvItemsCurrIter;
 
 	/// Contains, for each iteration here, the iteration in the producers after
 	/// which it is safe to start computations (because we have all required

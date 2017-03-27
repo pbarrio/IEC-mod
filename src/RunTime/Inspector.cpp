@@ -1654,7 +1654,7 @@ void Inspector::pipe_init_comm_structs(){
 			maxItemsRecvd = arrayMaxRecvd;
 	}
 
-	pipeSendBuf = (char*)malloc(maxItemsSent * sizeof(char));
+	pipeSendBuf = (char*)malloc(maxItemsSent * GROUP_ITER_COMMS * sizeof(char));
 
 	for (std::map<int, global_loop*>::iterator
 		     pIt = producerLoops.begin(),
@@ -1662,7 +1662,8 @@ void Inspector::pipe_init_comm_structs(){
 	     pIt != pEnd;
 	     ++pIt)
 
-		pipeRecvBuf[pIt->first] = (char*)malloc(maxItemsRecvd * sizeof(char));
+		pipeRecvBuf[pIt->first] =
+			(char*)malloc(maxItemsRecvd * GROUP_ITER_COMMS * sizeof(char));
 }
 
 
@@ -1732,11 +1733,16 @@ void Inspector::pipe_reset_counts_and_displs() {
  *
  * \param iter The iteration of the loop that just finished.
  */
-void Inspector::pipe_send(int iter){
+void Inspector::pipe_send(int lastIter){
 
 #ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Sending" << endl;
 #endif
+
+	// Only transfer once every GROUP_ITER_COMMS iterations, e.g. if = 10,
+	// will transfer iters 0-9 in iter 9, 10-19 in iter 19, etc.
+	if ((lastIter + 1) % GROUP_ITER_COMMS)
+		return;
 
 	pipe_reset_counts_and_displs();
 
@@ -1746,27 +1752,31 @@ void Inspector::pipe_send(int iter){
 	// Prepare structures for sending
 	for (int iProc = 0; iProc < nProcs; ++iProc){
 
-		// This is the "send" part
-		for (global_loop::ArrayIDList::iterator
-			     arrayIt = myLoop->computed_arrays_begin(iter),
-			     arrayEnd = myLoop->computed_arrays_end(iter);
-		     arrayIt != arrayEnd;
-		     ++arrayIt){
+		unsigned writtenSoFar = pipeSendDispls[iProc];
+		unsigned count = 0;
+		for (unsigned iter = lastIter + 1 - GROUP_ITER_COMMS;
+		     iter <= lastIter;
+		     ++iter) {
 
-			local_data* localArray = allLocalData[*arrayIt];
-			pipeSendCounts[iProc] +=
-				localArray->pipe_get_sendcounts(iter, iProc);
+			for (global_loop::ArrayIDList::iterator
+				     arrayIt = myLoop->computed_arrays_begin(iter),
+				     arrayEnd = myLoop->computed_arrays_end(iter);
+			     arrayIt != arrayEnd;
+			     ++arrayIt){
 
-			localArray->pipe_populate_send_buf
-				(iter,
-				 iProc,
-				 pipeSendBuf + pipeSendDispls[iProc]);
+				local_data* localArray = allLocalData[*arrayIt];
+				count += localArray->pipe_get_sendcounts(iter, iProc);
+				pipeSendCounts[iProc] += count;
+
+				localArray->pipe_populate_send_buf
+					(iter, iProc, pipeSendBuf + writtenSoFar);
+			}
+			writtenSoFar += count;
 		}
 
 		// Update the send displacements for the next process
 		if (iProc + 1 < nProcs)
-			pipeSendDispls[iProc + 1] =
-				pipeSendDispls[iProc] + pipeSendCounts[iProc];
+			pipeSendDispls[iProc + 1] = writtenSoFar;
 
 		if (pipeSendCounts[iProc] != 0)
 			MPI_Issend(pipeSendBuf + pipeSendDispls[iProc],
@@ -1800,9 +1810,9 @@ void Inspector::pipe_initial_receive(){
 
 		// Try to receive from the producer in that iteration until we find the
 		// first iteration where we really have to receive something from it.
-		int iter;
-		int prod = prodIt->first;
-		for (iter = 0; !internal_issue_recv(iter, prodIt->first); ++iter);
+		for (int iter = 0;
+		     !internal_issue_recv(iter, prodIt->first);
+		     iter += GROUP_ITER_COMMS);
 	}
 
 #ifdef INSPECTOR_DBG
@@ -1841,7 +1851,7 @@ void Inspector::pipe_receive(int iter){
 #endif
 
 		// Move received data to the local array
-		char* receivedData = pipeRecvBuf[receivedProd];
+		char* receivedData = pipeRecvItemsCurrIter[receivedProd];
 		for (global_loop::ArrayIDList::iterator
 			     arrayIt = myLoop->used_arrays_begin(iterReceivedFromProd),
 			     arrayEnd = myLoop->used_arrays_end(iterReceivedFromProd);
@@ -1868,25 +1878,51 @@ void Inspector::pipe_receive(int iter){
 bool Inspector::internal_issue_recv(int iter, int iProc){
 
 #ifdef INSPECTOR_DBG
-	cout << "[Proc " << procId << "] Issuing receive " << (iter)
-	     << " for producer " << iProc << endl;
+	cout << "[Proc " << procId << "] Issuing receive "
+	     << (iter % GROUP_ITER_COMMS) << " for producer " << iProc << endl;
 #endif
 
-	pipeRecvCounts[iProc] = 0;
+	// If we don't have to wait for communications in this iteration,
+	// i.e. a message was sent earlier containing data for multiple
+	// iterations...
+	if (iter % GROUP_ITER_COMMS) {
 
-	// Prepare structures for receiving
-	for (global_loop::ArrayIDList::iterator
+		// ... shift the buffer to point at the start of the data for
+		// the new iteration.
+
+		for (global_loop::ArrayIDList::iterator
 		     arrayIt = myLoop->used_arrays_begin(iter),
 		     arrayEnd = myLoop->used_arrays_end(iter);
 	     arrayIt != arrayEnd;
 	     ++arrayIt){
 
-		local_data* localArray = allLocalData[*arrayIt];
-		pipeRecvCounts[iProc] +=
-			localArray->pipe_get_recvcounts(iter, iProc);
+			local_data* localArray = allLocalData[*arrayIt];
+			pipeRecvItemsCurrIter[iProc] +=
+				localArray->pipe_get_recvcounts(iter - 1, iProc);
+		}
+		return true;
+	}
+
+	// Else, we must wait for data from the producers.
+	pipeRecvCounts[iProc] = 0;
+
+	// Prepare structures for receiving
+	for (unsigned i = iter + 1 - GROUP_ITER_COMMS; i <= iter; ++i) {
+
+		for (global_loop::ArrayIDList::iterator
+		     arrayIt = myLoop->used_arrays_begin(i),
+		     arrayEnd = myLoop->used_arrays_end(i);
+	     arrayIt != arrayEnd;
+	     ++arrayIt){
+
+			local_data* localArray = allLocalData[*arrayIt];
+			pipeRecvCounts[iProc] +=
+				localArray->pipe_get_recvcounts(i, iProc);
+		}
 	}
 
 	if (pipeRecvCounts[iProc] != 0){
+
 		MPI_Irecv(pipeRecvBuf[iProc],
 		          pipeRecvCounts[iProc],
 		          MPI_BYTE,
@@ -1894,6 +1930,8 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
 		          PIPE_TAG,
 		          global_comm::global_iec_communicator,
 		          recvWaitStruct[iProc]);
+
+		pipeRecvItemsCurrIter[iProc] = pipeRecvBuf[iProc];
 		return true;
 	}
 
