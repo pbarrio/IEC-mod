@@ -9,12 +9,13 @@
 
 export MPI_HOME=/usr/
 
-if [ -n build ]; then
-	mkdir build
-fi
+mkdir -p build
 
 cd build
-cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=/usr ..
-make
+cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=/usr .. \
+	  -DARMCI_HOME=/home/pablo/Applications/ga-v5.3/installTree \
+	  -DBOOST_HOME=/home/pablo/Applications/boost-v1.47.0/installTree/ \
+	  -DPARMETIS_HOME=/usr/
+make -j4
 sudo make install
 cd ..
