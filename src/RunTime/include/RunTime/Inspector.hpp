@@ -136,6 +136,21 @@ private:
 	/// -> producer)
 	std::map<int, int> recvWaitStructInv;
 
+	/// Data structures to send and receive data between different iterations
+	/// of the external loop
+	char* interIterSendBuf;
+	char* interIterRecvBuf;
+	int *interIterSendCounts, *interIterSendDispls, *interIterRecvCounts,
+		*interIterRecvDispls;
+
+	/// For each process that this process communicates to, the list of arrays
+	/// that it is expecting.
+	std::map<unsigned, std::set<local_data*> > expectedSendArrays;
+
+	/// For each process that this process receives from, the list of arrays
+	/// that it will send.
+	std::map<unsigned, std::set<local_data*> > expectedRecvArrays;
+
 	/**
 	 * \brief Returns the team ID of a process
 	 *
@@ -428,6 +443,8 @@ public:
 	void pipe_init_loop(const int, const int[], const bool[], const bool[],
 	                    const bool[], const bool[], const int);
 	void pipe_calculate_comm_info();
+	void pipe_calculate_comm_info_within_external_iter();
+	void pipe_calculate_comm_info_between_external_iters();
 	void pipe_init_comm_structs();
 	void pipe_endExternalIter();
 
