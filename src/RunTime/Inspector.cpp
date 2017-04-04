@@ -1750,10 +1750,9 @@ void Inspector::pipe_send(int lastIter){
 	MPI_Request reqs[nProcs];
 
 	// Prepare structures for sending
+	char *sendBufPtr = pipeSendBuf;
 	for (int iProc = 0; iProc < nProcs; ++iProc){
 
-		unsigned writtenSoFar = pipeSendDispls[iProc];
-		unsigned count = 0;
 		for (unsigned iter = lastIter + 1 - GROUP_ITER_COMMS;
 		     iter <= lastIter;
 		     ++iter) {
@@ -1765,20 +1764,21 @@ void Inspector::pipe_send(int lastIter){
 			     ++arrayIt){
 
 				local_data* localArray = allLocalData[*arrayIt];
-				count += localArray->pipe_get_sendcounts(iter, iProc);
-				pipeSendCounts[iProc] += count;
+				localArray->pipe_populate_send_buf(iter, iProc, pipeSendBuf);
 
-				localArray->pipe_populate_send_buf
-					(iter, iProc, pipeSendBuf + writtenSoFar);
+				unsigned count = localArray->pipe_get_sendcounts(iter, iProc);
+				pipeSendBuf += count;
+				pipeSendCounts[iProc] += count;
 			}
-			writtenSoFar += count;
 		}
 
 		// Update the send displacements for the next process
 		if (iProc + 1 < nProcs)
-			pipeSendDispls[iProc + 1] = writtenSoFar;
+			pipeSendDispls[iProc + 1] =
+				pipeSendDispls[iProc] + pipeSendCounts[iProc];
 
-		if (pipeSendCounts[iProc] != 0)
+		if (pipeSendCounts[iProc] != 0) {
+
 			MPI_Issend(pipeSendBuf + pipeSendDispls[iProc],
 			           pipeSendCounts[iProc],
 			           MPI_BYTE,
@@ -1907,7 +1907,7 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
 	pipeRecvCounts[iProc] = 0;
 
 	// Prepare structures for receiving
-	for (unsigned i = iter + 1 - GROUP_ITER_COMMS; i <= iter; ++i) {
+	for (unsigned i = iter; i < iter + GROUP_ITER_COMMS; ++i) {
 
 		for (global_loop::ArrayIDList::iterator
 		     arrayIt = myLoop->used_arrays_begin(i),
