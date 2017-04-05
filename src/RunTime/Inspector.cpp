@@ -148,6 +148,14 @@ Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
 	interIterRecvCounts = new int[np];
 	interIterRecvDispls = new int[np];
 
+	// Initialize all communication buffers to avoid them being
+	// initialized to arbitrary values and inadvertently write
+	// to some funny memory, with the corresponding segfault.
+	pipeSendBuf = NULL;
+	internalMPIRequest = NULL;
+	interIterSendBuf = NULL;
+	interIterRecvBuf = NULL;
+
 	send_info = new set<int>*[teamSize * 2];
 	for (int i = 0; i < teamSize * 2; i++)
 		send_info[i] = new set<int>;
@@ -1777,7 +1785,7 @@ void Inspector::pipe_send(int lastIter){
 			pipeSendDispls[iProc + 1] =
 				pipeSendDispls[iProc] + pipeSendCounts[iProc];
 
-		if (pipeSendCounts[iProc] != 0) {
+    if (pipeSendCounts[iProc] != 0)
 
 			MPI_Issend(pipeSendBuf + pipeSendDispls[iProc],
 			           pipeSendCounts[iProc],
