@@ -122,6 +122,10 @@ private:
 	std::map<int, char*> pipeRecvBuf;
 	std::map<int, char*> pipeRecvItemsCurrIter;
 
+        /// For each processor, true if the corresponding pipeRecvBuf already has
+        /// valid data. False if we need to wait for data from the producer.
+	std::map<int, bool> pipeRecvBufIsValid;
+
 	/// Contains, for each iteration here, the iteration in the producers after
 	/// which it is safe to start computations (because we have all required
 	/// data).
@@ -462,7 +466,7 @@ public:
 protected:
 
 	bool internal_issue_recv(int, int);
-	bool pipe_ready(int);
+	bool pipe_ready(int, int&);
 };
 
 

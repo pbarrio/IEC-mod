@@ -1741,7 +1741,7 @@ void Inspector::pipe_reset_counts_and_displs() {
  *
  * \param iter The iteration of the loop that just finished.
  */
-void Inspector::pipe_send(int lastIter){
+void Inspector::pipe_send(int lastIter) {
 
 #ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Sending" << endl;
@@ -1772,10 +1772,10 @@ void Inspector::pipe_send(int lastIter){
 			     ++arrayIt){
 
 				local_data* localArray = allLocalData[*arrayIt];
-				localArray->pipe_populate_send_buf(iter, iProc, pipeSendBuf);
+				localArray->pipe_populate_send_buf(iter, iProc, sendBufPtr);
 
 				unsigned count = localArray->pipe_get_sendcounts(iter, iProc);
-				pipeSendBuf += count;
+				sendBufPtr += count;
 				pipeSendCounts[iProc] += count;
 			}
 		}
@@ -1820,7 +1820,9 @@ void Inspector::pipe_initial_receive(){
 		// first iteration where we really have to receive something from it.
 		for (int iter = 0;
 		     !internal_issue_recv(iter, prodIt->first);
-		     iter += GROUP_ITER_COMMS);
+		     iter += GROUP_ITER_COMMS)
+
+		  receivedSoFar[prodIt->first] = iter - 1;
 	}
 
 #ifdef INSPECTOR_DBG
@@ -1843,14 +1845,28 @@ void Inspector::pipe_receive(int iter){
 	cout << "[Proc " << procId << "] Receiving for local iter " << iter << endl;
 #endif
 
-	while (!pipe_ready(iter)){
+	int producerNotReceived;
+	while (!pipe_ready(iter, producerNotReceived)){
 
-		int receivedIdx;
-		MPI_Waitany(recvWaitStruct.size(), internalMPIRequest, &receivedIdx,
-		            MPI_STATUS_IGNORE);
-		assert(receivedIdx != MPI_UNDEFINED);
-		int receivedProd = recvWaitStructInv[receivedIdx];
+		int receivedProd = -1;
+		if (pipeRecvBufIsValid[producerNotReceived])
+		  receivedProd = producerNotReceived;
+		else {
+		  int receivedIdx;
+		  MPI_Waitany(recvWaitStruct.size(), internalMPIRequest,
+					  &receivedIdx, MPI_STATUS_IGNORE);
+		  assert(receivedIdx != MPI_UNDEFINED);
+		  receivedProd = recvWaitStructInv[receivedIdx];
+		}
+
+		// If this assert fails, it means that we still need at least
+		// the data from one producer but there are no pending
+		// receives (because we got an MPI_UNDEFINED in MPI_Waitall).
+		// There is an error somewhere!
+		assert(receivedProd != -1);
+
 		int& iterReceivedFromProd = receivedSoFar[receivedProd];
+		pipeRecvBufIsValid[receivedProd] = true;
 		iterReceivedFromProd++;
 
 #ifdef INSPECTOR_DBG
@@ -1929,6 +1945,7 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
 		}
 	}
 
+	pipeRecvBufIsValid[iProc] = false;
 	if (pipeRecvCounts[iProc] != 0){
 
 		MPI_Irecv(pipeRecvBuf[iProc],
@@ -1951,8 +1968,11 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
  * \brief Check that this process received everything needed for this iteration.
  *
  * \param iter The local iteration that we are receiving for.
+ * \param procWaitingFor A process that we are waiting for. We may be waiting
+ *                       for more than one process, but this is the first one
+ *                       that we find.
  */
-bool Inspector::pipe_ready(int iter){
+bool Inspector::pipe_ready(int iter, int& procWaitingFor) {
 
 	for (std::map<int, MPI_Request*>::iterator
 		     procIt = recvWaitStruct.begin(),
@@ -1969,6 +1989,7 @@ bool Inspector::pipe_ready(int iter){
 			     << ", need at least iter " << safeIter[iter][producer]
 			     << ". NOT READY." << endl;
 #endif
+			procWaitingFor = producer;
 			return false;
 		}
 
