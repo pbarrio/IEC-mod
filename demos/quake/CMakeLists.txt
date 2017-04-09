@@ -39,7 +39,7 @@ add_executable(iec_${BENCHMARK_NAME}_metis rose_${BENCHMARK_NAME}_metis.c)
 target_link_libraries(iec_${BENCHMARK_NAME}_metis ${IE_LIBS} ${ARMCI_LIBS} ${PARMETIS_LIBS} ${METIS_LIBS} ${PATOH_LIBS})
 
 add_executable(iec_${BENCHMARK_NAME}_block rose_${BENCHMARK_NAME}_block.c)
-target_link_libraries(iec_${BENCHMARK_NAME}_block ${IE_LIBS} ${ARMCI_LIBS} ${PARMETIS_LIBS} ${METIS_LIBS} ${PATOH_LIBS})
+target_link_libraries(iec_${BENCHMARK_NAME}_block ${IE_LIBS} ${ARMCI_LIBS} ${PARMETIS_LIBS} ${METIS_LIBS} ${PATOH_LIBS} ${ROSE_LIBS})
 
 install(TARGETS iec_${BENCHMARK_NAME}_patoh orig_${BENCHMARK_NAME} DESTINATION bin/${BENCHMARK_NAME})
 install(TARGETS iec_${BENCHMARK_NAME}_metis orig_${BENCHMARK_NAME} DESTINATION bin/${BENCHMARK_NAME})

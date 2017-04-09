@@ -10,7 +10,12 @@ include_directories(${IE_INCLUDE_DIR})
 
 message("IE : "${IE_LIBS},${IE_INCLUDE_DIR})
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+find_library(IB_LIBS ibverbs PATH)
+if(IB_LIBS)
+  set(IB_FLAG "-libverbs")
+endif()
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition ${IB_FLAG}")
 set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 
 add_subdirectory(smvp)

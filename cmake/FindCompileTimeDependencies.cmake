@@ -1,6 +1,6 @@
 #Find Rose
 find_library(ROSE_LIBS rose PATH ${ROSE_HOME}/lib $ENV{ROSE_HOME}/lib)
-find_path(ROSE_INCLUDES rose.h PATH ${ROSE_HOME}/include $ENV{ROSE_HOME}/include)
+find_path(ROSE_INCLUDES rose.h PATH ${ROSE_HOME}/include $ENV{ROSE_HOME}/include ${ROSE_HOME}/include/rose $ENV{ROSE_HOME}/include/rose)
 include_directories(${ROSE_INCLUDES})
 
 #Find Boost

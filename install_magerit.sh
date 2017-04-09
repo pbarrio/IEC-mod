@@ -21,6 +21,7 @@ cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR $ROOT_DIR \
     -DARMCI_HOME=/home/p097/PROJECT/lib/install-ga \
     -DBOOST_HOME=$BOOST_HOME \
     -DPARMETIS_HOME=/sw/openmpi/METIS/PARMETIS-4.0.3 \
+    -DMETIS_HOME=/sw/openmpi/METIS/METIS-4.0.3 \
     -DROSE_HOME=/home/p097/PROJECT/lib/rose/installTree
 make
 make install
