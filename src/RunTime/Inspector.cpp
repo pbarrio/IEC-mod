@@ -74,7 +74,8 @@ char* global_comm::write_recv_signal = NULL;
  */
 Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
                      int nl, int nd, int nad, int* iterNumCount,
-                     int* dataNumCount, int* ro):
+                     int* dataNumCount, int* ro,
+                     unsigned groupitercomms):
 	procId(pid),
 	teamNum(team),
 	idInTeam(pidTeam),
@@ -83,7 +84,8 @@ Inspector::Inspector(int pid, int np, int team, int pidTeam, int teamsize,
 	pins_size(-1),
 	myLoop(NULL),
 	iterNumOffset(new int[nl + 1]), // The first '1' is for my loop
-	dataNumOffset(new int[nd + 1]){
+	dataNumOffset(new int[nd + 1]),
+	groupIterComms(groupitercomms){
 
 	// Create new communicator associated to the inspector. This avoids having
 	// to use MPI_COMM_WORLD.
@@ -1662,7 +1664,7 @@ void Inspector::pipe_init_comm_structs(){
 			maxItemsRecvd = arrayMaxRecvd;
 	}
 
-	pipeSendBuf = (char*)malloc(maxItemsSent * GROUP_ITER_COMMS * sizeof(char));
+	pipeSendBuf = (char*)malloc(maxItemsSent * groupIterComms * sizeof(char));
 
 	for (std::map<int, global_loop*>::iterator
 		     pIt = producerLoops.begin(),
@@ -1671,7 +1673,7 @@ void Inspector::pipe_init_comm_structs(){
 	     ++pIt)
 
 		pipeRecvBuf[pIt->first] =
-			(char*)malloc(maxItemsRecvd * GROUP_ITER_COMMS * sizeof(char));
+			(char*)malloc(maxItemsRecvd * groupIterComms * sizeof(char));
 }
 
 
@@ -1747,9 +1749,9 @@ void Inspector::pipe_send(int lastIter) {
 	cout << "[Proc " << procId << "] Sending" << endl;
 #endif
 
-	// Only transfer once every GROUP_ITER_COMMS iterations, e.g. if = 10,
+	// Only transfer once every groupIterComms iterations, e.g. if = 10,
 	// will transfer iters 0-9 in iter 9, 10-19 in iter 19, etc.
-	if ((lastIter + 1) % GROUP_ITER_COMMS)
+	if ((lastIter + 1) % groupIterComms)
 		return;
 
 	pipe_reset_counts_and_displs();
@@ -1761,7 +1763,7 @@ void Inspector::pipe_send(int lastIter) {
 	char *sendBufPtr = pipeSendBuf;
 	for (int iProc = 0; iProc < nProcs; ++iProc){
 
-		for (unsigned iter = lastIter + 1 - GROUP_ITER_COMMS;
+		for (unsigned iter = lastIter + 1 - groupIterComms;
 		     iter <= lastIter;
 		     ++iter) {
 
@@ -1820,7 +1822,7 @@ void Inspector::pipe_initial_receive(){
 		// first iteration where we really have to receive something from it.
 		for (int iter = 0;
 		     !internal_issue_recv(iter, prodIt->first);
-		     iter += GROUP_ITER_COMMS)
+		     iter += groupIterComms)
 
 		  receivedSoFar[prodIt->first] = iter - 1;
 	}
@@ -1903,13 +1905,13 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
 
 #ifdef INSPECTOR_DBG
 	cout << "[Proc " << procId << "] Issuing receive "
-	     << (iter % GROUP_ITER_COMMS) << " for producer " << iProc << endl;
+	     << (iter % groupIterComms) << " for producer " << iProc << endl;
 #endif
 
 	// If we don't have to wait for communications in this iteration,
 	// i.e. a message was sent earlier containing data for multiple
 	// iterations...
-	if (iter % GROUP_ITER_COMMS) {
+	if (iter % groupIterComms) {
 
 		// ... shift the buffer to point at the start of the data for
 		// the new iteration.
@@ -1931,7 +1933,7 @@ bool Inspector::internal_issue_recv(int iter, int iProc){
 	pipeRecvCounts[iProc] = 0;
 
 	// Prepare structures for receiving
-	for (unsigned i = iter; i < iter + GROUP_ITER_COMMS; ++i) {
+	for (unsigned i = iter; i < iter + groupIterComms; ++i) {
 
 		for (global_loop::ArrayIDList::iterator
 		     arrayIt = myLoop->used_arrays_begin(i),

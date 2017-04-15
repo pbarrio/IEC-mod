@@ -68,25 +68,26 @@ extern "C" {
 	 * \param nic Array of iteration limits (must be of size nl)
 	 * \param ndc Array of direct array sizes (must be of size nd)
 	 * \param ro Array of read-only flags for the direct arrays (must be of size nd)
+	 * \param gic Number of iterations to group the communications
 	 */
 	void create_inspector(int md, int np, int team, int pid_team, int teamsize,
 	                      int nloops, int ndata, int nac, int* nic, int* ndc,
-	                      int* ro){
+	                      int* ro, unsigned gic){
 
 		inspector_start = rtclock();
 		Inspector* new_inspector =
 			Inspector::instance(md, np, team, pid_team, teamsize, nloops, ndata,
-			                    nac, nic, ndc, ro);
+			                    nac, nic, ndc, ro, gic);
 		scalar_holder = new double[1];
 	}
 
 
 	void create_inspector_(int* md, int* np, int team, int pid_team,
 	                       int teamsize, int* nloops, int* ndata, int *nac,
-	                       int *nic, int* ndc, int* ro){
+	                       int *nic, int* ndc, int* ro, unsigned gic){
 
 		create_inspector(*md, *np, team, pid_team, teamsize, *nloops, *ndata,
-		                 *nac, nic, ndc, ro);
+		                 *nac, nic, ndc, ro, gic);
 	}
 
 

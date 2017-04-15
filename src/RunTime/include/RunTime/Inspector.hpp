@@ -35,12 +35,9 @@
 #include <deque>
 #include <vector>
 
-#define INSPECTOR_DBG
+//#define INSPECTOR_DBG
 
 #define PIPE_TAG 9813 // For instance :D
-
-// Group comms from many iterations into one message. Value must be >= 1.
-#define GROUP_ITER_COMMS 2
 
 //Class for the inspector to generate and partition hypergraph
 
@@ -161,6 +158,9 @@ private:
 	/// that it will send.
 	std::map<unsigned, std::set<local_data*> > expectedRecvArrays;
 
+	/// Group communications for these many iterations of the loop
+	unsigned groupIterComms;
+
 	/**
 	 * \brief Returns the team ID of a process
 	 *
@@ -182,9 +182,8 @@ private:
 
 	void pipe_reset_counts_and_displs();
 
-	Inspector(int pid, int np, int team, int pid_team, int teamsize,
-	          int nl, int nd, int nad,
-	          int* iter_num_count, int* data_num_count, int* ro);
+	Inspector(int, int, int, int, int, int, int, int, int*, int*, int*,
+	          unsigned);
 
 public:
 	~Inspector();
@@ -192,12 +191,12 @@ public:
 	static Inspector* instance(int pid, int np, int team, int pid_team,
 	                           int teamsize, int nl, int nd, int nad,
 	                           int* iter_num_count, int* data_num_count,
-	                           int* ro){
+	                           int* ro, unsigned gic){
 
 		if( singleton_inspector == NULL )
 			singleton_inspector =
 				new Inspector(pid, np, team, pid_team, teamsize, nl, nd,
-				              nad, iter_num_count, data_num_count, ro);
+				              nad, iter_num_count, data_num_count, ro, gic);
 		return singleton_inspector;
 	}
 

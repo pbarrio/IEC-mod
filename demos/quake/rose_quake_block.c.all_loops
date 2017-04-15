@@ -451,7 +451,8 @@ int main(int argc,char **argv)
 	int ro_mask[10] = {1, 1, 1, 1, 1, 0, 0, 0, 0, 1};
 
 	create_inspector(__proc_id__, __nprocs__, myTeam, idInMyTeam, teamSize,
-	                 nLoops, 10, 2, iter_num_count, data_num_count, ro_mask);
+	                 nLoops, 10, 2, iter_num_count, data_num_count, ro_mask, 1);
+	printf("[Proc %d] CREATED INSPECTOR\n", __proc_id__);
 
 	// Set parameters for the indirection arrays
 	// (0 = ARCHmatrixcol, 1 = ARCHmatrixindex)
@@ -1096,8 +1097,10 @@ int main(int argc,char **argv)
 	}while (!done_graph_gen());
 
 	partition_hypergraph(2);
+	printf("[Proc %d] CREATED HYPERGRAPHS\n", __proc_id__);
 
 	pipe_calculate_info();
+	printf("[Proc %d] CALCULATED PIPELINE COMM INFO\n", __proc_id__);
 
 	free(__0_status__);
 	__0_status__ = ((int *)(malloc(sizeof(int ) * get_proc_iter_size(0))));
@@ -1880,6 +1883,8 @@ int main(int argc,char **argv)
 		}
 	}
 
+	printf("[Proc %d] CALCULATED LOOP LIMITS AND CONTROL INFO\n", __proc_id__);
+
 	// Initialize M
 	double **__local_M__ = NULL;
 	if ((myTeam == 2) || (myTeam == 3) || (myTeam == 7) || (myTeam == 8) ||
@@ -2005,6 +2010,14 @@ int main(int argc,char **argv)
 	for (iter = 1; iter <= timesteps; ) {
 
 		if (myTeam == 0){
+
+
+
+
+			printf("---- %d\n", iter);
+
+
+
 
 			/*
 			 * LOOP 0
