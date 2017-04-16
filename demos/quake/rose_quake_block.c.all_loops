@@ -123,6 +123,11 @@ struct damping Damp;
 
 int main(int argc,char **argv)
 {
+	if (argc != 2) {
+		printf("ERROR: Must specify an input file\n");
+		return 0;
+	}
+
 	MPI_Init(&argc,&argv);
 	ARMCI_Init();
 	MPI_Comm_rank(MPI_COMM_WORLD,&__proc_id__);
