@@ -1,6 +1,7 @@
 #! /bin/bash
 
 NPROC=15
+INPUT=pabloutp.in
 
 if [ $# != 1 ]; then
 	echo "ERROR: must specify a process ID for perf"
@@ -16,15 +17,15 @@ if [ $np1 -lt 0 ] || [ $np2 -lt 0 ]; then
 fi
 
 if [ $np1 -gt 0 ]; then
-	cmd1="-np $np1 iec_quake_block pabloutp.in :"
+	cmd1="-np $np1 iec_quake_block $INPUT :"
 fi
 if [ $np2 -gt 0 ]; then
-	cmd2=": -np $np2 iec_quake_block pabloutp.in"
+	cmd2=": -np $np2 iec_quake_block $INPUT"
 fi
 
 echo "Gathering performance of process $1"
 mkdir -p results
-mpirun \
+mpirun -output-filename results/out \
 	$cmd1 \
-	-np 1 perf record -o results/p$1.perf ./iec_quake_block pabloutp.in \
+	-np 1 perf record -o results/p$1.perf ./iec_quake_block $INPUT \
 	$cmd2
